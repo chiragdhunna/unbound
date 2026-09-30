@@ -1,0 +1,65 @@
+@import '@fontsource/jetbrains-mono';
+@import '@fontsource/ibm-plex-mono';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main {
+  margin: 0 auto;
+  max-width: 960px;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+
+.shell {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 1.5rem;
+}
+
+h1 {
+  margin: 0;
+  color: var(--amber);
+}
+
+p {
+  color: var(--muted);
+}
+
+label,
+input,
+textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  font: inherit;
+}
+
+textarea {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+}
+
+input {
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem;
+}
+
+.error-text {
+  color: var(--danger);
+}
