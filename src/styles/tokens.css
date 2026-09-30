@@ -1,0 +1,14 @@
+:root {
+  --bg: #0b0b0a;
+  --surface: #141412;
+  --surface-2: #1b1b18;
+  --border: #2b2a25;
+  --text: #e9e5d8;
+  --muted: #8f8a7b;
+  --amber: #ffb000;
+  --amber-dim: #b37a00;
+  --ok: #7fd962;
+  --warn: #ffcf4d;
+  --danger: #ff6b6b;
+  --radius: 6px;
+}

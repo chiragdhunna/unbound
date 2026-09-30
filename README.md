@@ -1,2 +1,11 @@
-# unbound
-Turn any file into clean, structured, paste-ready text for ChatGPT, Claude, Gemini, Grok, and more. Convert PDFs, DOCX, XLSX, PPTX, images, and other formats into Markdown or plain text—without attachment limits.
+# Unbound
+
+Client-side file-to-markdown/plain-text converter for LLM paste workflows.
+
+## Development
+- `npm ci`
+- `npm run dev`
+- `npm run verify`
+
+## Current status
+- Milestone M0 scaffolding in progress. See `PROGRESS.md`.
