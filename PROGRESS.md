@@ -29,6 +29,16 @@
 - ⬜ M12 — Docs, deploy, final audit
 
 ## Iteration Log
+
+### 2026-09-30 — Security patch: Vite
+- Upgraded `vite` from 5.4.21 to 6.4.3 to address `server.fs.deny` bypass advisory ranges affecting older versions.
+- Verification evidence:
+  - `bash scripts/verify.sh` ✅
+  - `npm audit --omit=dev --audit-level=high` ✅ (0 vulnerabilities)
+- Next steps:
+  - Continue M1 queue/cancel/progress and worker RPC slice.
+- Blockers: none.
+
 ### 2026-09-30 — M1 slice 1
 - Added core contracts in `src/core/types.ts` and typed errors in `src/core/errors.ts`.
 - Added shared markdown normalizer and baseline `detectFileKind()` implementation.
