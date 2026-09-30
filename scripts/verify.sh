@@ -33,7 +33,7 @@ step "traceability check"
 node scripts/check-traceability.mjs
 
 step "hygiene grep"
-if rg -n 'TODO|FIXME|XXX|not implemented|it\.skip|test\.skip|test\.todo|describe\.skip|console\.log' src tests --glob '!tests/fixtures/**' >/dev/null; then
+if grep -RInE 'TODO|FIXME|XXX|not implemented|it\.skip|test\.skip|test\.todo|describe\.skip|console\.log' src tests --exclude-dir=fixtures >/dev/null; then
   echo "Hygiene grep found prohibited markers." >&2
   exit 1
 fi

@@ -14,7 +14,9 @@ export default defineConfig({
       reportsDirectory: 'coverage',
       include: ['src/core/**/*.ts', 'src/converters/**/*.ts'],
       thresholds: {
-        lines: 85
+        lines: 85,
+        'src/core/**': { lines: 85 },
+        'src/converters/**': { lines: 85 }
       }
     }
   }
