@@ -34,3 +34,32 @@ h1 {
 p {
   color: var(--muted);
 }
+
+label,
+input,
+textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  font: inherit;
+}
+
+textarea {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+}
+
+input {
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem;
+}
+
+.error-text {
+  color: var(--danger);
+}
