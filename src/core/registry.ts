@@ -6,7 +6,8 @@ const registry: Partial<Record<FileKind, () => Promise<{ default?: Converter; co
   markdown: () => import('../converters/markdown').then((module) => ({ converter: module.markdownConverter })),
   json: () => import('../converters/json').then((module) => ({ converter: module.jsonConverter })),
   xml: () => import('../converters/xml').then((module) => ({ converter: module.xmlConverter })),
-  code: () => import('../converters/code').then((module) => ({ converter: module.codeConverter }))
+  code: () => import('../converters/code').then((module) => ({ converter: module.codeConverter })),
+  docx: () => import('../converters/docx').then((module) => ({ converter: module.docxConverter }))
 }
 
 export async function loadConverter(kind: FileKind): Promise<Converter> {

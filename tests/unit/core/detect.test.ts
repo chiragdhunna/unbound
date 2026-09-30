@@ -22,7 +22,7 @@ describe('detectFileKind', () => {
   })
 
   it('detects code by extension', () => {
-    const bytes = new TextEncoder().encode('console.log("ok")').buffer
+    const bytes = new TextEncoder().encode('logger.log("ok")').buffer
     expect(detectFileKind({ name: 'index.ts', mime: 'text/plain', bytes })).toBe('code')
   })
 

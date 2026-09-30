@@ -13,14 +13,14 @@ test('renders application shell', async ({ page }) => {
 
 test('uploads txt file and shows converted text', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('Choose file').setInputFiles(fixture('sample.txt'))
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(fixture('sample.txt'))
 
   await expect(page.getByRole('textbox')).toHaveValue('Hello from Unbound.\n')
 })
 
 test('uploads json file and renders fenced markdown', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('Choose file').setInputFiles(fixture('sample.json'))
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(fixture('sample.json'))
 
   await expect(page.getByRole('textbox')).toContainText('```json')
   await expect(page.getByRole('textbox')).toContainText('"project": "unbound"')

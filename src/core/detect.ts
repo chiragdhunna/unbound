@@ -61,70 +61,47 @@ function looksLikeText(sample: Uint8Array): boolean {
   return decodeAsUtf8(sample) !== null
 }
 
-export function detectFileKind(input: { name: string; mime: string; bytes: ArrayBuffer }): FileKind {
+export interface DetectionResult {
+  kind: FileKind
+  warnings: { code: string; message: string; severity: 'info' | 'warn' }[]
+}
+
+function zipKind(sample: Uint8Array, extension: string): FileKind {
+  const names = new TextDecoder('latin1').decode(sample)
+  if (names.includes('word/document.xml')) return 'docx'
+  if (names.includes('ppt/presentation.xml')) return 'pptx'
+  if (names.includes('xl/workbook.xml')) return 'xlsx'
+  if (names.includes('mimetypeapplication/epub+zip') || extension === 'epub') return 'epub'
+  return 'zip'
+}
+
+export function detectFileKindWithWarnings(input: { name: string; mime: string; bytes: ArrayBuffer }): DetectionResult {
   const sample = new Uint8Array(input.bytes.slice(0, 4096))
   const extension = getExtension(input.name)
+  const warnings: DetectionResult['warnings'] = []
+  let kind: FileKind
 
-  if (startsWith(sample, [0x25, 0x50, 0x44, 0x46, 0x2d])) {
-    return 'pdf'
-  }
+  if (startsWith(sample, [0x25, 0x50, 0x44, 0x46, 0x2d])) kind = 'pdf'
+  else if (startsWith(sample, [0xd0, 0xcf, 0x11, 0xe0])) {
+    kind = extension === 'xls' ? 'xlsx' : extension === 'doc' || extension === 'ppt' ? 'legacy-office' : extension === 'docx' || extension === 'pptx' || extension === 'xlsx' ? 'encrypted-office' : 'unknown'
+  } else if (startsWith(sample, [0x50, 0x4b, 0x03, 0x04])) kind = zipKind(sample, extension)
+  else if (startsWith(sample, [0x89, 0x50, 0x4e, 0x47]) || startsWith(sample, [0xff, 0xd8, 0xff]) || startsWith(sample, [0x47, 0x49, 0x46, 0x38]) || startsWith(sample, [0x42, 0x4d]) || imageMimes.has(input.mime)) kind = 'image'
+  else if (!looksLikeText(sample)) kind = 'unknown'
+  else if (extension === 'md' || extension === 'markdown') kind = 'markdown'
+  else if (extension === 'txt') kind = 'text'
+  else if (extension === 'csv' || extension === 'tsv') kind = 'csv'
+  else if (extension === 'json') kind = 'json'
+  else if (extension === 'xml') kind = 'xml'
+  else if (extension === 'html' || extension === 'htm') kind = 'html'
+  else if (extension === 'rtf') kind = 'rtf'
+  else if (codeExtensions.has(extension)) kind = 'code'
+  else kind = 'text'
 
-  if (startsWith(sample, [0xd0, 0xcf, 0x11, 0xe0])) {
-    if (extension === 'xls') {
-      return 'xlsx'
-    }
+  const extensionKind = extension === 'pdf' ? 'pdf' : extension === 'docx' ? 'docx' : extension === 'pptx' ? 'pptx' : extension === 'xlsx' || extension === 'xls' ? 'xlsx' : extension === 'png' || extension === 'jpg' || extension === 'jpeg' ? 'image' : undefined
+  if (extensionKind && extensionKind !== kind && kind !== 'unknown') warnings.push({ code: 'TYPE_MISMATCH', message: `Detected ${kind} content despite a .${extension} extension.`, severity: 'info' })
+  return { kind, warnings }
+}
 
-    if (extension === 'doc' || extension === 'ppt') {
-      return 'legacy-office'
-    }
-
-    if (extension === 'docx' || extension === 'pptx' || extension === 'xlsx') {
-      return 'encrypted-office'
-    }
-
-    return 'unknown'
-  }
-
-  if (startsWith(sample, [0x50, 0x4b, 0x03, 0x04])) {
-    if (extension === 'docx') return 'docx'
-    if (extension === 'pptx') return 'pptx'
-    if (extension === 'xlsx' || extension === 'xlsm') return 'xlsx'
-    if (extension === 'epub') return 'epub'
-    return 'zip'
-  }
-
-  if (startsWith(sample, [0x89, 0x50, 0x4e, 0x47])) {
-    return 'image'
-  }
-
-  if (startsWith(sample, [0xff, 0xd8, 0xff])) {
-    return 'image'
-  }
-
-  if (startsWith(sample, [0x47, 0x49, 0x46, 0x38])) {
-    return 'image'
-  }
-
-  if (startsWith(sample, [0x42, 0x4d])) {
-    return 'image'
-  }
-
-  if (imageMimes.has(input.mime)) {
-    return 'image'
-  }
-
-  if (!looksLikeText(sample)) {
-    return 'unknown'
-  }
-
-  if (extension === 'md' || extension === 'markdown') return 'markdown'
-  if (extension === 'txt') return 'text'
-  if (extension === 'csv' || extension === 'tsv') return 'csv'
-  if (extension === 'json') return 'json'
-  if (extension === 'xml') return 'xml'
-  if (extension === 'html' || extension === 'htm') return 'html'
-  if (extension === 'rtf') return 'rtf'
-  if (codeExtensions.has(extension)) return 'code'
-
-  return 'text'
+export function detectFileKind(input: { name: string; mime: string; bytes: ArrayBuffer }): FileKind {
+  return detectFileKindWithWarnings(input).kind
 }

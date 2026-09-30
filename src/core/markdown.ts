@@ -18,7 +18,7 @@ export function normalizeMarkdown(input: string): string {
 
     if (!insideFence && nextLine.trim().length === 0) {
       blankCount += 1
-      if (blankCount > 2) {
+      if (blankCount > 1) {
         continue
       }
     } else {

@@ -8,20 +8,38 @@ step() {
   echo "[verify] $1"
 }
 
+step "lockfile install"
+npm ci --ignore-scripts
+
 step "lint"
 npm run lint
 
 step "typecheck"
 npm run typecheck
 
-step "unit tests"
-npm run test:unit
+step "unit tests with coverage"
+npm run test:unit -- --coverage
 
 step "build"
 npm run build
 
+step "bundle budget"
+node scripts/check-bundle.mjs
+
 step "playwright e2e"
 npm run test:e2e
 
+step "traceability check"
+node scripts/check-traceability.mjs
+
+step "hygiene grep"
+if rg -n 'TODO|FIXME|XXX|not implemented|it\.skip|test\.skip|test\.todo|describe\.skip|console\.log' src tests --glob '!tests/fixtures/**' >/dev/null; then
+  echo "Hygiene grep found prohibited markers." >&2
+  exit 1
+fi
+
+step "npm audit"
+npm audit --omit=dev --audit-level=high
+
 step "summary"
-echo "verify.sh complete: lint, typecheck, unit, build, e2e passed"
+echo "verify.sh complete: ci, lint, typecheck, unit+coverage, build, bundle, e2e, traceability, hygiene, audit passed"

@@ -3,7 +3,7 @@ import { UnsupportedFormatError } from './errors'
 import { loadConverter } from './registry'
 import { type ConvertContext, type ConvertResult } from './types'
 
-const supportedKinds = new Set(['text', 'markdown', 'json', 'xml', 'code'])
+const supportedKinds = new Set(['text', 'markdown', 'json', 'xml', 'code', 'docx'])
 
 async function readFileBytes(file: File): Promise<ArrayBuffer> {
   if (typeof file.arrayBuffer === 'function') {

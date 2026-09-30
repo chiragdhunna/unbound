@@ -1,5 +1,6 @@
 import { normalizeMarkdown } from '../core/markdown'
 import { type Converter } from '../core/types'
+import { decodeText } from '../core/encoding'
 
 function detectLanguage(name: string): string {
   const ext = name.includes('.') ? name.split('.').at(-1) ?? '' : ''
@@ -9,12 +10,15 @@ function detectLanguage(name: string): string {
 export const codeConverter: Converter = {
   kind: 'code',
   async convert(input) {
-    const raw = new TextDecoder('utf-8').decode(input.bytes)
+    const decoded = decodeText(input.bytes)
+    const raw = decoded.text
     const language = detectLanguage(input.name)
+    const longestBacktickRun = Math.max(...(raw.match(/`+/g) ?? ['']).map((run) => run.length))
+    const fence = '`'.repeat(Math.max(3, longestBacktickRun + 1))
 
     return {
-      markdown: normalizeMarkdown(`\`\`\`${language}\n${raw}\n\`\`\``),
-      warnings: [],
+      markdown: normalizeMarkdown(`${fence}${language}\n${raw}\n${fence}`),
+      warnings: decoded.warnings,
       stats: {}
     }
   }
