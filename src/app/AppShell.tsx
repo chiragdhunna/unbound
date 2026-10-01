@@ -242,6 +242,7 @@ export function AppShell() {
               : job
           )
         )
+        setSelectedJobId(id)
         if (settings.quickPaste) {
           const quickCopy = await copyText(result.markdown)
           setToast(quickCopy ? 'Quick paste copied' : 'Quick paste ready — tap Copy')
@@ -523,7 +524,7 @@ export function AppShell() {
                   <div key={`${chunk.slice(0, 10)}-${index}`} className="chunk-item">
                     <div className="chunk-meta">{`Part ${index + 1} of ${chunks.length} · ${countSummary(chunk)}`}</div>
                     <div className="chunk-actions">
-                      <button type="button" onClick={() => void handleCopyChunk(chunk)}>Copy</button>
+                      <button type="button" onClick={() => void handleCopyChunk(chunk)}>{`Copy part ${index + 1} of ${chunks.length}`}</button>
                     </div>
                     <pre>{chunk.slice(0, 220)}{chunk.length > 220 ? '…' : ''}</pre>
                   </div>

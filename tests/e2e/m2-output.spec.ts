@@ -16,8 +16,20 @@ test('M2 happy path converts and copies in two user actions', async ({ page }) =
   await installClipboard(page)
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('happy.txt', 'Hello from M2.'))
   await expect(page.getByRole('textbox', { name: 'Converted output' })).toHaveValue('Hello from M2.\n')
-  await page.getByRole('button', { name: 'Copy', exact: true }).click()
-  await expect(page.getByRole('status', { name: 'Copied to clipboard' })).toBeVisible()
+  await expect(page.getByText(/15 chars · 3 words/)).toBeVisible()
+  await page.getByRole('article', { name: 'Conversion output' }).getByRole('button', { name: 'Copy', exact: true }).click()
+  await expect(page.getByText('Copied to clipboard', { exact: true })).toBeVisible()
+})
+
+test('M2 uses the textarea clipboard fallback when Clipboard API is unavailable', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('fallback.txt', 'Fallback copy'))
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
+    document.execCommand = () => true
+  })
+  await page.getByRole('article', { name: 'Conversion output' }).getByRole('button', { name: 'Copy', exact: true }).click()
+  await expect(page.getByText('Copied to clipboard', { exact: true })).toBeVisible()
 })
 
 test('M2 supports separate and combined batch output', async ({ page }) => {
@@ -53,11 +65,13 @@ test('M2 exposes chunk labels, preamble, per-chunk copy, and sequential copy', a
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('large.txt', content))
   await page.getByLabel('Chunk limit', { exact: true }).fill('40')
   await expect(page.getByText(/Part 1 of/).first()).toBeVisible()
+  await page.getByLabel('Chunk unit', { exact: true }).selectOption('tokens')
+  await expect(page.getByLabel('Chunk unit', { exact: true })).toHaveValue('tokens')
   await page.getByLabel('Chunk preamble', { exact: true }).check()
   await expect(page.getByText(/Wait for all parts/).first()).toBeVisible()
   await page.getByRole('button', { name: 'Copy next', exact: true }).click()
-  await page.getByRole('button', { name: 'Copy', exact: true }).last().click()
-  await expect(page.getByRole('status', { name: 'Chunk copied' })).toBeVisible()
+  await page.getByRole('button', { name: /Copy part/ }).last().click()
+  await expect(page.getByText('Chunk copied', { exact: true })).toBeVisible()
 })
 
 test('M2 toggles Markdown and Plain without another conversion', async ({ page }) => {
@@ -105,7 +119,7 @@ test('M2 caps a million-character preview while copy keeps the full output', asy
   const output = page.getByRole('textbox', { name: 'Converted output' })
   await expect(output).toHaveValue(/Showing first 200,000/, { timeout: 15000 })
   await expect(page.getByText(/Preview capped at 200,000/)).toBeVisible()
-  await page.getByRole('button', { name: 'Copy', exact: true }).click()
+  await page.getByRole('article', { name: 'Conversion output' }).getByRole('button', { name: 'Copy', exact: true }).click()
   const copiedLength = await page.evaluate(() => (window as unknown as { __unboundWrites: string[] }).__unboundWrites[0]?.length)
   expect(copiedLength).toBeGreaterThan(1_000_000)
 })
@@ -119,8 +133,8 @@ test('M2 supports keyboard upload, edit mode, announced toasts, and dynamic priv
   await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('Keyboard content')
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await page.getByRole('textbox', { name: 'Converted output' }).fill('Edited content')
-  await page.getByRole('button', { name: 'Copy', exact: true }).click()
-  await expect(page.getByRole('status', { name: 'Copied to clipboard' })).toBeVisible()
+  await page.getByRole('article', { name: 'Conversion output' }).getByRole('button', { name: 'Copy', exact: true }).click()
+  await expect(page.getByText('Copied to clipboard', { exact: true })).toBeVisible()
   await page.getByLabel('Quick paste', { exact: true }).check()
   await expect(page.getByText(/OCR downloads and proxy settings are opt-in/)).toBeVisible()
 })
@@ -138,6 +152,7 @@ test('M2 has CSP and conversion makes no external requests or CSP violations', a
   expect(await response?.text()).toContain("Content-Security-Policy")
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('private.txt', 'No network'))
   await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('No network')
+  await expect.poll(() => page.evaluate(() => document.fonts.check('16px "JetBrains Mono"'))).toBe(true)
   expect(external).toEqual([])
   expect(cspErrors).toEqual([])
 })
