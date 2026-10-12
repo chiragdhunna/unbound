@@ -187,11 +187,19 @@ export function AppShell() {
     return `${displayText.slice(0, 200000)}\n\n[Showing first 200,000 of ${displayText.length} characters — Copy and Download use the full text.]`
   }, [displayText])
 
+  // Reset copy index when chunks change to avoid copying from wrong position
+  useEffect(() => {
+    setCopyIndex(0)
+  }, [chunks])
+
   const activeText = editMode ? draftText : previewText
 
   useEffect(() => {
-    if (selectedJob && !editMode) {
-      setDraftText(displayText)
+    if (selectedJob) {
+      // Update draftText when switching documents or when leaving edit mode
+      if (!editMode) {
+        setDraftText(displayText)
+      }
     }
   }, [displayText, editMode, selectedJob])
 
@@ -216,21 +224,24 @@ export function AppShell() {
     setJobs((previous) => [...previous, ...createdJobs])
     setSelectedJobId(createdJobs[0]?.id ?? null)
 
-    for (const file of fileList) {
-      const id = createdJobs.find((job) => job.name === file.name)?.id ?? `${file.name}-${Date.now()}`
+    // Process each file using its pre-created job ID
+    for (let index = 0; index < fileList.length; index++) {
+      const file = fileList[index]!
+      const jobId = createdJobs[index]!.id
+
       setJobs((previous) =>
         previous.map((job) =>
-          job.id === id
+          job.id === jobId
             ? { ...job, status: 'converting', error: null }
             : job
         )
       )
 
       try {
-        const result = await convertFile(file, createConvertContext())
+        const result = await convertFile(file!, createConvertContext())
         setJobs((previous) =>
           previous.map((job) =>
-            job.id === id
+            job.id === jobId
               ? {
                   ...job,
                   status: 'done',
@@ -242,7 +253,7 @@ export function AppShell() {
               : job
           )
         )
-        setSelectedJobId(id)
+        setSelectedJobId(jobId)
         if (settings.quickPaste) {
           const quickCopy = await copyText(result.markdown)
           setToast(quickCopy ? 'Quick paste copied' : 'Quick paste ready — tap Copy')
@@ -251,7 +262,7 @@ export function AppShell() {
         const message = formatError(error)
         setJobs((previous) =>
           previous.map((job) =>
-            job.id === id
+            job.id === jobId
               ? {
                   ...job,
                   status: 'error',
@@ -404,8 +415,13 @@ export function AppShell() {
             </button>
           </div>
 
-          <label className="toggle-row">
-            <input type="checkbox" checked={settings.quickPaste} onChange={(event) => setSettings((value) => ({ ...value, quickPaste: event.target.checked }))} />
+          <label className="toggle-row" htmlFor="quick-paste-checkbox">
+            <input
+              id="quick-paste-checkbox"
+              type="checkbox"
+              checked={settings.quickPaste}
+              onChange={(event) => setSettings((value) => ({ ...value, quickPaste: event.target.checked }))}
+            />
             Quick paste
           </label>
 
@@ -473,10 +489,89 @@ export function AppShell() {
                   </ul>
                 ) : null}
                 <div className="job-actions">
-                  {job.status === 'done' ? <button type="button" onClick={(event) => { event.stopPropagation(); void copyText(job.rawMarkdown).then(() => setToast('File copied')) }}>Copy file</button> : null}
-                  {job.status === 'done' ? <button type="button" onClick={(event) => { event.stopPropagation(); handleJobDownload(job) }}>Download file</button> : null}
-                  {job.status === 'error' ? <button type="button" onClick={(event) => { event.stopPropagation(); void handleFiles([job.file]) }}>Retry</button> : null}
-                  <button type="button" onClick={(event) => { event.stopPropagation(); setJobs((previous) => previous.filter((item) => item.id !== job.id)) }}>Remove</button>
+                  {job.status === 'done' ? (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={async (event) => {
+                        event.stopPropagation();
+                        const textToCopy = settings.outputMode === 'markdown' ? job.rawMarkdown : markdownToPlain(job.rawMarkdown);
+                        const success = await copyText(textToCopy);
+                        setToast(success ? 'File copied' : 'File copy failed');
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          const textToCopy = settings.outputMode === 'markdown' ? job.rawMarkdown : markdownToPlain(job.rawMarkdown);
+                          void copyText(textToCopy).then((success) => {
+                            setToast(success ? 'File copied' : 'File copy failed');
+                          });
+                        }
+                      }}
+                      className="job-action-button"
+                    >
+                      Copy file
+                    </div>
+                  ) : null}
+                  {job.status === 'done' ? (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleJobDownload(job);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleJobDownload(job);
+                        }
+                      }}
+                      className="job-action-button"
+                    >
+                      Download file
+                    </div>
+                  ) : null}
+                  {job.status === 'error' ? (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleFiles([job.file]);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void handleFiles([job.file]);
+                        }
+                      }}
+                      className="job-action-button"
+                    >
+                      Retry
+                    </div>
+                  ) : null}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setJobs((previous) => previous.filter((item) => item.id !== job.id));
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setJobs((previous) => previous.filter((item) => item.id !== job.id));
+                      }
+                    }}
+                    className="job-action-button"
+                  >
+                    Remove
+                  </div>
                 </div>
               </div>
             ))}

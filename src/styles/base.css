@@ -175,6 +175,23 @@ button.active {
   color: var(--warn);
 }
 
+.job-action-button {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+}
+
+.job-action-button:hover {
+  background: rgba(255, 176, 0, 0.08);
+}
+
+.job-action-button:active {
+  background: rgba(255, 176, 0, 0.12);
+}
+
 .output-panel {
   margin-top: 1rem;
   border: 1px solid var(--border);
