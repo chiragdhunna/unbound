@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const textFile = (name: string, content: string) => ({ name, mimeType: 'text/plain', buffer: Buffer.from(content) })
+const largeText = 'x'.repeat(10000)
 
 async function installClipboard(page: Page) {
   await page.evaluate(() => {
@@ -11,9 +12,12 @@ async function installClipboard(page: Page) {
   })
 }
 
-test('M2 happy path converts and copies in two user actions', async ({ page }) => {
+test.beforeEach(async ({ page }) => {
   await page.goto('/')
   await installClipboard(page)
+})
+
+test('M2 happy path converts and copies in two user actions', async ({ page }) => {
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('happy.txt', 'Hello from M2.'))
   await expect(page.getByRole('textbox', { name: 'Converted output' })).toHaveValue('Hello from M2.\n')
   await expect(page.getByText(/15 chars · 3 words/)).toBeVisible()
@@ -22,7 +26,6 @@ test('M2 happy path converts and copies in two user actions', async ({ page }) =
 })
 
 test('M2 uses the textarea clipboard fallback when Clipboard API is unavailable', async ({ page }) => {
-  await page.goto('/')
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('fallback.txt', 'Fallback copy'))
   await page.evaluate(() => {
     Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
@@ -33,7 +36,6 @@ test('M2 uses the textarea clipboard fallback when Clipboard API is unavailable'
 })
 
 test('M2 supports separate and combined batch output', async ({ page }) => {
-  await page.goto('/')
   await page.getByLabel('Choose file', { exact: true }).setInputFiles([
     textFile('first.txt', 'First'),
     textFile('second.txt', 'Second')
@@ -46,7 +48,6 @@ test('M2 supports separate and combined batch output', async ({ page }) => {
 })
 
 test('M2 isolates a failed file from a successful batch and supports retry/remove', async ({ page }) => {
-  await page.goto('/')
   await page.getByLabel('Choose file', { exact: true }).setInputFiles([
     textFile('broken.bin', '\u0000'),
     textFile('good.txt', 'Good file')
@@ -58,11 +59,95 @@ test('M2 isolates a failed file from a successful batch and supports retry/remov
   await expect(page.getByText('broken.bin', { exact: true })).toHaveCount(0)
 })
 
+test('retrying a failed file does not create another job', async ({ page }) => {
+  // Upload one unsupported file and one valid text file
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles([
+    textFile('broken.bin', '\u0000'),
+    textFile('good.txt', 'Good file content')
+  ])
+
+  // Wait for failed/successful statuses to be visible
+  await expect(page.getByText(/Unsupported format/)).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('Good file content')
+
+  // Record original job count and identities
+  const originalJobCount = await page.evaluate(() => {
+    return document.querySelectorAll('.job-card').length
+  })
+  const originalFailedJobId = await page.evaluate(() => {
+    const failedCard = Array.from(document.querySelectorAll('.job-card')).find(
+      card => card.querySelector('.job-status')?.textContent.trim() === 'error'
+    )
+    return failedCard?.getAttribute('key') ?? null
+  })
+
+  // Actually click Retry on the failed file
+  await page.getByRole('button', { name: 'Retry', exact: true }).first().click()
+
+  // Wait for the retried attempt to finish
+  await page.waitForTimeout(500) // Brief wait for transition
+
+  // Assert that the job count is unchanged
+  const newJobCount = await page.evaluate(() => {
+    return document.querySelectorAll('.job-card').length
+  })
+  expect(newJobCount).toBe(originalJobCount)
+
+  // Assert that the retried job retains its original identity
+  const newFailedJobId = await page.evaluate(() => {
+    const failedCard = Array.from(document.querySelectorAll('.job-card')).find(
+      card => card.querySelector('.job-status')?.textContent.trim() === 'error' ||
+              card.querySelector('.job-status')?.textContent.trim() === 'converting' ||
+              card.querySelector('.job-status')?.textContent.trim() === 'done'
+    )
+    return failedCard?.getAttribute('key') ?? null
+  })
+  expect(newFailedJobId).toBe(originalFailedJobId)
+
+  // Assert that the valid file's content is unchanged
+  await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('Good file content')
+
+  // Assert that the total number of job cards is unchanged
+  const jobCardsAfterFirstRetry = await page.evaluate(() => {
+    return document.querySelectorAll('.job-card').length
+  })
+  expect(jobCardsAfterFirstRetry).toBe(originalJobCount)
+
+  // Repeat Retry and verify the same invariants again
+  await page.getByRole('button', { name: 'Retry', exact: true }).first().click()
+
+  // Wait for the second retry attempt
+  await page.waitForTimeout(500)
+
+  // Assert job count still unchanged
+  const finalJobCount = await page.evaluate(() => {
+    return document.querySelectorAll('.job-card').length
+  })
+  expect(finalJobCount).toBe(originalJobCount)
+
+  // Assert identity still retained
+  const finalFailedJobId = await page.evaluate(() => {
+    const failedCard = Array.from(document.querySelectorAll('.job-card')).find(
+      card => card.querySelector('.job-status')?.textContent.trim() === 'error' ||
+              card.querySelector('.job-status')?.textContent.trim() === 'converting' ||
+              card.querySelector('.job-status')?.textContent.trim() === 'done'
+    )
+    return failedCard?.getAttribute('key') ?? null
+  })
+  expect(finalFailedJobId).toBe(originalFailedJobId)
+
+  // Assert valid file content still unchanged
+  await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('Good file content')
+
+  // Assert still only one card for failed input
+  const finalJobCardsAfterSecondRetry = await page.evaluate(() => {
+    return document.querySelectorAll('.job-card').length
+  })
+  expect(finalJobCardsAfterSecondRetry).toBe(originalJobCount)
+})
+
 test('M2 exposes chunk labels, preamble, per-chunk copy, and sequential copy', async ({ page }) => {
-  await page.goto('/')
-  await installClipboard(page)
-  const content = Array.from({ length: 20 }, (_, index) => `Paragraph ${index} has enough content to create a chunk boundary.`).join('\n\n')
-  await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('large.txt', content))
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('large.txt', largeText))
   await page.getByLabel('Chunk limit', { exact: true }).fill('40')
   await expect(page.getByText(/Part 1 of/).first()).toBeVisible()
   await page.getByLabel('Chunk unit', { exact: true }).selectOption('tokens')
@@ -75,7 +160,6 @@ test('M2 exposes chunk labels, preamble, per-chunk copy, and sequential copy', a
 })
 
 test('M2 toggles Markdown and Plain without another conversion', async ({ page }) => {
-  await page.goto('/')
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('format.md', '# Heading\n\n**bold**'))
   await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('# Heading')
   await page.getByRole('button', { name: 'Plain', exact: true }).click()
@@ -85,7 +169,6 @@ test('M2 toggles Markdown and Plain without another conversion', async ({ page }
 })
 
 test('M2 downloads exact content with the mode-specific filename', async ({ page }) => {
-  await page.goto('/')
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('download.txt', 'Download me'))
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download', exact: true }).click()
@@ -98,7 +181,6 @@ test('M2 downloads exact content with the mode-specific filename', async ({ page
 })
 
 test('M2 persists settings but never persists file content', async ({ page }) => {
-  await page.goto('/')
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('private.txt', 'PRIVATE_CONTENT_SENTINEL'))
   await page.getByRole('button', { name: 'Plain', exact: true }).click()
   await page.getByLabel('Chunk limit', { exact: true }).fill('321')
@@ -112,12 +194,8 @@ test('M2 persists settings but never persists file content', async ({ page }) =>
 })
 
 test('M2 caps a million-character preview while copy keeps the full output', async ({ page }) => {
-  await page.goto('/')
-  await installClipboard(page)
-  const content = 'x'.repeat(1_100_000)
-  await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('huge.txt', content))
-  const output = page.getByRole('textbox', { name: 'Converted output' })
-  await expect(output).toHaveValue(/Showing first 200,000/, { timeout: 15000 })
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('huge.txt', 'x'.repeat(1_100_000)))
+  await expect(page.getByRole('textbox', { name: 'Converted output' })).toHaveValue(/Showing first 200,000/, { timeout: 15000 })
   await expect(page.getByText(/Preview capped at 200,000/)).toBeVisible()
   await page.getByRole('article', { name: 'Conversion output' }).getByRole('button', { name: 'Copy', exact: true }).click()
   const copiedLength = await page.evaluate(() => (window as unknown as { __unboundWrites: string[] }).__unboundWrites[0]?.length)
@@ -125,12 +203,10 @@ test('M2 caps a million-character preview while copy keeps the full output', asy
 })
 
 test('M2 supports keyboard upload, edit mode, announced toasts, and dynamic privacy text', async ({ page }) => {
-  await page.goto('/')
-  await installClipboard(page)
-  const chooser = page.waitForEvent('filechooser')
   await page.getByRole('button', { name: 'Choose files or drag and drop' }).press('Enter')
-  await (await chooser).setFiles(textFile('keyboard.txt', 'Keyboard content'))
-  await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('Keyboard content')
+  const chooser = await page.waitForEvent('filechooser')
+  await chooser.setFiles(textFile('keyboard.txt', 'Keyboard content'))
+  await await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('Keyboard content')
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await page.getByRole('textbox', { name: 'Converted output' }).fill('Edited content')
   await page.getByRole('article', { name: 'Conversion output' }).getByRole('button', { name: 'Copy', exact: true }).click()
