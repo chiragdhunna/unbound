@@ -302,6 +302,60 @@ export function AppShell() {
     }
   }
 
+  const retryJob = async (job: Job) => {
+    const jobId = job.id
+    // Get the current job from the jobs array to ensure we have the latest
+    const currentJob = jobs.find(j => j.id === jobId)
+    if (!currentJob) {
+      return
+    }
+    const file = currentJob.file
+
+    // Reset job to converting state
+    setJobs((previous) =>
+      previous.map((j) =>
+        j.id === jobId
+          ? { ...j, status: 'converting' as JobStatus, error: null }
+          : j
+      )
+    )
+
+    try {
+      // Convert the file
+      const result = await convertFile(file, createConvertContext())
+      setJobs((previous) =>
+        previous.map((j) =>
+          j.id === jobId
+            ? {
+                ...j,
+                status: 'done',
+                output: result.markdown,
+                rawMarkdown: result.markdown,
+                warnings: result.warnings.map((w) => w.message),
+                error: null
+              }
+            : j
+        )
+      )
+    } catch (error) {
+      const message = formatError(error)
+      setJobs((previous) =>
+        previous.map((j) =>
+          j.id === jobId
+            ? {
+                ...j,
+                status: 'error',
+                error: message,
+                warnings: [],
+                rawMarkdown: '',
+                output: ''
+              }
+            : j
+        )
+      )
+    }
+  }
+
   const handleCopy = async () => {
     const textToCopy = editMode ? draftText : displayText
     const success = await copyText(textToCopy)
@@ -540,13 +594,13 @@ export function AppShell() {
                       tabIndex={0}
                       onClick={(event) => {
                         event.stopPropagation();
-                        void handleFiles([job.file]);
+                        retryJob(job);
                       }}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
                           event.stopPropagation();
-                          void handleFiles([job.file]);
+                          retryJob(job);
                         }
                       }}
                       className="job-action-button"
