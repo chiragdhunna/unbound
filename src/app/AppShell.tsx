@@ -20,6 +20,7 @@ type Job = {
   error: string | null
   size: number
   file: File
+  attemptId: number
 }
 
 type Settings = {
@@ -218,7 +219,8 @@ export function AppShell() {
       error: null,
       status: 'converting' as JobStatus,
       size: file.size,
-      file
+      file,
+      attemptId: 0
     }))
 
     setJobs((previous) => [...previous, ...createdJobs])
@@ -228,6 +230,7 @@ export function AppShell() {
     for (let index = 0; index < fileList.length; index++) {
       const file = fileList[index]!
       const jobId = createdJobs[index]!.id
+      const attemptId = createdJobs[index]!.attemptId   // should be 0
 
       setJobs((previous) =>
         previous.map((job) =>
@@ -242,14 +245,16 @@ export function AppShell() {
         setJobs((previous) =>
           previous.map((job) =>
             job.id === jobId
-              ? {
-                  ...job,
-                  status: 'done',
-                  output: result.markdown,
-                  rawMarkdown: result.markdown,
-                  warnings: result.warnings.map((warning) => warning.message),
-                  error: null
-                }
+              ? job.attemptId === attemptId   // check that the attemptId matches the one we started with
+                ? {
+                    ...job,
+                    status: 'done',
+                    output: result.markdown,
+                    rawMarkdown: result.markdown,
+                    warnings: result.warnings.map((warning) => warning.message),
+                    error: null
+                  }
+                : job   // attemptId changed, ignore this result
               : job
           )
         )
@@ -263,14 +268,16 @@ export function AppShell() {
         setJobs((previous) =>
           previous.map((job) =>
             job.id === jobId
-              ? {
-                  ...job,
-                  status: 'error',
-                  error: message,
-                  warnings: [],
-                  rawMarkdown: '',
-                  output: ''
-                }
+              ? job.attemptId === attemptId   // check that the attemptId matches the one we started with
+                ? {
+                    ...job,
+                    status: 'error',
+                    error: message,
+                    warnings: [],
+                    rawMarkdown: '',
+                    output: ''
+                  }
+                : job   // attemptId changed, ignore this error
               : job
           )
         )
@@ -311,11 +318,12 @@ export function AppShell() {
     }
     const file = currentJob.file
 
-    // Reset job to converting state
+    const attemptId = currentJob.attemptId + 1
+    // Reset job to converting state with incremented attemptId
     setJobs((previous) =>
       previous.map((j) =>
         j.id === jobId
-          ? { ...j, status: 'converting' as JobStatus, error: null }
+          ? { ...j, status: 'converting' as JobStatus, error: null, attemptId }
           : j
       )
     )
@@ -326,14 +334,16 @@ export function AppShell() {
       setJobs((previous) =>
         previous.map((j) =>
           j.id === jobId
-            ? {
-                ...j,
-                status: 'done',
-                output: result.markdown,
-                rawMarkdown: result.markdown,
-                warnings: result.warnings.map((w) => w.message),
-                error: null
-              }
+            ? j.attemptId === attemptId   // check that the attemptId matches the one we started with
+              ? {
+                  ...j,
+                  status: 'done',
+                  output: result.markdown,
+                  rawMarkdown: result.markdown,
+                  warnings: result.warnings.map((w) => w.message),
+                  error: null
+                }
+              : j   // attemptId changed, ignore this result
             : j
         )
       )
@@ -342,14 +352,16 @@ export function AppShell() {
       setJobs((previous) =>
         previous.map((j) =>
           j.id === jobId
-            ? {
-                ...j,
-                status: 'error',
-                error: message,
-                warnings: [],
-                rawMarkdown: '',
-                output: ''
-              }
+            ? j.attemptId === attemptId   // check that the attemptId matches the one we started with
+              ? {
+                  ...j,
+                  status: 'error',
+                  error: message,
+                  warnings: [],
+                  rawMarkdown: '',
+                  output: ''
+                }
+              : j   // attemptId changed, ignore this error
             : j
         )
       )
@@ -519,6 +531,7 @@ export function AppShell() {
             {jobs.map((job) => (
               <div
                 key={job.id}
+                data-job-id={job.id}
                 className={`job-card ${selectedJobId === job.id ? 'selected' : ''}`}
                 onClick={() => setSelectedJobId(job.id)}
                 onKeyDown={(event) => {

@@ -78,14 +78,22 @@ test('retrying a failed file does not create another job', async ({ page }) => {
     const failedCard = Array.from(document.querySelectorAll('.job-card')).find(
       card => card.querySelector('.job-status')?.textContent.trim() === 'error'
     )
-    return failedCard?.getAttribute('key') ?? null
+    return failedCard?.getAttribute('data-job-id') ?? null
   })
 
   // Actually click Retry on the failed file
   await page.getByRole('button', { name: 'Retry', exact: true }).first().click()
 
   // Wait for the retried attempt to finish
-  await page.waitForTimeout(500) // Brief wait for transition
+  await page.waitForFunction(() => {
+    const cards = document.querySelectorAll('.job-card')
+    const failedCard = Array.from(cards).find(
+      card => card.querySelector('.job-status')?.textContent.trim() === 'error' ||
+              card.querySelector('.job-status')?.textContent.trim() === 'converting' ||
+              card.querySelector('.job-status')?.textContent.trim() === 'done'
+    )
+    return failedCard && !(failedCard.querySelector('.job-status')?.textContent.trim() === 'converting')
+  })
 
   // Assert that the job count is unchanged
   const newJobCount = await page.evaluate(() => {
@@ -100,7 +108,7 @@ test('retrying a failed file does not create another job', async ({ page }) => {
               card.querySelector('.job-status')?.textContent.trim() === 'converting' ||
               card.querySelector('.job-status')?.textContent.trim() === 'done'
     )
-    return failedCard?.getAttribute('key') ?? null
+    return failedCard?.getAttribute('data-job-id') ?? null
   })
   expect(newFailedJobId).toBe(originalFailedJobId)
 
@@ -116,8 +124,16 @@ test('retrying a failed file does not create another job', async ({ page }) => {
   // Repeat Retry and verify the same invariants again
   await page.getByRole('button', { name: 'Retry', exact: true }).first().click()
 
-  // Wait for the second retry attempt
-  await page.waitForTimeout(500)
+  // Wait for the second retry attempt to finish
+  await page.waitForFunction(() => {
+    const cards = document.querySelectorAll('.job-card')
+    const failedCard = Array.from(cards).find(
+      card => card.querySelector('.job-status')?.textContent.trim() === 'error' ||
+              card.querySelector('.job-status')?.textContent.trim() === 'converting' ||
+              card.querySelector('.job-status')?.textContent.trim() === 'done'
+    )
+    return failedCard && !(failedCard.querySelector('.job-status')?.textContent.trim() === 'converting')
+  })
 
   // Assert job count still unchanged
   const finalJobCount = await page.evaluate(() => {
@@ -132,7 +148,7 @@ test('retrying a failed file does not create another job', async ({ page }) => {
               card.querySelector('.job-status')?.textContent.trim() === 'converting' ||
               card.querySelector('.job-status')?.textContent.trim() === 'done'
     )
-    return failedCard?.getAttribute('key') ?? null
+    return failedCard?.getAttribute('data-job-id') ?? null
   })
   expect(finalFailedJobId).toBe(originalFailedJobId)
 
@@ -203,10 +219,12 @@ test('M2 caps a million-character preview while copy keeps the full output', asy
 })
 
 test('M2 supports keyboard upload, edit mode, announced toasts, and dynamic privacy text', async ({ page }) => {
+  // Register filechooser promise before triggering the action
+  const chooserPromise = page.waitForEvent('filechooser')
   await page.getByRole('button', { name: 'Choose files or drag and drop' }).press('Enter')
-  const chooser = await page.waitForEvent('filechooser')
+  const chooser = await chooserPromise
   await chooser.setFiles(textFile('keyboard.txt', 'Keyboard content'))
-  await await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('Keyboard content')
+  await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('Keyboard content')
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await page.getByRole('textbox', { name: 'Converted output' }).fill('Edited content')
   await page.getByRole('article', { name: 'Conversion output' }).getByRole('button', { name: 'Copy', exact: true }).click()
