@@ -18,7 +18,7 @@
   - ✅ Batch mode switch, per-file job state, warnings, edit/read-only output panel
   - ✅ Chunk preview and per-chunk copy helper
   - ✅ CSP and privacy footer in the app shell and document head
-  - ✅ Full browser-level keyboard/accessibility/a11y matrix and the full plan-specified chunking semantics
+  - ⬜ Full browser-level keyboard/accessibility/a11y matrix and the full plan-specified chunking semantics
 - 🟨 M3 — DOCX
   - ✅ DOCX converter added via Mammoth
   - ✅ Unit test for generated DOCX content conversion
