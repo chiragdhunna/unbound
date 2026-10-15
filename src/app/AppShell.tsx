@@ -422,16 +422,16 @@ export function AppShell() {
           </div>
         </header>
 
-        <div role="region" aria-label="Choose files or drag and drop area">
-          className={`dropzone ${dragging ? 'dragging' : ''}`}
-          onDragOver={(event) => {
-            event.preventDefault()
-            setDragging(true)
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-          onPaste={onPaste}
-          aria-label="Choose files or drag and drop"
+        <div role="region"
+             aria-label="Choose files or drag and drop area"
+             className={`dropzone ${dragging ? 'dragging' : ''}`}
+             onDragOver={(event) => {
+               event.preventDefault()
+               setDragging(true)
+             }}
+             onDragLeave={() => setDragging(false)}
+             onDrop={onDrop}
+             onPaste={onPaste}
         >
           <p>Drop a file, folder, or paste a local file here.</p>
           <div className="actions-row">

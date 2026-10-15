@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test'
 import { Packer, Document, Paragraph, HeadingLevel, TextRun } from 'docx'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 
 const outputDir = path.resolve(tmpdir(), 'unbound-fixtures')
