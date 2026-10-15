@@ -3,11 +3,6 @@ import { AxeBuilder } from '@axe-core/playwright';
 import type { Result } from 'axe-core';
 
 test('should have no serious or critical axe violations', async ({ page }, testInfo) => {
-  // Skip WebKit due to missing dependencies on this host
-  if (testInfo.project.name === 'mobile-webkit') {
-    testInfo.skip();
-    return;
-  }
   await page.goto('/');
   // Wait for the app to load (e.g., wait for the heading)
   await page.waitForSelector('h1');
