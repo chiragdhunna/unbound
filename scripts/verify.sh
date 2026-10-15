@@ -31,6 +31,64 @@ step "bundle budget"
 node scripts/check-bundle.mjs
 
 step "playwright e2e"
+
+step "e2e guards"
+
+  # Check that all three projects (chromium, mobile-chromium, mobile-webkit) ran
+
+  if ! grep -q "[mobile-webkit]" "$E2E_OUTPUT"; then
+
+    echo "e2e guards failed: mobile-webkit project did not run - missing [mobile-webkit] in e2e output" >&2
+
+    exit 1
+
+  fi
+
+  
+
+  # Check that no e2e tests were skipped
+
+  if grep -i "skipped" "$E2E_OUTPUT" | grep -v "^s*[0-9]* passed" | grep -q "."; then
+
+    echo "e2e guards failed: some e2e tests were skipped" >&2
+
+    exit 1
+
+  fi
+
+  
+
+  # Check for inappropriate skip calls in src/ and tests/
+
+  if grep -RInE "\.skip(|testInfo.skip" src tests --exclude-dir=fixtures | grep -v "//.*justification" | grep -v "^s*[0-9]*:" | grep -q "."; then
+
+    echo "e2e guards failed: found .skip() or testInfo.skip without justification in src/ or tests/" >&2
+
+    exit 1
+
+  fi
+
+  
+
+  # Check for eslint-disable without adjacent justification
+
+  if grep -RInE "eslint-disable-line" src tests --exclude-dir=fixtures | grep -v "justification" | grep -q "."; then
+
+    echo "e2e guards failed: found eslint-disable without justification in src/ or tests/" >&2
+
+    exit 1
+
+  fi
+
+  
+
+  if grep -RInE "eslint-disable" src tests --exclude-dir=fixtures | grep -v "justification" | grep -q "."; then
+
+    echo "e2e guards failed: found eslint-disable block without justification in src/ or tests/" >&2
+
+    exit 1
+
+  fi
 npm run test:e2e 2>&1 | tee "$E2E_OUTPUT"
 
 step "traceability check"

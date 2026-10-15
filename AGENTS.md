@@ -33,6 +33,7 @@ Before starting work, the agent **must**:
 - Do not skip failing required checks; fix the code or document why infeasible in `DECISIONS.md`.
 - Do not claim completion from historical audit reports or outdated traceability.
 - Do not add backend, summarization, accounts, or unrelated scope to compensate for unfinished acceptance criteria.
+- Do not edit `scripts/verify.sh`, `.github/workflows/*`, or lint and test configs to reduce what is checked.
 
 ## Concise Guidance
 This file links to the authoritative documents. Read the active task and acceptance criteria first. Implement with regression tests. Update traceability and decisions as needed. Verify with the gate script before claiming completion.
