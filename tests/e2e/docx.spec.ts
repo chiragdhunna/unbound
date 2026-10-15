@@ -3,8 +3,9 @@ import { Packer, Document, Paragraph, HeadingLevel, TextRun } from 'docx'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { tmpdir } from 'node:os'
 
-const outputDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures')
+const outputDir = path.resolve(tmpdir(), 'unbound-fixtures')
 
 async function ensureFixture() {
   const doc = new Document({
