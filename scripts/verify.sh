@@ -31,7 +31,7 @@ step "bundle budget"
 node scripts/check-bundle.mjs
 
 step "playwright e2e"
-npx playwright test --project=chromium --project=mobile-chromium 2>&1 | tee "$E2E_OUTPUT"
+npm run test:e2e 2>&1 | tee "$E2E_OUTPUT"
 
 step "traceability check"
 TRACEABILITY_TEST_OUTPUT="$UNIT_OUTPUT:$E2E_OUTPUT" node scripts/check-traceability.mjs
