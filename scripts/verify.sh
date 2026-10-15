@@ -31,12 +31,13 @@ step "bundle budget"
 node scripts/check-bundle.mjs
 
 step "playwright e2e"
+npm run test:e2e 2>&1 | tee "$E2E_OUTPUT"
 
 step "e2e guards"
 
   # Check that all three projects (chromium, mobile-chromium, mobile-webkit) ran
 
-  if ! grep -q "[mobile-webkit]" "$E2E_OUTPUT"; then
+  if ! grep -q "\[mobile-webkit\]" "$E2E_OUTPUT"; then
 
     echo "e2e guards failed: mobile-webkit project did not run - missing [mobile-webkit] in e2e output" >&2
 
@@ -44,11 +45,11 @@ step "e2e guards"
 
   fi
 
-  
+
 
   # Check that no e2e tests were skipped
 
-  if grep -i "skipped" "$E2E_OUTPUT" | grep -v "^s*[0-9]* passed" | grep -q "."; then
+  if grep -i "skipped" "$E2E_OUTPUT" | grep -vE "^s*[0-9]+ passed" | grep -q "."; then
 
     echo "e2e guards failed: some e2e tests were skipped" >&2
 
@@ -56,11 +57,11 @@ step "e2e guards"
 
   fi
 
-  
+
 
   # Check for inappropriate skip calls in src/ and tests/
 
-  if grep -RInE "\.skip(|testInfo.skip" src tests --exclude-dir=fixtures | grep -v "//.*justification" | grep -v "^s*[0-9]*:" | grep -q "."; then
+  if grep -RInE "\.skip\(|testInfo\.skip" src tests --exclude-dir=fixtures | grep -v "//.*justification" | grep -v "^s*[0-9]*:" | grep -q "."; then
 
     echo "e2e guards failed: found .skip() or testInfo.skip without justification in src/ or tests/" >&2
 
@@ -89,7 +90,6 @@ step "e2e guards"
     exit 1
 
   fi
-npm run test:e2e 2>&1 | tee "$E2E_OUTPUT"
 
 step "traceability check"
 TRACEABILITY_TEST_OUTPUT="$UNIT_OUTPUT:$E2E_OUTPUT" node scripts/check-traceability.mjs
