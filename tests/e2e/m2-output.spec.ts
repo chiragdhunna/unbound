@@ -221,7 +221,7 @@ test('M2 caps a million-character preview while copy keeps the full output', asy
 test('M2 supports keyboard upload, edit mode, announced toasts, and dynamic privacy text', async ({ page }) => {
   // Register filechooser promise before triggering the action
   const chooserPromise = page.waitForEvent('filechooser')
-  await page.getByLabel('Choose files or drag and drop').press('Enter')
+  await page.getByRole('button', { name: 'Choose files or drag and drop' }).press('Enter')
   const chooser = await chooserPromise
   await chooser.setFiles(textFile('keyboard.txt', 'Keyboard content'))
   await expect(page.getByRole('textbox', { name: 'Converted output' })).toContainText('Keyboard content')
