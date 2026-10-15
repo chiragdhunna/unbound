@@ -521,37 +521,42 @@ export function AppShell() {
         {jobs.length > 0 ? (
           <div className="job-list" aria-label="conversion jobs">
             {jobs.map((job) => (
-              <div
+              <li
                 key={job.id}
                 data-job-id={job.id}
                 className={`job-card ${selectedJobId === job.id ? 'selected' : ''}`}
-                onClick={() => setSelectedJobId(job.id)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    setSelectedJobId(job.id)
-                  }
-                }}
-                role="button"
-                tabIndex={0}
               >
-                <div className="job-header">
-                  <strong>{job.name}</strong>
-                  <span className={`job-status ${job.status}`}>{job.status}</span>
-                </div>
-                {job.error ? <p className="job-error">{job.error}</p> : null}
-                {job.warnings.length > 0 ? (
-                  <ul className="warning-list">
-                    {job.warnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSelectedJobId(job.id);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setSelectedJobId(job.id);
+                    }
+                  }}
+                >
+                  <div className="job-header">
+                    <strong>{job.name}</strong>
+                    <span className={`job-status ${job.status}`}>{job.status}</span>
+                  </div>
+                  {job.error ? <p className="job-error">{job.error}</p> : null}
+                  {job.warnings.length > 0 ? (
+                    <ul className="warning-list">
+                      {job.warnings.map((warning) => (
+                        <li key={warning}>{warning}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </button>
                 <div className="job-actions">
                   {job.status === 'done' ? (
-                    <div
-                      role="button"
-                      tabIndex={0}
+                    <button
+                      type="button"
                       onClick={async (event) => {
                         event.stopPropagation();
                         const textToCopy = settings.outputMode === 'markdown' ? job.rawMarkdown : markdownToPlain(job.rawMarkdown);
@@ -571,12 +576,11 @@ export function AppShell() {
                       className="job-action-button"
                     >
                       Copy file
-                    </div>
+                    </button>
                   ) : null}
                   {job.status === 'done' ? (
-                    <div
-                      role="button"
-                      tabIndex={0}
+                    <button
+                      type="button"
                       onClick={(event) => {
                         event.stopPropagation();
                         handleJobDownload(job);
@@ -591,12 +595,11 @@ export function AppShell() {
                       className="job-action-button"
                     >
                       Download file
-                    </div>
+                    </button>
                   ) : null}
                   {job.status === 'error' ? (
-                    <div
-                      role="button"
-                      tabIndex={0}
+                    <button
+                      type="button"
                       onClick={(event) => {
                         event.stopPropagation();
                         retryJob(job);
@@ -611,11 +614,10 @@ export function AppShell() {
                       className="job-action-button"
                     >
                       Retry
-                    </div>
+                    </button>
                   ) : null}
-                  <div
-                    role="button"
-                    tabIndex={0}
+                  <button
+                    type="button"
                     onClick={(event) => {
                       event.stopPropagation();
                       setJobs((previous) => previous.filter((item) => item.id !== job.id));
@@ -630,13 +632,12 @@ export function AppShell() {
                     className="job-action-button"
                   >
                     Remove
-                  </div>
+                  </button>
                 </div>
-              </div>
-            ))}
+              </li>
+            ))};
           </div>
         ) : null}
-
         {sourceMarkdown ? (
           <article className="output-panel" aria-label="Conversion output">
             <div className="pane-toolbar">
