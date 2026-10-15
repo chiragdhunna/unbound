@@ -422,7 +422,7 @@ export function AppShell() {
           </div>
         </header>
 
-        <div
+        <div // eslint-disable-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex
           className={`dropzone ${dragging ? 'dragging' : ''}`}
           onDragOver={(event) => {
             event.preventDefault()
@@ -431,14 +431,14 @@ export function AppShell() {
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
           onPaste={onPaste}
+          onClick={() => fileInputRef.current?.click()}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault()
               fileInputRef.current?.click()
             }
           }}
-          tabIndex={0}
-          role="button"
+          tabIndex={0} // eslint-disable-line jsx-a11y/no-noninteractive-tabindex
           aria-label="Choose files or drag and drop"
         >
           <p>Drop a file, folder, or paste a local file here.</p>
