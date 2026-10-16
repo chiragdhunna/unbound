@@ -519,7 +519,7 @@ export function AppShell() {
         </div>
 
         {jobs.length > 0 ? (
-          <div className="job-list" aria-label="conversion jobs">
+          <ul className="job-list" aria-label="Conversion jobs">
             {jobs.map((job) => (
               <li
                 key={job.id}
@@ -532,27 +532,20 @@ export function AppShell() {
                     event.stopPropagation();
                     setSelectedJobId(job.id);
                   }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setSelectedJobId(job.id);
-                    }
-                  }}
                 >
                   <div className="job-header">
                     <strong>{job.name}</strong>
                     <span className={`job-status ${job.status}`}>{job.status}</span>
                   </div>
-                  {job.error ? <p className="job-error">{job.error}</p> : null}
-                  {job.warnings.length > 0 ? (
-                    <ul className="warning-list">
-                      {job.warnings.map((warning) => (
-                        <li key={warning}>{warning}</li>
-                      ))}
-                    </ul>
-                  ) : null}
                 </button>
+                {job.error ? <p className="job-error">{job.error}</p> : null}
+                {job.warnings.length > 0 ? (
+                  <ul className="warning-list">
+                    {job.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                ) : null}
                 <div className="job-actions">
                   {job.status === 'done' ? (
                     <button
@@ -562,16 +555,6 @@ export function AppShell() {
                         const textToCopy = settings.outputMode === 'markdown' ? job.rawMarkdown : markdownToPlain(job.rawMarkdown);
                         const success = await copyText(textToCopy);
                         setToast(success ? 'File copied' : 'File copy failed');
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          const textToCopy = settings.outputMode === 'markdown' ? job.rawMarkdown : markdownToPlain(job.rawMarkdown);
-                          void copyText(textToCopy).then((success) => {
-                            setToast(success ? 'File copied' : 'File copy failed');
-                          });
-                        }
                       }}
                       className="job-action-button"
                     >
@@ -585,13 +568,6 @@ export function AppShell() {
                         event.stopPropagation();
                         handleJobDownload(job);
                       }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          handleJobDownload(job);
-                        }
-                      }}
                       className="job-action-button"
                     >
                       Download file
@@ -604,13 +580,6 @@ export function AppShell() {
                         event.stopPropagation();
                         retryJob(job);
                       }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          retryJob(job);
-                        }
-                      }}
                       className="job-action-button"
                     >
                       Retry
@@ -622,21 +591,14 @@ export function AppShell() {
                       event.stopPropagation();
                       setJobs((previous) => previous.filter((item) => item.id !== job.id));
                     }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setJobs((previous) => previous.filter((item) => item.id !== job.id));
-                      }
-                    }}
                     className="job-action-button"
                   >
                     Remove
                   </button>
                 </div>
               </li>
-            ))};
-          </div>
+            ))}
+          </ul>
         ) : null}
         {sourceMarkdown ? (
           <article className="output-panel" aria-label="Conversion output">
