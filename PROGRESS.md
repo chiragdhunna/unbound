@@ -13,7 +13,7 @@
   - ✅ Add converter registry and text/json/xml/code/markdown converters
   - ✅ Wire file input to conversion pipeline for txt/md/json/xml/code
   - ✅ Add unit/e2e tests for `.txt` and `.json` upload and conversion output
-- 🟨 M2 — Output experience & app shell
+- ✅ M2 — Output experience & app shell
   - ✅ Output shell, copy/download, plain toggle, localStorage settings, multi-file batch handling
   - ✅ Batch mode switch, per-file job state, warnings, edit/read-only output panel
   - ✅ Chunk preview and per-chunk copy helper
@@ -64,6 +64,15 @@ Runnable evidence: 37 unit tests passed; 30 Chromium/mobile-Chromium E2E tests p
 - Blockers: full WebKit execution is unavailable in this host because `libicudata.so.74` is missing and `apt-get` is unavailable.
 
 ### 2026-10-01 — M2/M3 closure evidence
+
+### 2026-10-18 — Accessibility and CI repair
+
+- Fixed job list accessibility: changed div to ul/li, moved error/warning elements out of buttons, removed redundant onKeyDown handlers
+- Fixed E2E axe tests: replaced getByLabel with getByRole for button selections
+- Updated traceability: set R033 and R040 to ✅ citing M2 happy path and six axe tests
+- CI configuration: confirmed ubuntu-24.04 pin, verified e2e guards run after test execution
+- Green runs: 01efd29 (run 39064632252), ad741e8 (run 39065677279)
+
 - Added the strict 85% core/converter coverage gate, post-build initial-entry gzip check, captured-output traceability validation, and source/test hygiene enforcement.
 - Added real core tests for encoding, detection, normalization, plain rendering, tokens, chunk invariants, combine, queue, errors, registry, and converter fence safety.
 - Expanded DOCX fixtures/tests for structured content, tables, nested lists, emphasis, links, footnotes, images, image warnings, and encrypted Office wrappers.
