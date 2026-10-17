@@ -55,8 +55,8 @@ test('axe: error card state should have no serious or critical violations', asyn
 test('axe: options bar state should have no serious or critical violations', async ({ page }) => {
   await page.goto('/');
   // Interact with various options to put them in different states
-  await page.getByLabel('Plain', { exact: true }).click();
-  await page.getByLabel('Combined', { exact: true }).click();
+  await page.getByRole('button', { name: 'Plain', exact: true }).click();
+  await page.getByRole('button', { name: 'Combined', exact: true }).click();
   await page.getByLabel('Quick paste', { exact: true }).check();
   await page.getByLabel('Page markers', { exact: true }).check();
   await page.getByLabel('Chunk labels', { exact: true }).uncheck();
