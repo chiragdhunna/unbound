@@ -2,7 +2,9 @@
   "name": "unbound",
   "private": true,
   "version": "0.1.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -24,7 +26,8 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "turndown": "^7.2.4",
-    "turndown-plugin-gfm": "^1.0.2"
+    "turndown-plugin-gfm": "^1.0.2",
+    "xlsx": "file:xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
