@@ -1,3 +1,4 @@
+Before ANY work, read docs/AGENT_PROMPT.md completely and obey it.
 # AGENTS.md — Agent Guidance for Unbound
 
 ## Authoritative Documents
