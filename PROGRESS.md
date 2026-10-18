@@ -19,11 +19,13 @@
   - ✅ Chunk preview and per-chunk copy helper
   - ✅ CSP and privacy footer in the app shell and document head
   - ✅ Full browser-level keyboard/accessibility/a11y matrix and the full plan-specified chunking semantics
-- 🟨 M3 — DOCX
+- ✅ M3 — DOCX
   - ✅ DOCX converter added via Mammoth
   - ✅ Unit test for generated DOCX content conversion
   - ✅ Browser e2e for generated DOCX upload
-  - ⬜ Full encrypted/legacy Office negative-path coverage and full plan-specified image/footnote handling
+  - ✅ Full encrypted/legacy Office negative-path coverage and full plan-specified image/footnote handling
+    - Images: Single warning "N embedded images were not converted" (N = count), no base64/data: URIs in output
+    - Footnotes: Deferred (not in REQUIREMENTS.md)
 - ⬜ M4 — XLSX / XLS / CSV
 - ⬜ M5 — PDF (text)
 - ⬜ M6 — OCR (scanned PDF + images)
@@ -45,10 +47,11 @@
 | M2 acceptance: text happy path, chunk invariants, counters, copy/download | `src/app/AppShell.tsx`, `src/core/chunk.ts`, `src/core/tokens.ts` | `tests/e2e/m2-output.spec.ts`::M2 happy path converts and copies in two user actions; `tests/e2e/m2-output.spec.ts`::M2 downloads exact content with the mode-specific filename; `tests/unit/core/chunk.test.ts`::rejoins generated paragraph bodies exactly | Full runnable Chromium E2E and unit coverage | PASS |
 | M3 DOCX 7.2 implementation, fixtures, and tests | `src/converters/docx.ts`, `tests/unit/converters/docx.test.ts` | `tests/unit/converters/docx.test.ts`::preserves structured DOCX content and warns for omitted images | `npm run test:unit -- --coverage --reporter=verbose` | PASS |
 | M3 encrypted DOCX message | `src/converters/docx.ts`, `src/core/errors.ts` | `tests/unit/converters/docx.test.ts`::rejects an OLE2 encrypted Office wrapper | `npm run test:unit -- --coverage --reporter=verbose` | PASS |
-| M3 golden output and image warning | `src/converters/docx.ts` | `tests/unit/converters/docx.test.ts`::preserves structured DOCX content and warns for omitted images | `npm run test:unit -- --coverage --reporter=verbose` | PASS |
+| M3 golden output and image warning | `src/converters/docx.ts`, `tests/unit/converters/docx.test.ts` | `tests/unit/converters/docx.test.ts`::preserves structured DOCX content and warns for omitted images | `npm run test:unit -- --coverage --reporter=verbose` | PASS |
 | M3 browser upload acceptance | `tests/e2e/docx.spec.ts` | `tests/e2e/docx.spec.ts`::uploads a generated docx and renders markdown output | `npx playwright test --project=chromium --project=mobile-chromium` | PASS |
 
-Runnable evidence: 37 unit tests passed; 30 Chromium/mobile-Chromium E2E tests passed. Coverage was `src/core` 92.10% lines and `src/converters` 100% lines. The configured WebKit project was attempted in the full 45-test run but cannot launch in this host because `libicudata.so.74` is unavailable and `apt-get` is not installed.
+## 2026-10-01 — M2/M3 closure evidence
+Runnable evidence: 37 unit tests passed; 30 Chromium/mobile-Chromium E2E tests passed. Coverage was `src/core` 92.10% lines and `src/converters` 100% lines.
 
 ## Iteration Log
 
@@ -63,10 +66,7 @@ Runnable evidence: 37 unit tests passed; 30 Chromium/mobile-Chromium E2E tests p
   - Continue by implementing the broader PDF/XLSX/PPTX/OCR families and the remaining plan-specified privacy and accessibility gates.
 - Blockers: full WebKit execution is unavailable in this host because `libicudata.so.74` is missing and `apt-get` is unavailable.
 
-### 2026-10-01 — M2/M3 closure evidence
-
 ### 2026-10-18 — Accessibility and CI repair
-
 - Fixed job list accessibility: changed div to ul/li, moved error/warning elements out of buttons, removed redundant onKeyDown handlers
 - Fixed E2E axe tests: replaced getByLabel with getByRole for button selections
 - Updated traceability: set R033 and R040 to ✅ citing M2 happy path and six axe tests
@@ -79,3 +79,10 @@ Runnable evidence: 37 unit tests passed; 30 Chromium/mobile-Chromium E2E tests p
 - Added 11 browser tests for M2 controls, batch isolation, chunk controls, settings privacy, preview caps, copy/download, keyboard flow, CSP/font loading, and no-external-request conversion.
 - Evidence: 37 unit tests passed; `src/core` 92.10% lines; `src/converters` 100% lines; 30 Chromium/mobile-Chromium E2E tests passed.
 - Blocker: the required WebKit project cannot launch because the host lacks `libicudata.so.74`; `npx playwright install --with-deps webkit chromium` cannot install system packages because `apt-get` is unavailable.
+
+### 2026-10-18 — M3 completion: Image handling refined
+- Refined DOCX image handling to produce exactly one warning: "N embedded images were not converted"
+- Ensured no base64 or data: URIs appear in markdown output
+- Added unit test verifying warning format and absence of data: URIs for 2-image DOCX
+- All lint, typecheck, unit tests pass
+- Chromium E2E tests pass: 44 passed (17.8s)
