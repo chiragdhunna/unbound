@@ -11,7 +11,10 @@ function hasOle2Signature(bytes: ArrayBuffer): boolean {
 }
 
 function convertHtmlToMarkdown(html: string): string {
-  const withMarkdownTables = html.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_table, body: string) => {
+  // Remove img tags to prevent data: URIs in output
+  const noImagesHtml = html.replace(/<img[^>]*>/gi, '')
+
+  const withMarkdownTables = noImagesHtml.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_table, body: string) => {
     const rows = [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map((row) =>
       [...(row[1] ?? '').matchAll(/<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi)].map((cell) =>
         (cell[1] ?? '').replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').trim()
@@ -56,7 +59,7 @@ export const docxConverter: Converter = {
     if (imageCount > 0) {
       warnings.push({
         code: 'IMAGES_OMITTED',
-        message: `${imageCount} image${imageCount === 1 ? '' : 's'} omitted; text inside images is not captured.`,
+        message: `${imageCount} embedded images were not converted`,
         severity: 'warn'
       })
     }

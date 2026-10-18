@@ -66,7 +66,42 @@ describe('docxConverter', () => {
     expect(result.markdown).toContain('| A | B |')
     expect(result.markdown).toContain('- Parent')
     expect(result.markdown).toContain('Footnote text')
-    expect(result.warnings.find((warning) => warning.code === 'IMAGES_OMITTED')?.message).toContain('1 image')
+    expect(result.warnings.find((warning) => warning.code === 'IMAGES_OMITTED')?.message).toBe('1 embedded images were not converted')
+  })
+
+  it('produces exactly one warning for multiple images and no data: URIs in output', async () => {
+    const image = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'))
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({ text: 'First paragraph with image' }),
+          new Paragraph({ children: [new ImageRun({ data: image, transformation: { width: 20, height: 20 }, type: 'png' })] }),
+          new Paragraph({ text: 'Second paragraph with another image' }),
+          new Paragraph({ children: [new ImageRun({ data: image, transformation: { width: 30, height: 30 }, type: 'png' })] }),
+          new Paragraph({ text: 'Final paragraph' })
+        ]
+      }]
+    })
+    const buffer = await Packer.toBuffer(doc)
+    const bytes = new Uint8Array(buffer)
+    const result = await docxConverter.convert({ name: 'two-images.docx', bytes: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }, {
+      signal: new AbortController().signal,
+      onProgress: () => undefined,
+      requestPassword: async () => null,
+      options: { ocrLanguage: 'en', forceOcr: false }
+    })
+
+    // Should have exactly one warning
+    expect(result.warnings.filter(w => w.code === 'IMAGES_OMITTED')).toHaveLength(1)
+    // Warning should have exact format with count
+    expect(result.warnings.find(w => w.code === 'IMAGES_OMITTED')?.message).toBe('2 embedded images were not converted')
+    // Markdown should not contain any data: URIs
+    expect(result.markdown).not.toContain('data:')
+    // Should still contain the text content
+    expect(result.markdown).toContain('First paragraph with image')
+    expect(result.markdown).toContain('Second paragraph with another image')
+    expect(result.markdown).toContain('Final paragraph')
   })
 
   it('rejects an OLE2 encrypted Office wrapper', async () => {
