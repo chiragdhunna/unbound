@@ -3,7 +3,7 @@ import TurndownService from 'turndown'
 import { gfm } from 'turndown-plugin-gfm'
 import { normalizeMarkdown } from '../core/markdown'
 import { type Converter } from '../core/types'
-import { PasswordRequiredError } from '../core/errors'
+import { PasswordRequiredError, LegacyDocError } from '../core/errors'
 
 function hasOle2Signature(bytes: ArrayBuffer): boolean {
   const view = new Uint8Array(bytes.slice(0, 8))
@@ -31,9 +31,17 @@ export const docxConverter: Converter = {
   kind: 'docx',
   async convert(input, ctx) {
     if (hasOle2Signature(input.bytes)) {
-      throw new PasswordRequiredError(
-        'This DOCX is password protected or saved with an Office encryption wrapper. Save it without a password and try again.'
-      )
+      // Check if it's a legacy .doc file based on extension
+      if (input.name.toLowerCase().endsWith('.doc')) {
+        throw new LegacyDocError(
+          'This is a legacy .doc file format. Please save the file as a newer .docx format and try again.'
+        )
+      } else {
+        // Assume it's an encrypted Office file (including encrypted .docx)
+        throw new PasswordRequiredError(
+          'This DOCX is password protected or saved with an Office encryption wrapper. Save it without a password and try again.'
+        )
+      }
     }
 
     ctx.onProgress({ phase: 'docx', current: 1, total: 1 })

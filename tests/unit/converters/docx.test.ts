@@ -75,6 +75,15 @@ describe('docxConverter', () => {
       onProgress: () => undefined,
       requestPassword: async () => null,
       options: { ocrLanguage: 'en', forceOcr: false }
-    })).rejects.toThrow('password protected')
+    })).rejects.toThrow(/password protected|encryption wrapper/i)
+  })
+
+  it('rejects a legacy .doc file', async () => {
+    await expect(docxConverter.convert({ name: 'legacy.doc', bytes: new Uint8Array([0xd0, 0xcf, 0x11, 0xe0]).buffer, mime: '' }, {
+      signal: new AbortController().signal,
+      onProgress: () => undefined,
+      requestPassword: async () => null,
+      options: { ocrLanguage: 'en', forceOcr: false }
+    })).rejects.toThrow(/legacy.*doc.*format/i)
   })
 })
