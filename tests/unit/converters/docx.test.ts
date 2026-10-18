@@ -84,6 +84,6 @@ describe('docxConverter', () => {
       onProgress: () => undefined,
       requestPassword: async () => null,
       options: { ocrLanguage: 'en', forceOcr: false }
-    })).rejects.toThrow(/legacy.*doc.*format/i)
+    })).rejects.toThrow(/This is a legacy \.doc file\. Please save it as \.docx and try again\./)
   })
 })

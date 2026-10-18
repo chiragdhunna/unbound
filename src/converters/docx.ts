@@ -34,7 +34,7 @@ export const docxConverter: Converter = {
       // Check if it's a legacy .doc file based on extension
       if (input.name.toLowerCase().endsWith('.doc')) {
         throw new LegacyDocError(
-          'This is a legacy .doc file format. Please save the file as a newer .docx format and try again.'
+          'This is a legacy .doc file. Please save it as .docx and try again.'
         )
       } else {
         // Assume it's an encrypted Office file (including encrypted .docx)
