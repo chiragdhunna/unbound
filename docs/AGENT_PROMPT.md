@@ -455,3 +455,7 @@ Then immediately continue with the NEXT STEP unless a blocker/question requires 
 4. Deploy target: Vercel (default, `vercel.json` exists) or GitHub Pages.
 
 BEGIN NOW with PART 1 (session start checklist). Then start at the first unchecked item (expected: M3.1).
+L. At the end of EVERY milestone, the docs commit must update PROGRESS.md (tick
+   items with pasted evidence), docs/TRACEABILITY.md, and the README "Current
+   status" section so they match the code. Never leave them stale.
+M. Commit messages must be ONE plain line: no literal "\n", no co-author trailers.
