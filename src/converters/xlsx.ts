@@ -1,5 +1,12 @@
 import { type Converter } from '../core/types'
 import { normalizeMarkdown } from '../core/markdown'
+import {
+  escapeCellValue,
+  padRowsToEqualLength,
+  trimBlankRowsAndColumns,
+  findFirstNonEmptyRowIndex,
+  buildMarkdownTable
+} from '../core/table'
 import { PasswordRequiredError, CorruptFileError, NoTextFoundError } from '../core/errors'
 
 export const xlsxConverter: Converter = {
@@ -96,7 +103,7 @@ export const xlsxConverter: Converter = {
             }
 
             // Escape pipe characters and handle newlines
-            cellValue = cellValue.replace(/\|/g, '\\|').replace(/\n/g, '<br>').trim()
+            cellValue = escapeCellValue(cellValue)
             row.push(cellValue)
           }
           rows.push(row)
@@ -148,7 +155,7 @@ export const xlsxConverter: Converter = {
             } else {
               mergeValue = String(topLeftCell.v)
             }
-            mergeValue = mergeValue.replace(/\|/g, '\\|').replace(/\n/g, '<br>').trim()
+            mergeValue = escapeCellValue(mergeValue)
           }
 
           // Set value for top-left cell
@@ -195,7 +202,7 @@ export const xlsxConverter: Converter = {
                 } else {
                   cellValue = String(cell.v)
                 }
-                cellValue = cellValue.replace(/\|/g, '\\|').replace(/\n/g, '<br>').trim()
+                cellValue = escapeCellValue(cellValue)
               }
               row.push(cellValue)
             }
@@ -204,13 +211,9 @@ export const xlsxConverter: Converter = {
         }
 
         // Find first non-empty row to use as header
-        let headerRowIndex = 0
-        while (headerRowIndex < tableData.length &&
-               tableData[headerRowIndex]!.every(cell => cell.trim() === '')) {
-          headerRowIndex++
-        }
+        const headerRowIndex = findFirstNonEmptyRowIndex(tableData)
 
-        if (headerRowIndex >= tableData.length) {
+        if (headerRowIndex === -1) {
           // All rows are empty (shouldn't happen due to earlier check, but safety)
           warnings.push({
             code: 'EMPTY_SHEET',
@@ -220,38 +223,25 @@ export const xlsxConverter: Converter = {
           continue
         }
 
-        // Determine number of columns (max width of any row)
-        let maxCols = 0
-        for (const row of tableData) {
-          maxCols = Math.max(maxCols, row.length)
-        }
+        // Trim blank trailing rows and columns
+        const trimmedData = trimBlankRowsAndColumns(tableData)
 
         // Pad rows to have same number of columns
-        const paddedData = tableData.map(row => {
-          const padded = [...row]
-          while (padded.length < maxCols) {
-            padded.push('')
-          }
-          return padded
-        })
+        const paddedData = padRowsToEqualLength(trimmedData)
 
-        // Extract header (first non-empty row)
-        const headerRow = paddedData[headerRowIndex]!
-        const dataRows = paddedData.slice(headerRowIndex + 1)
+        // Extract header (first non-empty row after trimming)
+        // Need to adjust headerRowIndex based on trimming
+        const dataWithoutEmptyRows = tableData.slice(0, headerRowIndex)
+        const emptyRowsCountAtTop = dataWithoutEmptyRows.filter(row =>
+          row.every(cell => cell.trim() === '')).length
+        const adjustedHeaderIndex = headerRowIndex - emptyRowsCountAtTop
 
-        // Process header: empty cells become "Column N"
-        const processedHeader = headerRow.map((cell, index) => {
-          return cell.trim() === '' ? `Column ${index + 1}` : cell
-        })
+        const headerRow = paddedData[adjustedHeaderIndex]!
+        const dataRows = paddedData.slice(adjustedHeaderIndex + 1)
 
-        // Build table
-        markdownParts.push(`| ${processedHeader.join(' | ')} |`)
-        markdownParts.push(`| ${processedHeader.map(() => '---').join(' | ')} |`)
-
-        for (const row of dataRows) {
-          markdownParts.push(`| ${row.join(' | ')} |`)
-        }
-
+        // Build table using shared function
+        const tableMarkdown = buildMarkdownTable([headerRow, ...dataRows])
+        markdownParts.push(tableMarkdown)
         markdownParts.push('') // blank line after table
       }
 
