@@ -29,3 +29,8 @@
 - **Context:** The toast behavior was correct, but a Playwright `role=status` name query treated visible text as an accessible name and failed to locate the live region. The large-output test also queried the main Copy button without scoping it away from per-chunk buttons.
 - **Decision:** Keep the existing `aria-live="polite"` toast behavior; assert its visible text and scope the main Copy query to the output article. Unique per-chunk accessible names make each chunk action independently addressable.
 - **Consequences:** The tests now verify behavior without changing a valid toast implementation or weakening the copy assertions.
+
+## 2026-10-19 — Vendored SheetJS tarball for XLSX/XLS/CSV
+- Context: the `xlsx` package on the npm registry is stale and vulnerable; exceljs cannot read legacy .xls. The dev machine's npm 12 refuses remote-URL dependencies (allow-remote = none, error EALLOWREMOTE).
+- Decision: commit the official tarball from https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz as vendor/xlsx-0.20.3.tgz and depend on it via "file:vendor/xlsx-0.20.3.tgz". sha512: a0b0eade3c3b01c2ea2961f60210a9553665f267fa5f661178ff8d7a1d12254cd5fc1759623b61f78b46e6da22301d4f3eb62dc4e09f6a850292fb6e1fedc024
+- Consequences: installs need no network for this package; upgrade by replacing the tarball and the hash. The converter must lazy-load the library.
