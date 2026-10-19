@@ -16,6 +16,31 @@ describe('detectFileKind', () => {
     ).toBe('pdf')
   })
 
+  it('detects XLSX by extension when text decodes', () => {
+    const bytes = new TextEncoder().encode('some text').buffer
+    expect(detectFileKind({ name: 'spreadsheet.xlsx', mime: 'text/plain', bytes })).toBe('xlsx')
+  })
+
+  it('detects XLS by extension when text decodes', () => {
+    const bytes = new TextEncoder().encode('some text').buffer
+    expect(detectFileKind({ name: 'spreadsheet.xls', mime: 'text/plain', bytes })).toBe('xlsx')
+  })
+
+  it('detects XLSM by extension when text decodes', () => {
+    const bytes = new TextEncoder().encode('some text').buffer
+    expect(detectFileKind({ name: 'spreadsheet.xlsm', mime: 'text/plain', bytes })).toBe('xlsx')
+  })
+
+  it('detects XLS by OLE2 signature', () => {
+    expect(
+      detectFileKind({
+        name: 'document.txt',
+        mime: 'text/plain',
+        bytes: makeBuffer([0xd0, 0xcf, 0x11, 0xe0, 0x00, 0x00])
+      })
+    ).toBe('xlsx')
+  })
+
   it('detects markdown by extension when text decodes', () => {
     const bytes = new TextEncoder().encode('# heading').buffer
     expect(detectFileKind({ name: 'notes.md', mime: 'text/markdown', bytes })).toBe('markdown')

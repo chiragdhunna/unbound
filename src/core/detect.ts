@@ -83,7 +83,19 @@ export function detectFileKindWithWarnings(input: { name: string; mime: string; 
 
   if (startsWith(sample, [0x25, 0x50, 0x44, 0x46, 0x2d])) kind = 'pdf'
   else if (startsWith(sample, [0xd0, 0xcf, 0x11, 0xe0])) {
-    kind = extension === 'xls' ? 'xlsx' : extension === 'doc' || extension === 'ppt' ? 'legacy-office' : extension === 'docx' || extension === 'pptx' || extension === 'xlsx' ? 'encrypted-office' : 'unknown'
+    if (extension === 'docx') {
+      kind = 'encrypted-office';
+    } else if (extension === 'doc') {
+      kind = 'legacy-office';
+    } else {
+      // For other extensions, we check if they are known legacy office extensions; if so, legacy-office, else xlsx.
+      const legacyOfficeExtensions = new Set(['xls', 'xlt', 'xlm', 'ppt', 'pps', 'pot', 'mdb', 'ldb']);
+      if (legacyOfficeExtensions.has(extension)) {
+        kind = 'legacy-office';
+      } else {
+        kind = 'xlsx';
+      }
+    }
   } else if (startsWith(sample, [0x50, 0x4b, 0x03, 0x04])) kind = zipKind(sample, extension)
   else if (startsWith(sample, [0x89, 0x50, 0x4e, 0x47]) || startsWith(sample, [0xff, 0xd8, 0xff]) || startsWith(sample, [0x47, 0x49, 0x46, 0x38]) || startsWith(sample, [0x42, 0x4d]) || imageMimes.has(input.mime)) kind = 'image'
   else if (!looksLikeText(sample)) kind = 'unknown'
@@ -94,6 +106,7 @@ export function detectFileKindWithWarnings(input: { name: string; mime: string; 
   else if (extension === 'xml') kind = 'xml'
   else if (extension === 'html' || extension === 'htm') kind = 'html'
   else if (extension === 'rtf') kind = 'rtf'
+  else if (extension === 'xlsx' || extension === 'xls' || extension === 'xlsm') kind = 'xlsx'
   else if (codeExtensions.has(extension)) kind = 'code'
   else kind = 'text'
 
