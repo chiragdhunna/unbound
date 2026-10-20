@@ -64,7 +64,7 @@ describe('csvConverter', () => {
     const result = await csvConverter.convert(input, createContext())
     expect(result.markdown).toContain('| Quote | Text |')
     expect(result.markdown).toContain('| --- | --- |')
-    expect(result.markdown).toContain('| Alice | She said \\"hello\\" |')
+    expect(result.markdown).toContain('| Alice | She said "hello" |')
   })
 
   it('handles newlines inside quoted fields', async () => {
