@@ -1,85 +1,75 @@
 /**
  * Escapes pipe characters and converts newlines to <br> for markdown table cells.
- * Also trims whitespace and escapes quotes for markdown compatibility.
+ * Also trims whitespace.
  */
 export function escapeCellValue(value: string): string {
   // Find the length of trailing whitespace (spaces and tabs only)
-  let trailingWhitespaceLen = 0
+  let trailingWhitespaceLen = 0;
   for (let i = value.length - 1; i >= 0; i--) {
     if (value[i] === ' ' || value[i] === '\t') {
-      trailingWhitespaceLen++
+      trailingWhitespaceLen++;
     } else {
-      break
+      break;
     }
   }
 
   // Check if there is a trailing newline (right before the trailing whitespace)
-  const hasTrailingNewline =
-    trailingWhitespaceLen < value.length &&
-    value[value.length - trailingWhitespaceLen - 1] === '\n'
+  const hasTrailingNewline = trailingWhitespaceLen < value.length &&
+                            value[value.length - trailingWhitespaceLen - 1] === '\n';
 
-  let workStr = value
-  let hasTrailingNewlineToKeep = false
+  let workStr = value;
+  let hasTrailingNewlineToKeep = false;
 
   if (hasTrailingNewline) {
     // The index of the trailing newline
-    const trailingNewlineIndex = value.length - trailingWhitespaceLen - 1
+    const trailingNewlineIndex = value.length - trailingWhitespaceLen - 1;
 
     // Check what precedes this newline
-    const charBefore = value[trailingNewlineIndex - 1]
-    const isWhitespaceBefore = charBefore === ' ' || charBefore === '\t'
+    const charBefore = value[trailingNewlineIndex - 1];
+    const isWhitespaceBefore = charBefore === ' ' || charBefore === '\t';
 
     if (isWhitespaceBefore) {
       // We want to keep this newline as <br
-      hasTrailingNewlineToKeep = true
+      hasTrailingNewlineToKeep = true;
       // Process the string up to (but not including) this newline
-      workStr = value.substring(0, trailingNewlineIndex)
+      workStr = value.substring(0, trailingNewlineIndex);
     } else {
       // We want to discard this newline
-      hasTrailingNewlineToKeep = false
+      hasTrailingNewlineToKeep = false;
       // Process the string up to (but not including) this newline
-      workStr = value.substring(0, trailingNewlineIndex)
+      workStr = value.substring(0, trailingNewlineIndex);
     }
   }
 
   // TRIM LEADING WHITESPACE AND NEWLINES FROM WORKSTR
-  let start = 0
-  while (
-    start < workStr.length &&
-    (workStr[start] === ' ' ||
-      workStr[start] === '\t' ||
-      workStr[start] === '\n')
-  ) {
-    start++
+  let start = 0;
+  while (start < workStr.length && (workStr[start] === ' ' || workStr[start] === '\t' || workStr[start] === '\n')) {
+    start++;
   }
 
   // TRIM TRAILING WHITESPACE (SPACES AND TABS ONLY) FROM WORKSTR
-  let end = workStr.length
-  while (
-    end > start &&
-    (workStr[end - 1] === ' ' || workStr[end - 1] === '\t')
-  ) {
-    end--
+  let end = workStr.length;
+  while (end > start && (workStr[end - 1] === ' ' || workStr[end - 1] === '\t')) {
+    end--;
   }
 
   // Extract the middle part
-  workStr = workStr.substring(start, end)
+  workStr = workStr.substring(start, end);
 
-  // Escape pipes, convert newlines, and escape quotes in the workStr
+  // Escape pipes and convert newlines in the workStr
   let result = workStr
     .replace(/\|/g, '\\|')
-    .replace(/\n/g, '<br>')
-    .replace(/"/g, '\\"')
+    .replace(/\n/g, '<br>');
 
   // If we decided to keep the trailing newline, add <br> at the end
   if (hasTrailingNewlineToKeep) {
-    result += '<br>'
+    result += '<br>';
   }
 
   // TRIM LEADING WHITESPACE FROM FINAL RESULT (in case we added <br> at the front)
-  result = result.trimStart()
+  result = result.trimStart();
 
-  return result
+  return result;
 }
 
 /**
@@ -97,8 +87,8 @@ export function processHeaderRow(headerRow: string[]): string[] {
 export function padRowsToEqualLength(rows: string[][]): string[][] {
   if (rows.length === 0) return rows
 
-  const maxCols = Math.max(...rows.map((row) => row.length))
-  return rows.map((row) => {
+  const maxCols = Math.max(...rows.map(row => row.length))
+  return rows.map(row => {
     const padded = [...row]
     while (padded.length < maxCols) {
       padded.push('')
@@ -113,7 +103,7 @@ export function padRowsToEqualLength(rows: string[][]): string[][] {
  */
 export function findFirstNonEmptyRowIndex(rows: string[][]): number {
   for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
-    if (!rows[rowIdx]!.every((cell) => cell.trim() === '')) {
+    if (!rows[rowIdx]!.every(cell => cell.trim() === '')) {
       return rowIdx
     }
   }
@@ -130,9 +120,7 @@ export function trimBlankRowsAndColumns(rows: string[][]): string[][] {
   // Find the last row that is not completely empty
   let lastNonEmptyRow = rows.length - 1
   while (lastNonEmptyRow >= 0) {
-    const rowIsEmpty = rows[lastNonEmptyRow]!.every(
-      (cell) => cell.trim() === ''
-    )
+    const rowIsEmpty = rows[lastNonEmptyRow]!.every(cell => cell.trim() === '')
     if (!rowIsEmpty) break
     lastNonEmptyRow--
   }
@@ -198,9 +186,7 @@ export function trimBlankRowsAndColumns(rows: string[][]): string[][] {
   }
 
   // Slice to keep only columns from firstNonEmptyCol to lastNonEmptyCol (inclusive)
-  return trimmedRows.map((row) =>
-    row.slice(firstNonEmptyCol, lastNonEmptyCol + 1)
-  )
+  return trimmedRows.map(row => row.slice(firstNonEmptyCol, lastNonEmptyCol + 1))
 }
 
 /**
