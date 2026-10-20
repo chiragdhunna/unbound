@@ -459,3 +459,8 @@ L. At the end of EVERY milestone, the docs commit must update PROGRESS.md (tick
    items with pasted evidence), docs/TRACEABILITY.md, and the README "Current
    status" section so they match the code. Never leave them stale.
 M. Commit messages must be ONE plain line: no literal "\n", no co-author trailers.
+
+N. README.md is a living document. Every commit that adds, changes or removes a
+   user-visible capability must be followed in the SAME milestone by a docs commit
+   that updates the README "supported formats" table and "Current status" to match
+   PROGRESS.md. Never claim a format works without a passing test.
