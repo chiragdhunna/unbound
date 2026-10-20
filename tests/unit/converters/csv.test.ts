@@ -14,9 +14,10 @@ describe('csvConverter', () => {
 
   const createInput = (
     text: string,
-    mimeType = 'text/csv'
+    mimeType = 'text/csv',
+    name = 'test.csv'
   ): ConverterInput => ({
-    name: 'test.csv',
+    name,
     bytes: new TextEncoder().encode(text).buffer,
     mime: mimeType
   })
@@ -129,5 +130,101 @@ describe('csvConverter', () => {
     await expect(csvConverter.convert(input, createContext())).rejects.toThrow(
       'No text found in the CSV/TSV file.'
     )
+  })
+
+  // --- Exact-text preservation (values stay EXACTLY as written in source) ---
+
+  it('keeps quoted quotes exact: say ""hi"" becomes say "hi"', async () => {
+    const input = createInput('name,quote\nAna,"say ""hi"""')
+    const result = await csvConverter.convert(input, createContext())
+    expect(result.markdown).toBe(
+      '| name | quote |\n| --- | --- |\n| Ana | say "hi" |\n'
+    )
+  })
+
+  it('keeps leading zeros exact: 007 stays 007', async () => {
+    const input = createInput('id\n007')
+    const result = await csvConverter.convert(input, createContext())
+    expect(result.markdown).toBe('| id |\n| --- |\n| 007 |\n')
+  })
+
+  it('keeps exponent notation exact: 1e3 stays 1e3', async () => {
+    const input = createInput('value\n1e3')
+    const result = await csvConverter.convert(input, createContext())
+    expect(result.markdown).toBe('| value |\n| --- |\n| 1e3 |\n')
+  })
+
+  it('keeps leading/trailing spaces inside quoted cells exact', async () => {
+    const input = createInput('name,city\n" Ana "," New York "')
+    const result = await csvConverter.convert(input, createContext())
+    expect(result.markdown).toBe(
+      '| name | city |\n| --- | --- |\n|  Ana  |  New York  |\n'
+    )
+  })
+
+  it('converts a newline inside quotes to <br> exactly', async () => {
+    const input = createInput('desc\n"line1\nline2"')
+    const result = await csvConverter.convert(input, createContext())
+    expect(result.markdown).toBe('| desc |\n| --- |\n| line1<br>line2 |\n')
+  })
+
+  it('escapes a pipe inside a quoted cell as \\| exactly', async () => {
+    const input = createInput('a,b\n"x|y",z')
+    const result = await csvConverter.convert(input, createContext())
+    expect(result.markdown).toBe('| a | b |\n| --- | --- |\n| x\\|y | z |\n')
+  })
+
+  it('routes TSV by filename even when mime says csv', async () => {
+    const input = createInput('Name\tAge\nAlice\t25', 'text/csv', 'table.tsv')
+    const result = await csvConverter.convert(input, createContext())
+    expect(result.markdown).toBe(
+      '| Name | Age |\n| --- | --- |\n| Alice | 25 |\n'
+    )
+  })
+
+  it('routes semicolon-delimited content by sniffing the first line', async () => {
+    const input = createInput('name;age\nAlice;30')
+    const result = await csvConverter.convert(input, createContext())
+    expect(result.markdown).toBe(
+      '| name | age |\n| --- | --- |\n| Alice | 30 |\n'
+    )
+  })
+
+  it('strips a UTF-8 BOM and keeps content exact', async () => {
+    const bytes = new Uint8Array([
+      0xef,
+      0xbb,
+      0xbf,
+      ...new TextEncoder().encode('name,quote\nAna,"say ""hi"""')
+    ])
+    const input: ConverterInput = {
+      name: 'bom.csv',
+      bytes: bytes.buffer,
+      mime: 'text/csv'
+    }
+    const result = await csvConverter.convert(input, createContext())
+    expect(result.markdown).toBe(
+      '| name | quote |\n| --- | --- |\n| Ana | say "hi" |\n'
+    )
+  })
+
+  it('decodes windows-1252 bytes and warns about the fallback', async () => {
+    // "name,city\nCaf" + 0xE9 (é in windows-1252; invalid as UTF-8)
+    const bytes = new Uint8Array([
+      ...Array.from('name,city\nCaf').map((c) => c.charCodeAt(0)),
+      0xe9
+    ])
+    const input: ConverterInput = {
+      name: 'legacy.csv',
+      bytes: bytes.buffer,
+      mime: 'text/csv'
+    }
+    const result = await csvConverter.convert(input, createContext())
+    expect(result.markdown).toBe(
+      '| name | city |\n| --- | --- |\n| Café |  |\n'
+    )
+    expect(
+      result.warnings.some((warning) => warning.code === 'ENCODING_FALLBACK')
+    ).toBe(true)
   })
 })
