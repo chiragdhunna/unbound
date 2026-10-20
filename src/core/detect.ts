@@ -22,7 +22,13 @@ const codeExtensions = new Set([
   'yml'
 ])
 
-const imageMimes = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'])
+const imageMimes = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/bmp'
+])
 
 function getExtension(name: string): string {
   const dotIndex = name.lastIndexOf('.')
@@ -66,17 +72,75 @@ export interface DetectionResult {
   warnings: { code: string; message: string; severity: 'info' | 'warn' }[]
 }
 
-function zipKind(sample: Uint8Array, extension: string): FileKind {
-  const names = new TextDecoder('latin1').decode(sample)
+// End-of-central-directory signature (PK\x05\x06); the record itself is 22 bytes
+// plus an optional comment, and a zip comment cannot exceed 65535 bytes.
+const EOCD_SEARCH_WINDOW = 66000
+const LEADING_NAME_WINDOW = 4096
+
+function findEocdOffset(bytes: Uint8Array): number {
+  const start = Math.max(0, bytes.length - EOCD_SEARCH_WINDOW)
+  for (let index = bytes.length - 22; index >= start; index -= 1) {
+    if (
+      bytes[index] === 0x50 &&
+      bytes[index + 1] === 0x4b &&
+      bytes[index + 2] === 0x05 &&
+      bytes[index + 3] === 0x06
+    ) {
+      return index
+    }
+  }
+
+  return -1
+}
+
+/**
+ * Entry names live in the central directory at the end of the archive. A
+ * leading-page sample alone misses them in real workbooks: SheetJS writes
+ * `xl/workbook.xml` about 11 KB into a minimal .xlsx, so scanning only the
+ * first bytes classified every generated workbook as a plain zip.
+ */
+function centralDirectory(bytes: Uint8Array): Uint8Array {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const eocd = findEocdOffset(bytes)
+  if (eocd < 0) {
+    return bytes.subarray(0, 0)
+  }
+
+  const size = view.getUint32(eocd + 12, true)
+  const offset = view.getUint32(eocd + 16, true)
+  if (offset === 0xffffffff || offset + size > bytes.length) {
+    return bytes.subarray(0, 0)
+  }
+
+  return bytes.subarray(offset, offset + size)
+}
+
+function zipKind(bytes: Uint8Array, extension: string): FileKind {
+  // Leading window covers local headers (and stored entry data such as an
+  // EPUB `mimetype` payload); the central directory covers every entry name.
+  const leading = bytes.subarray(0, Math.min(bytes.length, LEADING_NAME_WINDOW))
+  const names =
+    new TextDecoder('latin1').decode(leading) +
+    new TextDecoder('latin1').decode(centralDirectory(bytes))
   if (names.includes('word/document.xml')) return 'docx'
   if (names.includes('ppt/presentation.xml')) return 'pptx'
   if (names.includes('xl/workbook.xml')) return 'xlsx'
-  if (names.includes('mimetypeapplication/epub+zip') || extension === 'epub') return 'epub'
+  if (
+    names.includes('mimetypeapplication/epub+zip') ||
+    names.includes('application/epub+zip') ||
+    extension === 'epub'
+  )
+    return 'epub'
   return 'zip'
 }
 
-export function detectFileKindWithWarnings(input: { name: string; mime: string; bytes: ArrayBuffer }): DetectionResult {
-  const sample = new Uint8Array(input.bytes.slice(0, 4096))
+export function detectFileKindWithWarnings(input: {
+  name: string
+  mime: string
+  bytes: ArrayBuffer
+}): DetectionResult {
+  const bytes = new Uint8Array(input.bytes)
+  const sample = bytes.subarray(0, LEADING_NAME_WINDOW)
   const extension = getExtension(input.name)
   const warnings: DetectionResult['warnings'] = []
   let kind: FileKind
@@ -84,20 +148,37 @@ export function detectFileKindWithWarnings(input: { name: string; mime: string; 
   if (startsWith(sample, [0x25, 0x50, 0x44, 0x46, 0x2d])) kind = 'pdf'
   else if (startsWith(sample, [0xd0, 0xcf, 0x11, 0xe0])) {
     if (extension === 'docx') {
-      kind = 'encrypted-office';
+      kind = 'encrypted-office'
     } else if (extension === 'doc') {
-      kind = 'legacy-office';
+      kind = 'legacy-office'
     } else {
       // For other extensions, we check if they are known legacy office extensions; if so, legacy-office, else xlsx.
-      const legacyOfficeExtensions = new Set(['xls', 'xlt', 'xlm', 'ppt', 'pps', 'pot', 'mdb', 'ldb']);
+      const legacyOfficeExtensions = new Set([
+        'xls',
+        'xlt',
+        'xlm',
+        'ppt',
+        'pps',
+        'pot',
+        'mdb',
+        'ldb'
+      ])
       if (legacyOfficeExtensions.has(extension)) {
-        kind = 'legacy-office';
+        kind = 'legacy-office'
       } else {
-        kind = 'xlsx';
+        kind = 'xlsx'
       }
     }
-  } else if (startsWith(sample, [0x50, 0x4b, 0x03, 0x04])) kind = zipKind(sample, extension)
-  else if (startsWith(sample, [0x89, 0x50, 0x4e, 0x47]) || startsWith(sample, [0xff, 0xd8, 0xff]) || startsWith(sample, [0x47, 0x49, 0x46, 0x38]) || startsWith(sample, [0x42, 0x4d]) || imageMimes.has(input.mime)) kind = 'image'
+  } else if (startsWith(sample, [0x50, 0x4b, 0x03, 0x04]))
+    kind = zipKind(bytes, extension)
+  else if (
+    startsWith(sample, [0x89, 0x50, 0x4e, 0x47]) ||
+    startsWith(sample, [0xff, 0xd8, 0xff]) ||
+    startsWith(sample, [0x47, 0x49, 0x46, 0x38]) ||
+    startsWith(sample, [0x42, 0x4d]) ||
+    imageMimes.has(input.mime)
+  )
+    kind = 'image'
   else if (!looksLikeText(sample)) kind = 'unknown'
   else if (extension === 'md' || extension === 'markdown') kind = 'markdown'
   else if (extension === 'txt') kind = 'text'
@@ -106,15 +187,36 @@ export function detectFileKindWithWarnings(input: { name: string; mime: string; 
   else if (extension === 'xml') kind = 'xml'
   else if (extension === 'html' || extension === 'htm') kind = 'html'
   else if (extension === 'rtf') kind = 'rtf'
-  else if (extension === 'xlsx' || extension === 'xls' || extension === 'xlsm') kind = 'xlsx'
+  else if (extension === 'xlsx' || extension === 'xls' || extension === 'xlsm')
+    kind = 'xlsx'
   else if (codeExtensions.has(extension)) kind = 'code'
   else kind = 'text'
 
-  const extensionKind = extension === 'pdf' ? 'pdf' : extension === 'docx' ? 'docx' : extension === 'pptx' ? 'pptx' : extension === 'xlsx' || extension === 'xls' ? 'xlsx' : extension === 'png' || extension === 'jpg' || extension === 'jpeg' ? 'image' : undefined
-  if (extensionKind && extensionKind !== kind && kind !== 'unknown') warnings.push({ code: 'TYPE_MISMATCH', message: `Detected ${kind} content despite a .${extension} extension.`, severity: 'info' })
+  const extensionKind =
+    extension === 'pdf'
+      ? 'pdf'
+      : extension === 'docx'
+        ? 'docx'
+        : extension === 'pptx'
+          ? 'pptx'
+          : extension === 'xlsx' || extension === 'xls'
+            ? 'xlsx'
+            : extension === 'png' || extension === 'jpg' || extension === 'jpeg'
+              ? 'image'
+              : undefined
+  if (extensionKind && extensionKind !== kind && kind !== 'unknown')
+    warnings.push({
+      code: 'TYPE_MISMATCH',
+      message: `Detected ${kind} content despite a .${extension} extension.`,
+      severity: 'info'
+    })
   return { kind, warnings }
 }
 
-export function detectFileKind(input: { name: string; mime: string; bytes: ArrayBuffer }): FileKind {
+export function detectFileKind(input: {
+  name: string
+  mime: string
+  bytes: ArrayBuffer
+}): FileKind {
   return detectFileKindWithWarnings(input).kind
 }
