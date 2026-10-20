@@ -3,7 +3,16 @@ import { UnsupportedFormatError } from './errors'
 import { loadConverter } from './registry'
 import { type ConvertContext, type ConvertResult } from './types'
 
-const supportedKinds = new Set(['text', 'markdown', 'json', 'xml', 'code', 'docx'])
+const supportedKinds = new Set([
+  'text',
+  'markdown',
+  'json',
+  'xml',
+  'code',
+  'docx',
+  'xlsx',
+  'csv'
+])
 
 async function readFileBytes(file: File): Promise<ArrayBuffer> {
   if (typeof file.arrayBuffer === 'function') {
@@ -25,7 +34,10 @@ async function readFileBytes(file: File): Promise<ArrayBuffer> {
   })
 }
 
-export async function convertFile(file: File, ctx: ConvertContext): Promise<ConvertResult> {
+export async function convertFile(
+  file: File,
+  ctx: ConvertContext
+): Promise<ConvertResult> {
   const bytes = await readFileBytes(file)
   const kind = detectFileKind({
     name: file.name,
@@ -35,7 +47,7 @@ export async function convertFile(file: File, ctx: ConvertContext): Promise<Conv
 
   if (!supportedKinds.has(kind)) {
     throw new UnsupportedFormatError(
-      `Unsupported format for now (${kind}). Current M1 slice supports txt, md, json, xml, and code files.`
+      `Unsupported format for now (${kind}). Supported: txt, md, json, xml, code, docx, xlsx, xls, xlsm, csv, and tsv files.`
     )
   }
 

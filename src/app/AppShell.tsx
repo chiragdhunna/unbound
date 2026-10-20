@@ -1,4 +1,11 @@
-import { type ChangeEvent, type DragEvent, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type ChangeEvent,
+  type DragEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 import { chunkMarkdown } from '../core/chunk'
 import { countText } from '../core/tokens'
 import { createConvertContext } from '../core/context'
@@ -146,12 +153,19 @@ export function AppShell() {
   }, [copied])
 
   const visibleJobs = useMemo(
-    () => jobs.filter((job) => job.status === 'done' || job.status === 'error' || Boolean(job.output)),
+    () =>
+      jobs.filter(
+        (job) =>
+          job.status === 'done' || job.status === 'error' || Boolean(job.output)
+      ),
     [jobs]
   )
 
   const selectedJob = useMemo(
-    () => (selectedJobId ? jobs.find((job) => job.id === selectedJobId) ?? jobs[0] : jobs[0]) ?? null,
+    () =>
+      (selectedJobId
+        ? (jobs.find((job) => job.id === selectedJobId) ?? jobs[0])
+        : jobs[0]) ?? null,
     [jobs, selectedJobId]
   )
 
@@ -162,7 +176,10 @@ export function AppShell() {
 
     if (settings.batchMode === 'combined') {
       return visibleJobs
-        .map((job) => `# File: ${job.name}\n\n${job.output || job.rawMarkdown || 'No content converted.'}`)
+        .map(
+          (job) =>
+            `# File: ${job.name}\n\n${job.output || job.rawMarkdown || 'No content converted.'}`
+        )
         .join('\n\n')
     }
 
@@ -171,15 +188,31 @@ export function AppShell() {
 
   const displayText = useMemo(() => {
     if (!sourceMarkdown) return ''
-    return settings.outputMode === 'markdown' ? sourceMarkdown : markdownToPlain(sourceMarkdown)
+    return settings.outputMode === 'markdown'
+      ? sourceMarkdown
+      : markdownToPlain(sourceMarkdown)
   }, [settings.outputMode, sourceMarkdown])
 
-  const chunkLimitChars = settings.chunkUnit === 'tokens' ? settings.chunkLimit * 4 : settings.chunkLimit
+  const chunkLimitChars =
+    settings.chunkUnit === 'tokens'
+      ? settings.chunkLimit * 4
+      : settings.chunkLimit
   const chunks = useMemo(() => {
-    const labeled = chunkMarkdown(displayText, { maxChars: chunkLimitChars, label: settings.chunkLabels })
+    const labeled = chunkMarkdown(displayText, {
+      maxChars: chunkLimitChars,
+      label: settings.chunkLabels
+    })
     if (!settings.chunkPreamble || labeled.length === 0) return labeled
-    return labeled.map((chunk, index) => `This is part ${index + 1} of ${labeled.length}. Wait for all parts before answering.\n\n${chunk}`)
-  }, [displayText, settings.chunkLabels, settings.chunkPreamble, chunkLimitChars])
+    return labeled.map(
+      (chunk, index) =>
+        `This is part ${index + 1} of ${labeled.length}. Wait for all parts before answering.\n\n${chunk}`
+    )
+  }, [
+    displayText,
+    settings.chunkLabels,
+    settings.chunkPreamble,
+    chunkLimitChars
+  ])
   const previewText = useMemo(() => {
     if (displayText.length <= 1_000_000) {
       return displayText
@@ -230,13 +263,11 @@ export function AppShell() {
     for (let index = 0; index < fileList.length; index++) {
       const file = fileList[index]!
       const jobId = createdJobs[index]!.id
-      const attemptId = createdJobs[index]!.attemptId   // should be 0
+      const attemptId = createdJobs[index]!.attemptId // should be 0
 
       setJobs((previous) =>
         previous.map((job) =>
-          job.id === jobId
-            ? { ...job, status: 'converting', error: null }
-            : job
+          job.id === jobId ? { ...job, status: 'converting', error: null } : job
         )
       )
 
@@ -245,7 +276,7 @@ export function AppShell() {
         setJobs((previous) =>
           previous.map((job) =>
             job.id === jobId
-              ? job.attemptId === attemptId   // check that the attemptId matches the one we started with
+              ? job.attemptId === attemptId // check that the attemptId matches the one we started with
                 ? {
                     ...job,
                     status: 'done',
@@ -254,21 +285,23 @@ export function AppShell() {
                     warnings: result.warnings.map((warning) => warning.message),
                     error: null
                   }
-                : job   // attemptId changed, ignore this result
+                : job // attemptId changed, ignore this result
               : job
           )
         )
         setSelectedJobId(jobId)
         if (settings.quickPaste) {
           const quickCopy = await copyText(result.markdown)
-          setToast(quickCopy ? 'Quick paste copied' : 'Quick paste ready — tap Copy')
+          setToast(
+            quickCopy ? 'Quick paste copied' : 'Quick paste ready — tap Copy'
+          )
         }
       } catch (error) {
         const message = formatError(error)
         setJobs((previous) =>
           previous.map((job) =>
             job.id === jobId
-              ? job.attemptId === attemptId   // check that the attemptId matches the one we started with
+              ? job.attemptId === attemptId // check that the attemptId matches the one we started with
                 ? {
                     ...job,
                     status: 'error',
@@ -277,7 +310,7 @@ export function AppShell() {
                     rawMarkdown: '',
                     output: ''
                   }
-                : job   // attemptId changed, ignore this error
+                : job // attemptId changed, ignore this error
               : job
           )
         )
@@ -312,7 +345,7 @@ export function AppShell() {
   const retryJob = async (job: Job) => {
     const jobId = job.id
     // Get the current job from the jobs array to ensure we have the latest
-    const currentJob = jobs.find(j => j.id === jobId)
+    const currentJob = jobs.find((j) => j.id === jobId)
     if (!currentJob) {
       return
     }
@@ -334,7 +367,7 @@ export function AppShell() {
       setJobs((previous) =>
         previous.map((j) =>
           j.id === jobId
-            ? j.attemptId === attemptId   // check that the attemptId matches the one we started with
+            ? j.attemptId === attemptId // check that the attemptId matches the one we started with
               ? {
                   ...j,
                   status: 'done',
@@ -343,7 +376,7 @@ export function AppShell() {
                   warnings: result.warnings.map((w) => w.message),
                   error: null
                 }
-              : j   // attemptId changed, ignore this result
+              : j // attemptId changed, ignore this result
             : j
         )
       )
@@ -352,7 +385,7 @@ export function AppShell() {
       setJobs((previous) =>
         previous.map((j) =>
           j.id === jobId
-            ? j.attemptId === attemptId   // check that the attemptId matches the one we started with
+            ? j.attemptId === attemptId // check that the attemptId matches the one we started with
               ? {
                   ...j,
                   status: 'error',
@@ -361,7 +394,7 @@ export function AppShell() {
                   rawMarkdown: '',
                   output: ''
                 }
-              : j   // attemptId changed, ignore this error
+              : j // attemptId changed, ignore this error
             : j
         )
       )
@@ -372,7 +405,11 @@ export function AppShell() {
     const textToCopy = editMode ? draftText : displayText
     const success = await copyText(textToCopy)
     setCopied(success)
-    setToast(success ? 'Copied to clipboard' : 'Clipboard copy failed — use the fallback copy action')
+    setToast(
+      success
+        ? 'Copied to clipboard'
+        : 'Clipboard copy failed — use the fallback copy action'
+    )
   }
 
   const handleCopyChunk = async (chunk: string) => {
@@ -386,7 +423,12 @@ export function AppShell() {
 
   const handleDownload = () => {
     const textToDownload = editMode ? draftText : displayText
-    const blob = new Blob([textToDownload], { type: settings.outputMode === 'markdown' ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8' })
+    const blob = new Blob([textToDownload], {
+      type:
+        settings.outputMode === 'markdown'
+          ? 'text/markdown;charset=utf-8'
+          : 'text/plain;charset=utf-8'
+    })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -397,7 +439,14 @@ export function AppShell() {
   }
 
   const handleJobDownload = (job: Job) => {
-    const blob = new Blob([settings.outputMode === 'markdown' ? job.rawMarkdown : markdownToPlain(job.rawMarkdown)], { type: 'text/plain;charset=utf-8' })
+    const blob = new Blob(
+      [
+        settings.outputMode === 'markdown'
+          ? job.rawMarkdown
+          : markdownToPlain(job.rawMarkdown)
+      ],
+      { type: 'text/plain;charset=utf-8' }
+    )
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -407,7 +456,9 @@ export function AppShell() {
   }
 
   const privacyText =
-    settings.quickPaste || settings.pageMarkers ? 'OCR downloads and proxy settings are opt-in; files stay local by default.' : 'Files never leave your device.'
+    settings.quickPaste || settings.pageMarkers
+      ? 'OCR downloads and proxy settings are opt-in; files stay local by default.'
+      : 'Files never leave your device.'
 
   return (
     <main>
@@ -415,39 +466,62 @@ export function AppShell() {
         <header className="topbar">
           <div>
             <h1>unbound_</h1>
-            <p className="tagline">Turn files into paste-ready markdown or plain text.</p>
+            <p className="tagline">
+              Turn files into paste-ready markdown or plain text.
+            </p>
           </div>
           <div className="status-pill" role="status" aria-live="polite">
-            {jobs.some((job) => job.status === 'converting') ? 'Converting…' : 'Ready'}
+            {jobs.some((job) => job.status === 'converting')
+              ? 'Converting…'
+              : 'Ready'}
           </div>
         </header>
 
-        <div role="region"
-             aria-label="Choose files or drag and drop area"
-             className={`dropzone ${dragging ? 'dragging' : ''}`}
-             onDragOver={(event) => {
-               event.preventDefault()
-               setDragging(true)
-             }}
-             onDragLeave={() => setDragging(false)}
-             onDrop={onDrop}
-             onPaste={onPaste}
+        <div
+          role="region"
+          aria-label="Choose files or drag and drop area"
+          className={`dropzone ${dragging ? 'dragging' : ''}`}
+          onDragOver={(event) => {
+            event.preventDefault()
+            setDragging(true)
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          onPaste={onPaste}
         >
           <p>Drop a file, folder, or paste a local file here.</p>
+          <p className="supported-formats">
+            Supported formats: txt, md, json, xml, code files, docx, xlsx, xls,
+            xlsm, csv, tsv.
+          </p>
           <div className="actions-row">
             <button type="button" onClick={() => fileInputRef.current?.click()}>
               Choose files
             </button>
-            <button type="button" onClick={() => folderInputRef.current?.click()}>
+            <button
+              type="button"
+              onClick={() => folderInputRef.current?.click()}
+            >
               Choose folder
             </button>
           </div>
-          <input ref={fileInputRef} type="file" multiple onChange={onInputChange} aria-label="Choose file" hidden />
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".txt,.md,.markdown,.json,.xml,.js,.ts,.tsx,.jsx,.py,.go,.rs,.java,.c,.cpp,.cs,.rb,.php,.swift,.kt,.sql,.sh,.yaml,.yml,.docx,.xlsx,.xls,.xlsm,.csv,.tsv,text/plain,text/markdown,text/csv,text/tab-separated-values,application/json,application/xml,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+            onChange={onInputChange}
+            aria-label="Choose file"
+            hidden
+          />
           <input
             ref={folderInputRef}
             type="file"
             multiple
-            {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
+            {...({ webkitdirectory: '', directory: '' } as Record<
+              string,
+              string
+            >)}
             onChange={onInputChange}
             aria-label="Choose folder"
             hidden
@@ -456,19 +530,43 @@ export function AppShell() {
 
         <div className="options-row">
           <div className="segmented">
-            <button type="button" className={settings.outputMode === 'markdown' ? 'active' : ''} onClick={() => setSettings((value) => ({ ...value, outputMode: 'markdown' }))}>
+            <button
+              type="button"
+              className={settings.outputMode === 'markdown' ? 'active' : ''}
+              onClick={() =>
+                setSettings((value) => ({ ...value, outputMode: 'markdown' }))
+              }
+            >
               Markdown
             </button>
-            <button type="button" className={settings.outputMode === 'plain' ? 'active' : ''} onClick={() => setSettings((value) => ({ ...value, outputMode: 'plain' }))}>
+            <button
+              type="button"
+              className={settings.outputMode === 'plain' ? 'active' : ''}
+              onClick={() =>
+                setSettings((value) => ({ ...value, outputMode: 'plain' }))
+              }
+            >
               Plain
             </button>
           </div>
 
           <div className="segmented">
-            <button type="button" className={settings.batchMode === 'separate' ? 'active' : ''} onClick={() => setSettings((value) => ({ ...value, batchMode: 'separate' }))}>
+            <button
+              type="button"
+              className={settings.batchMode === 'separate' ? 'active' : ''}
+              onClick={() =>
+                setSettings((value) => ({ ...value, batchMode: 'separate' }))
+              }
+            >
               Separate
             </button>
-            <button type="button" className={settings.batchMode === 'combined' ? 'active' : ''} onClick={() => setSettings((value) => ({ ...value, batchMode: 'combined' }))}>
+            <button
+              type="button"
+              className={settings.batchMode === 'combined' ? 'active' : ''}
+              onClick={() =>
+                setSettings((value) => ({ ...value, batchMode: 'combined' }))
+              }
+            >
               Combined
             </button>
           </div>
@@ -478,29 +576,70 @@ export function AppShell() {
               id="quick-paste-checkbox"
               type="checkbox"
               checked={settings.quickPaste}
-              onChange={(event) => setSettings((value) => ({ ...value, quickPaste: event.target.checked }))}
+              onChange={(event) =>
+                setSettings((value) => ({
+                  ...value,
+                  quickPaste: event.target.checked
+                }))
+              }
             />
             Quick paste
           </label>
 
           <label className="toggle-row">
-            <input type="checkbox" checked={settings.pageMarkers} onChange={(event) => setSettings((value) => ({ ...value, pageMarkers: event.target.checked }))} />
+            <input
+              type="checkbox"
+              checked={settings.pageMarkers}
+              onChange={(event) =>
+                setSettings((value) => ({
+                  ...value,
+                  pageMarkers: event.target.checked
+                }))
+              }
+            />
             Page markers
           </label>
 
           <label className="toggle-row">
-            <input type="checkbox" checked={settings.chunkLabels} onChange={(event) => setSettings((value) => ({ ...value, chunkLabels: event.target.checked }))} />
+            <input
+              type="checkbox"
+              checked={settings.chunkLabels}
+              onChange={(event) =>
+                setSettings((value) => ({
+                  ...value,
+                  chunkLabels: event.target.checked
+                }))
+              }
+            />
             Chunk labels
           </label>
 
           <label className="toggle-row">
-            <input type="checkbox" checked={settings.chunkPreamble} onChange={(event) => setSettings((value) => ({ ...value, chunkPreamble: event.target.checked }))} />
+            <input
+              type="checkbox"
+              checked={settings.chunkPreamble}
+              onChange={(event) =>
+                setSettings((value) => ({
+                  ...value,
+                  chunkPreamble: event.target.checked
+                }))
+              }
+            />
             Chunk preamble
           </label>
 
           <label className="toggle-row">
             Chunk unit
-            <select value={settings.chunkUnit} onChange={(event) => setSettings((value) => ({ ...value, chunkUnit: event.target.value as Settings['chunkUnit'] }))} aria-label="Chunk unit">
+            <select
+              value={settings.chunkUnit}
+              onChange={(event) =>
+                setSettings((value) => ({
+                  ...value,
+                  chunkUnit: event.target.value as Settings['chunkUnit']
+                }))
+              }
+              aria-label="Chunk unit"
+            >
               <option value="chars">Chars</option>
               <option value="tokens">Tokens</option>
             </select>
@@ -512,7 +651,12 @@ export function AppShell() {
               type="number"
               min="20"
               value={settings.chunkLimit}
-              onChange={(event) => setSettings((value) => ({ ...value, chunkLimit: Math.max(20, Number(event.target.value) || 20) }))}
+              onChange={(event) =>
+                setSettings((value) => ({
+                  ...value,
+                  chunkLimit: Math.max(20, Number(event.target.value) || 20)
+                }))
+              }
               aria-label="Chunk limit"
             />
           </label>
@@ -529,13 +673,15 @@ export function AppShell() {
                 <button
                   type="button"
                   onClick={(event) => {
-                    event.stopPropagation();
-                    setSelectedJobId(job.id);
+                    event.stopPropagation()
+                    setSelectedJobId(job.id)
                   }}
                 >
                   <div className="job-header">
                     <strong>{job.name}</strong>
-                    <span className={`job-status ${job.status}`}>{job.status}</span>
+                    <span className={`job-status ${job.status}`}>
+                      {job.status}
+                    </span>
                   </div>
                 </button>
                 {job.error ? <p className="job-error">{job.error}</p> : null}
@@ -551,10 +697,13 @@ export function AppShell() {
                     <button
                       type="button"
                       onClick={async (event) => {
-                        event.stopPropagation();
-                        const textToCopy = settings.outputMode === 'markdown' ? job.rawMarkdown : markdownToPlain(job.rawMarkdown);
-                        const success = await copyText(textToCopy);
-                        setToast(success ? 'File copied' : 'File copy failed');
+                        event.stopPropagation()
+                        const textToCopy =
+                          settings.outputMode === 'markdown'
+                            ? job.rawMarkdown
+                            : markdownToPlain(job.rawMarkdown)
+                        const success = await copyText(textToCopy)
+                        setToast(success ? 'File copied' : 'File copy failed')
                       }}
                       className="job-action-button"
                     >
@@ -565,8 +714,8 @@ export function AppShell() {
                     <button
                       type="button"
                       onClick={(event) => {
-                        event.stopPropagation();
-                        handleJobDownload(job);
+                        event.stopPropagation()
+                        handleJobDownload(job)
                       }}
                       className="job-action-button"
                     >
@@ -577,8 +726,8 @@ export function AppShell() {
                     <button
                       type="button"
                       onClick={(event) => {
-                        event.stopPropagation();
-                        retryJob(job);
+                        event.stopPropagation()
+                        retryJob(job)
                       }}
                       className="job-action-button"
                     >
@@ -588,8 +737,10 @@ export function AppShell() {
                   <button
                     type="button"
                     onClick={(event) => {
-                      event.stopPropagation();
-                      setJobs((previous) => previous.filter((item) => item.id !== job.id));
+                      event.stopPropagation()
+                      setJobs((previous) =>
+                        previous.filter((item) => item.id !== job.id)
+                      )
                     }}
                     className="job-action-button"
                   >
@@ -605,9 +756,18 @@ export function AppShell() {
             <div className="pane-toolbar">
               <div className="count-summary">{countSummary(displayText)}</div>
               <div className="toolbar-actions">
-                <button type="button" onClick={() => setEditMode((value) => !value)}>{editMode ? 'Read-only' : 'Edit'}</button>
-                <button type="button" onClick={handleCopy}>{copied ? 'Copied ✓' : 'Copy'}</button>
-                <button type="button" onClick={handleDownload}>Download</button>
+                <button
+                  type="button"
+                  onClick={() => setEditMode((value) => !value)}
+                >
+                  {editMode ? 'Read-only' : 'Edit'}
+                </button>
+                <button type="button" onClick={handleCopy}>
+                  {copied ? 'Copied ✓' : 'Copy'}
+                </button>
+                <button type="button" onClick={handleDownload}>
+                  Download
+                </button>
               </div>
             </div>
 
@@ -620,41 +780,62 @@ export function AppShell() {
             />
 
             {displayText.length > 1_000_000 ? (
-              <div className="preview-note">Preview capped at 200,000 characters for display. Copy and download still use the full result.</div>
+              <div className="preview-note">
+                Preview capped at 200,000 characters for display. Copy and
+                download still use the full result.
+              </div>
             ) : null}
 
             {chunks.length > 1 ? (
               <div className="chunk-panel">
                 <div className="chunk-header">
                   <strong>Chunks</strong>
-                  <button type="button" onClick={() => {
-                    const next = chunks[copyIndex % chunks.length]
-                    if (next) {
-                      void handleCopyChunk(next)
-                    }
-                    setCopyIndex((value) => (value + 1) % chunks.length)
-                  }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = chunks[copyIndex % chunks.length]
+                      if (next) {
+                        void handleCopyChunk(next)
+                      }
+                      setCopyIndex((value) => (value + 1) % chunks.length)
+                    }}
+                  >
                     Copy next
                   </button>
                 </div>
                 {chunks.map((chunk, index) => (
-                  <div key={`${chunk.slice(0, 10)}-${index}`} className="chunk-item">
+                  <div
+                    key={`${chunk.slice(0, 10)}-${index}`}
+                    className="chunk-item"
+                  >
                     <div className="chunk-meta">{`Part ${index + 1} of ${chunks.length} · ${countSummary(chunk)}`}</div>
                     <div className="chunk-actions">
-                      <button type="button" onClick={() => void handleCopyChunk(chunk)}>{`Copy part ${index + 1} of ${chunks.length}`}</button>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyChunk(chunk)}
+                      >{`Copy part ${index + 1} of ${chunks.length}`}</button>
                     </div>
-                    <pre>{chunk.slice(0, 220)}{chunk.length > 220 ? '…' : ''}</pre>
+                    <pre>
+                      {chunk.slice(0, 220)}
+                      {chunk.length > 220 ? '…' : ''}
+                    </pre>
                   </div>
                 ))}
               </div>
             ) : null}
           </article>
         ) : (
-          <div className="empty-state">No output yet — add a supported file to begin converting.</div>
+          <div className="empty-state">
+            No output yet — add a supported file to begin converting.
+          </div>
         )}
 
         <footer className="privacy-footer">{privacyText}</footer>
-        {toast ? <div className="toast" role="status" aria-live="polite">{toast}</div> : null}
+        {toast ? (
+          <div className="toast" role="status" aria-live="polite">
+            {toast}
+          </div>
+        ) : null}
       </section>
     </main>
   )

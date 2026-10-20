@@ -5,7 +5,9 @@ import { UnsupportedFormatError } from '../../../src/core/errors'
 
 describe('convertFile', () => {
   it('converts txt files into normalized markdown', async () => {
-    const file = new File(['line one\r\nline two'], 'sample.txt', { type: 'text/plain' })
+    const file = new File(['line one\r\nline two'], 'sample.txt', {
+      type: 'text/plain'
+    })
 
     const result = await convertFile(file, createConvertContext())
 
@@ -17,6 +19,20 @@ describe('convertFile', () => {
       type: 'application/octet-stream'
     })
 
-    await expect(convertFile(file, createConvertContext())).rejects.toBeInstanceOf(UnsupportedFormatError)
+    await expect(
+      convertFile(file, createConvertContext())
+    ).rejects.toBeInstanceOf(UnsupportedFormatError)
+  })
+
+  it('converts a File named a.csv into the exact markdown table', async () => {
+    const file = new File(['name,quote\nAna,"say ""hi"""'], 'a.csv', {
+      type: 'text/csv'
+    })
+
+    const result = await convertFile(file, createConvertContext())
+
+    expect(result.markdown).toBe(
+      '| name | quote |\n| --- | --- |\n| Ana | say "hi" |\n'
+    )
   })
 })
