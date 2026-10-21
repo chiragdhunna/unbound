@@ -50,7 +50,9 @@ async function ensureFixtures() {
   blank.addPage([612, 792])
   blank.addPage([612, 792])
   await fs.writeFile(path.join(outputDir, 'm52-blank.pdf'), await blank.save())
-}test('uploads a generated PDF and renders the markdown output', async ({
+}
+
+test('uploads a generated PDF and renders the markdown output', async ({
   page
 }) => {
   const consoleErrors: string[] = []
@@ -76,9 +78,7 @@ async function ensureFixtures() {
   await expect(page.getByRole('textbox')).toContainText(
     '# Quarterly Budget Review'
   )
-  await expect(page.getByRole('textbox')).toContainText(
-    '- Rent 1200'
-  )
+  await expect(page.getByRole('textbox')).toContainText('- Rent 1200')
 
   expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
 })
