@@ -18,7 +18,7 @@ describe('converter registry', () => {
   })
 
   it('rejects unregistered kinds', async () => {
-    await expect(loadConverter('pdf')).rejects.toBeInstanceOf(
+    await expect(loadConverter('legacy-office')).rejects.toBeInstanceOf(
       UnsupportedFormatError
     )
   })

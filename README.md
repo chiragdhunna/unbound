@@ -55,7 +55,7 @@ Matches [PROGRESS.md](PROGRESS.md) exactly (2026-10-21):
 
 - **M0–M4 complete**: core engine, output shell/copy/chunking, DOCX (Mammoth), XLSX/XLS/XLSM (vendored SheetJS), CSV/TSV (custom exact-text parser) — all with unit and browser tests.
 - **M5 (PDF) in progress**: M5.1 (pdfjs-dist 6.4.299 + self-hosted worker under the existing CSP) and M5.2 (text-based PDF extraction: layout, scanned detection, password/corrupt errors, registration, upload e2e) are done. Header/footer removal, page markers, a table heuristic, bold detection, and 500+ page batching are deferred to M5.3; OCR (M6) is not implemented yet.
-- Verified 2026-10-21: **164 of 165 unit tests** pass (24 files; the 1 failure is a stale registry test that asserted `pdf` was _unregistered_ — left unedited deliberately, see `DECISIONS.md`), **52 e2e tests** (chromium + mobile-chromium), coverage `src/core` 93.1% / `src/converters` 92.8% lines (85% gate), initial JS **68,060 bytes gzip** of a 256,000-byte budget.
+- Verified 2026-10-21: **165 of 165 unit tests** pass (24 files, zero failures), **52 e2e tests** (chromium + mobile-chromium), coverage `src/core` 93.1% / `src/converters` 92.8% lines (85% gate), initial JS **68,060 bytes gzip** of a 256,000-byte budget.
 
 ## Known limitations
 
