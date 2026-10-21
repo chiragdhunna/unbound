@@ -1,19 +1,19 @@
 # Unbound
 
-Unbound turns the files you'd attach to an LLM chat — documents, spreadsheets, CSVs, code, plain text — into clean, paste-ready markdown or plain text. **Conversion happens entirely in your browser**: files are read with the File API, parsed by bundled JavaScript, and never uploaded anywhere. There is no backend, no account, no analytics, and no CDN — see [Privacy and security](#privacy-and-security).
+Unbound turns the files you'd attach to an LLM chat — documents, spreadsheets, CSVs, PDFs, code, plain text — into clean, paste-ready markdown or plain text. **Conversion happens entirely in your browser**: files are read with the File API, parsed by bundled JavaScript, and never uploaded anywhere. There is no backend, no account, no analytics, and no CDN — see [Privacy and security](#privacy-and-security).
 
 ## Supported formats
 
-| Format                       | Status      | Notes                                                                              |
-| ---------------------------- | ----------- | ---------------------------------------------------------------------------------- |
-| TXT / MD / JSON / XML / code | working     | Pass-through with syntax-aware fenced output; encoding auto-detected               |
-| DOCX                         | working     | Headings, lists, tables, links, footnotes; images omitted with a warning           |
-| XLSX / XLS / XLSM            | working     | Multi-sheet `## Sheet:` sections, ISO dates, merged-cell and hidden-sheet handling |
-| CSV / TSV                    | working     | Exact cell text preserved (leading zeros, quoted spacing, BOM, windows-1252)       |
-| PDF                          | in progress | Library (pdfjs-dist) and self-hosted worker are set up; extraction is next         |
-| OCR (scanned PDFs, images)   | planned     | Planned with tesseract.js, self-hosted worker/wasm/language data                   |
-| PPTX, RTF, HTML file, URL    | planned     | P1 formats                                                                         |
-| EPUB, ZIP / folders          | planned     | P2 formats                                                                         |
+| Format                       | Status  | Notes                                                                                                                                                                |
+| ---------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TXT / MD / JSON / XML / code | working | Pass-through with syntax-aware fenced output; encoding auto-detected                                                                                                 |
+| DOCX                         | working | Headings, lists, tables, links, footnotes; images omitted with a warning                                                                                             |
+| XLSX / XLS / XLSM            | working | Multi-sheet `## Sheet:` sections, ISO dates, merged-cell and hidden-sheet handling                                                                                   |
+| CSV / TSV                    | working | Exact cell text preserved (leading zeros, quoted spacing, BOM, windows-1252)                                                                                         |
+| PDF (text-based)             | working | Headings, paragraphs, and lists from embedded text; scanned PDFs show a clear message until OCR lands; complex tables and multi-column layouts are not reconstructed |
+| OCR (scanned PDFs, images)   | planned | Planned with tesseract.js, self-hosted worker/wasm/language data                                                                                                     |
+| PPTX, RTF, HTML file, URL    | planned | P1 formats                                                                                                                                                           |
+| EPUB, ZIP / folders          | planned | P2 formats                                                                                                                                                           |
 
 ## Getting started
 
@@ -37,6 +37,7 @@ Two notes about dependencies:
 
 - Everything runs in your browser; files are never uploaded, and there is no server component.
 - A strict Content-Security-Policy is applied identically in `index.html`, `_headers`, and `vercel.json` (`default-src 'self'`, `worker-src 'self' blob:`); no CDN scripts, fonts, workers, or wasm are fetched from third parties.
+- The pdf.js worker is the copy Vite emits from `node_modules` (same-origin), never a CDN.
 - No analytics, no tracking, no accounts. Only UI settings (never file content or file names) are stored, in `localStorage`.
 
 ## Project docs
@@ -50,15 +51,16 @@ Two notes about dependencies:
 
 ## Current status
 
-Matches [PROGRESS.md](PROGRESS.md) exactly (2026-10-20):
+Matches [PROGRESS.md](PROGRESS.md) exactly (2026-10-21):
 
 - **M0–M4 complete**: core engine, output shell/copy/chunking, DOCX (Mammoth), XLSX/XLS/XLSM (vendored SheetJS), CSV/TSV (custom exact-text parser) — all with unit and browser tests.
-- **M5 (PDF) in progress**: M5.1 done — pdfjs-dist 6.4.299 installed with a self-hosted worker under the existing CSP. Text extraction (M5.2–M5.6) is not implemented yet.
-- Verified: **146 unit tests** (22 files), **48 e2e tests** (chromium + mobile-chromium), coverage `src/core` 93.44% / `src/converters` 92.18% lines (85% gate), initial JS **67,944 bytes gzip** of a 256,000-byte budget.
+- **M5 (PDF) in progress**: M5.1 (pdfjs-dist 6.4.299 + self-hosted worker under the existing CSP) and M5.2 (text-based PDF extraction: layout, scanned detection, password/corrupt errors, registration, upload e2e) are done. Header/footer removal, page markers, a table heuristic, bold detection, and 500+ page batching are deferred to M5.3; OCR (M6) is not implemented yet.
+- Verified 2026-10-21: **164 of 165 unit tests** pass (24 files; the 1 failure is a stale registry test that asserted `pdf` was _unregistered_ — left unedited deliberately, see `DECISIONS.md`), **52 e2e tests** (chromium + mobile-chromium), coverage `src/core` 93.1% / `src/converters` 92.8% lines (85% gate), initial JS **68,060 bytes gzip** of a 256,000-byte budget.
 
 ## Known limitations
 
-- PDF uploads are not converted yet (extraction lands with M5.2); the same is true for OCR, PPTX, RTF, HTML, URL, EPUB, and ZIP/folders.
+- Scanned/image-only PDFs are detected and reported with a clear message ("OCR support is not available yet"); OCR itself lands with M6.
+- PDF extraction preserves headings, paragraphs, and lists, but complex tables and multi-column layouts are not reconstructed, and repeating headers/footers are not yet stripped (M5.3). Non-Latin/CJK PDFs may need self-hosted cmap/font data later (see `DECISIONS.md`).
 - DOCX images are counted and warned about, not extracted.
 - XLSX/CSV values are emitted as the library reports them (XLSX) or exactly as written (CSV); formulas are never evaluated.
 - WebKit e2e cannot run on machines missing its system libraries (CI runs it).
