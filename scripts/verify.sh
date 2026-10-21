@@ -15,6 +15,20 @@ trap 'rm -f "$UNIT_OUTPUT" "$E2E_OUTPUT"' EXIT
 step "lockfile install"
 npm ci --ignore-scripts
 
+step "absolute path guard"
+if grep -RInE '/home/' src tests --exclude=verify.sh 2>/dev/null | grep -q '.'; then
+  echo "verify.sh failed: found absolute local path "/home/" in src/tests" >&2
+  exit 1
+fi
+if grep -RInE 'C:\\Users' src tests --exclude=verify.sh 2>/dev/null | grep -q '.'; then
+  echo "verify.sh found C:\\Users pattern in src/tests" >&2
+  exit 1
+fi
+if grep -RInE '/Users/' src tests --exclude=verify.sh 2>/dev/null | grep -q '.'; then
+  echo "verify.sh found /Users/ pattern in src/tests" >&2
+  exit 1
+fi
+
 step "lint"
 npm run lint
 

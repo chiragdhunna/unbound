@@ -5,7 +5,7 @@ import {
   findFirstNonEmptyRowIndex,
   trimBlankRowsAndColumns,
   buildMarkdownTable
-} from '/home/chiragdhunna/Desktop/docs/github_projects/unbound/src/core/table'
+} from '../../../src/core/table'
 
 describe('table utilities', () => {
   describe('escapeCellValue', () => {
