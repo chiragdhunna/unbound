@@ -259,3 +259,102 @@ describe('pdf extraction and conversion', () => {
     ])
   })
 })
+
+describe('pdf header/footer removal, large PDFs and page markers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('strips repeated headers and footers and emits the removal warning', async () => {
+    vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
+
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(StandardFonts.Helvetica)
+
+    for (let index = 1; index <= 4; index += 1) {
+      const page = doc.addPage([612, 792])
+      page.drawText('ACME Corp Confidential', { x: 72, y: 780, size: 9, font })
+      page.drawText(`Page ${index}`, { x: 72, y: 20, size: 9, font })
+      page.drawText(`Body line one on page ${index}.`, {
+        x: 72,
+        y: 700,
+        size: 12,
+        font
+      })
+      page.drawText(`Body line two on page ${index}.`, {
+        x: 72,
+        y: 682,
+        size: 12,
+        font
+      })
+    }
+
+    const result = await pdfConverter.convert(
+      converterInput(await doc.save()),
+      createConvertContext()
+    )
+
+    expect(result.markdown).not.toContain('ACME Corp Confidential')
+    expect(result.markdown).not.toContain('Page 1')
+    expect(result.markdown).toContain('Body line one on page 1.')
+    expect(result.markdown).toContain('Body line two on page 4.')
+    expect(result.warnings).toContainEqual({
+      code: 'PDF_BANDS_REMOVED',
+      message: 'Repeated headers, footers and page numbers were removed.',
+      severity: 'info'
+    })
+    expect(result.stats.pages).toBe(4)
+  })
+
+  it('converts a 320-page PDF with the large-PDF warning under 60 seconds', async () => {
+    vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
+
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(StandardFonts.Helvetica)
+
+    for (let index = 1; index <= 320; index += 1) {
+      const page = doc.addPage([612, 792])
+      page.drawText(`Page ${index} body content here.`, {
+        x: 72,
+        y: 700,
+        size: 12,
+        font
+      })
+    }
+
+    const started = Date.now()
+    const result = await pdfConverter.convert(
+      converterInput(await doc.save()),
+      createConvertContext()
+    )
+    const elapsedMs = Date.now() - started
+    console.log(`320-page PDF conversion took ${elapsedMs} ms`)
+
+    expect(elapsedMs).toBeLessThan(60_000)
+    expect(result.stats.pages).toBe(320)
+    expect(result.markdown).toContain('Page 1 body content here.')
+    expect(result.markdown).toContain('Page 320 body content here.')
+    expect(result.warnings).toContainEqual({
+      code: 'PDF_LARGE',
+      message: 'Large PDF (320 pages). Conversion can take a while.',
+      severity: 'warn'
+    })
+  }, 90_000)
+
+  it('emits page marker blocks when pdfPageMarkers is on', async () => {
+    vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
+
+    const ctx = {
+      ...createConvertContext(),
+      options: { ocrLanguage: 'eng', forceOcr: false, pdfPageMarkers: true }
+    }
+
+    const result = await pdfConverter.convert(
+      converterInput(await buildGoldenPdf()),
+      ctx
+    )
+
+    expect(result.markdown).toContain('--- Page 1 ---')
+    expect(result.markdown).toContain('--- Page 2 ---')
+  })
+})

@@ -7,7 +7,8 @@ export function createConvertContext(): ConvertContext {
     requestPassword: async () => null,
     options: {
       ocrLanguage: 'eng',
-      forceOcr: false
+      forceOcr: false,
+      pdfPageMarkers: false
     }
   }
 }

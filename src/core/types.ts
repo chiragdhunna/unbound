@@ -44,6 +44,8 @@ export interface ConvertResult {
 export interface ConvertOptions {
   ocrLanguage: string
   forceOcr: boolean
+  /** PDF only: emit `--- Page N ---` blocks before each page. Defaults off. */
+  pdfPageMarkers?: boolean
 }
 
 export interface ConvertContext {
