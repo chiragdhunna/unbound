@@ -328,7 +328,6 @@ describe('pdf header/footer removal, large PDFs and page markers', () => {
       createConvertContext()
     )
     const elapsedMs = Date.now() - started
-    console.log(`320-page PDF conversion took ${elapsedMs} ms`)
 
     expect(elapsedMs).toBeLessThan(60_000)
     expect(result.stats.pages).toBe(320)
