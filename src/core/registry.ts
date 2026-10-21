@@ -42,6 +42,10 @@ const registry: Partial<
   csv: () =>
     import('../converters/csv').then((module) => ({
       converter: module.csvConverter
+    })),
+  pdf: () =>
+    import('../converters/pdf').then((module) => ({
+      converter: module.pdfConverter
     }))
 }
 
