@@ -9,6 +9,7 @@ import {
 import { chunkMarkdown } from '../core/chunk'
 import { countText } from '../core/tokens'
 import { createConvertContext } from '../core/context'
+import { type ConvertContext } from '../core/types'
 import { UnsupportedFormatError } from '../core/errors'
 import { convertFile } from '../core/pipeline'
 import { markdownToPlain } from '../core/plain'
@@ -106,6 +107,14 @@ async function copyText(text: string): Promise<boolean> {
   }
 
   return fallbackCopy(text)
+}
+
+function buildConvertContext(settings: Settings): ConvertContext {
+  const context = createConvertContext()
+  return {
+    ...context,
+    options: { ...context.options, pdfPageMarkers: settings.pageMarkers }
+  }
 }
 
 export function AppShell() {
@@ -272,7 +281,7 @@ export function AppShell() {
       )
 
       try {
-        const result = await convertFile(file!, createConvertContext())
+        const result = await convertFile(file!, buildConvertContext(settings))
         setJobs((previous) =>
           previous.map((job) =>
             job.id === jobId
@@ -363,7 +372,7 @@ export function AppShell() {
 
     try {
       // Convert the file
-      const result = await convertFile(file, createConvertContext())
+      const result = await convertFile(file, buildConvertContext(settings))
       setJobs((previous) =>
         previous.map((j) =>
           j.id === jobId
@@ -586,8 +595,9 @@ export function AppShell() {
             Quick paste
           </label>
 
-          <label className="toggle-row">
+          <label className="toggle-row" htmlFor="page-markers-checkbox">
             <input
+              id="page-markers-checkbox"
               type="checkbox"
               checked={settings.pageMarkers}
               onChange={(event) =>
@@ -597,7 +607,7 @@ export function AppShell() {
                 }))
               }
             />
-            Page markers
+            Add page markers (PDF)
           </label>
 
           <label className="toggle-row">

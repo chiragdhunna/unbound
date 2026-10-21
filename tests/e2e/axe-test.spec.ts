@@ -58,7 +58,7 @@ test('axe: options bar state should have no serious or critical violations', asy
   await page.getByRole('button', { name: 'Plain', exact: true }).click();
   await page.getByRole('button', { name: 'Combined', exact: true }).click();
   await page.getByLabel('Quick paste', { exact: true }).check();
-  await page.getByLabel('Page markers', { exact: true }).check();
+  await page.getByLabel('Add page markers (PDF)', { exact: true }).check();
   await page.getByLabel('Chunk labels', { exact: true }).uncheck();
   await page.getByLabel('Chunk preamble', { exact: true }).check();
   await page.getByLabel('Chunk unit', { exact: true }).selectOption('tokens');

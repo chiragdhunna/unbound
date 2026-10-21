@@ -92,3 +92,34 @@ test('shows the scanned-PDF message for a blank PDF', async ({ page }) => {
     )
   ).toBeVisible()
 })
+
+test('adds page markers when the PDF page-markers setting is on', async ({
+  page
+}) => {
+  await ensureFixtures()
+  await page.goto('/')
+  await page.getByLabel('Add page markers (PDF)').check()
+  await page
+    .getByLabel('Choose file', { exact: true })
+    .setInputFiles(path.join(outputDir, 'm52-golden.pdf'))
+
+  const output = page.getByRole('textbox')
+  await expect(output).toContainText('--- Page 1 ---')
+  await expect(output).toContainText('--- Page 2 ---')
+})
+
+test('omits page markers when the PDF page-markers setting is off', async ({
+  page
+}) => {
+  await ensureFixtures()
+  await page.goto('/')
+  await expect(page.getByLabel('Add page markers (PDF)')).not.toBeChecked()
+  await page
+    .getByLabel('Choose file', { exact: true })
+    .setInputFiles(path.join(outputDir, 'm52-golden.pdf'))
+
+  const output = page.getByRole('textbox')
+  await expect(output).toContainText('# Quarterly Budget Review')
+  await expect(output).not.toContainText('--- Page 1 ---')
+  await expect(output).not.toContainText('--- Page 2 ---')
+})
