@@ -50,9 +50,7 @@ async function ensureFixtures() {
   blank.addPage([612, 792])
   blank.addPage([612, 792])
   await fs.writeFile(path.join(outputDir, 'm52-blank.pdf'), await blank.save())
-}
-
-test('uploads a generated PDF and renders the markdown output', async ({
+}test('uploads a generated PDF and renders the markdown output', async ({
   page
 }) => {
   const consoleErrors: string[] = []
@@ -71,10 +69,16 @@ test('uploads a generated PDF and renders the markdown output', async ({
     .getByLabel('Choose file', { exact: true })
     .setInputFiles(path.join(outputDir, 'm52-golden.pdf'))
 
+  // Wait for PDF conversion to complete (pdfjs worker loads lazily)
+  // The status pill shows 'Converting…' while converting, 'Ready' when done
+  await expect(page.getByRole('status')).toContainText('Ready')
+
   await expect(page.getByRole('textbox')).toContainText(
     '# Quarterly Budget Review'
   )
-  await expect(page.getByRole('textbox')).toContainText('- Rent 1200')
+  await expect(page.getByRole('textbox')).toContainText(
+    '- Rent 1200'
+  )
 
   expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
 })
