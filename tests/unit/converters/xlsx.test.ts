@@ -22,12 +22,26 @@ beforeEach(() => {
 import { xlsxConverter } from '../../../src/converters/xlsx'
 import { PasswordRequiredError, CorruptFileError, NoTextFoundError } from '../../../src/core/errors'
 
+// Structural types describing only the parts of SheetJS this test touches.
+type MockFn = {
+  mockReturnValue: (value: unknown) => void
+  mockImplementation: (fn: (...args: never[]) => unknown) => void
+}
+
+interface MockXLSX {
+  read: MockFn
+  utils: {
+    decode_range: MockFn
+    encode_cell: MockFn
+    sheet_to_json: MockFn
+  }
+}
+
 describe('xlsxConverter', () => {
-  // Helper to get the mocked XLSX module's default export
-  const getMockXLSX = async () => {
+  // Helper to get the mocked XLSX module's default export (typed, no `any`)
+  const getMockXLSX = async (): Promise<MockXLSX> => {
     const xlsxModule = await import('xlsx')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return xlsxModule.default as any
+    return xlsxModule.default as unknown as MockXLSX
   }
 
   it('converts two sheets with correct order and headers', async () => {
