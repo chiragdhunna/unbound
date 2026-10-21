@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  layoutPages,
   layoutPagesToMarkdown,
   type TextItemLite
 } from '../../../src/converters/pdf/layout'
@@ -182,5 +183,104 @@ describe('layoutPagesToMarkdown', () => {
     ])
 
     expect(result.markdown).toBe(`${longLine}\n\nBody line below.`)
+  })
+})
+
+describe('layoutPages', () => {
+  const PAGE_HEIGHT = 792
+
+  function headerFooterPage(pageNumber: number): TextItemLite[] {
+    return [
+      item('ACME Corp Confidential', 72, 770, 9, 150),
+      item(`Page ${pageNumber} of 5`, 250, 30, 9, 70),
+      item(`Body line one for page ${pageNumber}.`, 72, 700, 12, 200),
+      item(`Body line two for page ${pageNumber}.`, 72, 682, 12, 200)
+    ]
+  }
+
+  const fivePages = [1, 2, 3, 4, 5].map(headerFooterPage)
+  const fiveHeights = [PAGE_HEIGHT, PAGE_HEIGHT, PAGE_HEIGHT, PAGE_HEIGHT, PAGE_HEIGHT]
+
+  it('removes repeated headers, footers and counts them', () => {
+    const result = layoutPages(fivePages, { pageHeights: fiveHeights })
+
+    expect(result.markdown).not.toContain('ACME Corp Confidential')
+    expect(result.markdown).not.toContain('Page 1 of 5')
+    expect(result.markdown).not.toContain('Page 5 of 5')
+    expect(result.markdown).toContain('Body line one for page 1.')
+    expect(result.markdown).toContain('Body line two for page 5.')
+    expect(result.removedLineCount).toBe(10)
+  })
+
+  it('keeps a header that appears on fewer than 60% of pages', () => {
+    const pages = fivePages.map((page, index) =>
+      index < 2
+        ? [item('Only on two pages', 72, 770, 9, 120), ...page]
+        : page
+    )
+
+    const result = layoutPages(pages, { pageHeights: fiveHeights })
+
+    expect(result.markdown).toContain('Only on two pages')
+  })
+
+  it('keeps identical text that is in the middle of a page', () => {
+    const pages = fivePages.map((page) => [
+      ...page,
+      item('ACME Corp Confidential', 72, 400, 12, 150)
+    ])
+
+    const result = layoutPages(pages, { pageHeights: fiveHeights })
+
+    // The mid-page copies survive even though the header copies are removed.
+    expect(result.markdown).toContain('ACME Corp Confidential')
+  })
+
+  it('keeps a header on a 2-page document but still drops a bare page number', () => {
+    const twoPages = [
+      [item('Report title', 72, 770, 9, 100), item('Body one.', 72, 700, 12, 80), item('2', 396, 30, 9, 10)],
+      [item('Report title', 72, 770, 9, 100), item('Body two.', 72, 700, 12, 80), item('3', 396, 30, 9, 10)]
+    ]
+
+    const result = layoutPages(twoPages, {
+      pageHeights: [PAGE_HEIGHT, PAGE_HEIGHT]
+    })
+
+    expect(result.markdown).toContain('Report title')
+    expect(result.markdown).not.toMatch(/^2$/m)
+    expect(result.markdown).toContain('Body one.')
+    expect(result.removedLineCount).toBe(2)
+  })
+
+  it('keeps everything when removeRepeated is false', () => {
+    const result = layoutPages(fivePages, {
+      pageHeights: fiveHeights,
+      removeRepeated: false
+    })
+
+    expect(result.markdown).toContain('ACME Corp Confidential')
+    expect(result.markdown).toContain('Page 1 of 5')
+    expect(result.removedLineCount).toBe(0)
+  })
+
+  it('adds page marker blocks when pageMarkers is true', () => {
+    const twoPages = [
+      [item('Page one body.', 72, 700, 12, 120)],
+      [item('Page two body.', 72, 700, 12, 120)]
+    ]
+
+    const result = layoutPages(twoPages, { pageMarkers: true })
+
+    expect(result.markdown).toBe(
+      '--- Page 1 ---\n\nPage one body.\n\n--- Page 2 ---\n\nPage two body.'
+    )
+  })
+
+  it('keeps the legacy wrapper shape for existing callers', () => {
+    const wrapped = layoutPagesToMarkdown([goldenPageOne, goldenPageTwo])
+    const direct = layoutPages([goldenPageOne, goldenPageTwo])
+
+    expect(wrapped.markdown).toBe(direct.markdown)
+    expect(wrapped.charCount).toBe(direct.charCount)
   })
 })
