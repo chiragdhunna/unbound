@@ -16,18 +16,15 @@ step "lockfile install"
 npm ci --ignore-scripts
 
 step "absolute path guard"
-if grep -RInE '/home/' src tests --exclude=verify.sh 2>/dev/null | grep -q '.'; then
-  echo "verify.sh failed: found absolute local path "/home/" in src/tests" >&2
-  exit 1
-fi
-if grep -RInE 'C:\\Users' src tests --exclude=verify.sh 2>/dev/null | grep -q '.'; then
-  echo "verify.sh found C:\\Users pattern in src/tests" >&2
-  exit 1
-fi
-if grep -RInE '/Users/' src tests --exclude=verify.sh 2>/dev/null | grep -q '.'; then
-  echo "verify.sh found /Users/ pattern in src/tests" >&2
-  exit 1
-fi
+# Fail if any tracked source/test/script file contains an absolute local path.
+# verify.sh is excluded because it names the patterns below.
+for pattern in '/home/' '/Users/' 'C:\Users'; do
+  if grep -RInF --exclude=verify.sh -e "$pattern" src tests scripts 2>/dev/null | grep -q '.'; then
+    echo "verify.sh failed: found absolute local path '$pattern' in src, tests or scripts" >&2
+    grep -RInF --exclude=verify.sh -e "$pattern" src tests scripts >&2 || true
+    exit 1
+  fi
+done
 
 step "lint"
 npm run lint
