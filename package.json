@@ -16,7 +16,8 @@
     "test:e2e": "playwright test",
     "format:check": "prettier --check .",
     "preview": "vite preview",
-    "verify": "bash scripts/verify.sh"
+    "verify": "bash scripts/verify.sh",
+    "prebuild": "node scripts/sync-ocr-assets.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",

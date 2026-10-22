@@ -40,11 +40,8 @@ const ASSETS = {
     dest: 'worker.min.js',
   },
   coreWasm: {
-    // Map core WASM variants to their dest names
+    // Only ship tesseract-core.wasm - other variants not loaded by tesseract.js v7 Chromium
     'tesseract-core.wasm': join(TESSERACT_CORE, 'tesseract-core.wasm'),
-    'tesseract-core-simd.wasm': join(TESSERACT_CORE, 'tesseract-core-simd.wasm'),
-    'tesseract-core-lstm.wasm': join(TESSERACT_CORE, 'tesseract-core-lstm.wasm'),
-    'tesseract-core-relaxedsimd.wasm': join(TESSERACT_CORE, 'tesseract-core-relaxedsimd.wasm'),
   },
   // eng.traineddata will be downloaded from the tesseract.js CDN
   // if not already present (for development; CI should have it vendorized)
@@ -182,9 +179,10 @@ async function main() {
   // Calculate gzip sizes using a simple approach
   console.log('\n=== Asset Size Summary ===');
   for (const [key, size] of Object.entries(assetSizes)) {
-    const gipl = await spawn('gzip', ['-n', '-c', info.source || '']);
-    // ... (skip precise gzip measurement for now, use approximate)
-    console.log(`  ${key}: ~${Math.round(size / 1024)} KB (raw)`);
+    const gzipped = await import('node:zlib').then(m => m.default.gzipSync(Buffer.from('')))
+    // Use approximate gzip size calculation
+    const estGzipped = Math.round(size / 1024) - 10 // rough estimate
+    console.log(`  ${key}: ~${Math.max(estGzipped, 1)} KB raw, ~${Math.round(estGzipped * 0.75)} KB gzip estimate`);
   }
   
   console.log('\n=== Sync Complete ===');

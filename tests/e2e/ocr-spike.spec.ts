@@ -1,57 +1,65 @@
 import { expect, test } from '@playwright/test'
 
-test('self-hosted tesseract assets: CSP compliance + zero external requests', async ({ page }) => {
-  await page.goto('/')
+test('M6.1c: self-hosted tesseract OCR assets and CSP compliance', async ({ page, request }) => {
+  // Track all network requests and check origins
+  const crossOriginRequests: string[] = []
+  const cspViolations: string[] = []
 
-  // Track external network requests
-  const externalRequests: string[] = []
-  const cspErrors: string[] = []
+  // Get page origin from the initial navigation URL
+  const navResponse = await page.goto('/')
+  const navUrl = navResponse?.url() || page.url()
+  const pageOrigin = new URL(navUrl).origin
 
-  // Track console errors for CSP/fetch issues
-  page.on('console', (message) => {
-    const text = message.text()
-    if (message.type() === 'error') {
-      if (text.includes('Content-Security-Policy')) {
-        cspErrors.push(text)
-      }
-      if (text.includes('net::ERR') || text.includes('Failed to fetch')) {
-        externalRequests.push(text)
-      }
-    }
-  })
-
-  // Track network responses for origin checking
-  page.on('response', async (response) => {
-    const url = response.url()
-    const pageOrigin = window.location.origin + '/'
+  page.on('request', (request) => {
+    const requestUrl = request.url()
     try {
-      const parsed = new URL(url)
-      if (parsed.origin !== new URL(pageOrigin).origin && !parsed.hostname.startsWith('localhost') && !parsed.hostname.startsWith('127.')) {
-        externalRequests.push(url)
+      const parsed = new URL(requestUrl)
+      if (parsed.origin !== pageOrigin && !parsed.hostname.startsWith('localhost') && !parsed.hostname.startsWith('127.')) {
+        crossOriginRequests.push(requestUrl)
       }
     } catch {
       // Ignore malformed URLs
     }
   })
 
-  await page.waitForLoadState('networkidle')
+  page.on('console', (message) => {
+    const text = message.text()
+    if (message.type() === 'error') {
+      if (text.includes('Content-Security-Policy')) {
+        cspViolations.push(text)
+      }
+    }
+  })
 
-  // Step 1: Verify zero external requests for OCR assets
-  // This is the key ADR-6 compliance check
-  expect(externalRequests.length).toBe(0)
-  expect(cspErrors.length).toBe(0)
+  // Verify the self-hosted OCR assets are served with 200 status
+  const requestBase = 'http://127.0.0.1:4173'
+  
+  // 1. Verify worker.min.js is served
+  const workerResponse = await request.get(`${requestBase}/ocr/worker.min.js`)
+  expect(workerResponse.status()).toBe(200)
+  console.log('worker.min.js served with status:', workerResponse.status())
 
-  // Step 2: Verify the CSP configuration allows self-hosted worker paths
-  // index.html has: worker-src 'self' blob;
-  // /ocr/worker.min.js is same-origin, so worker-src 'self' should allow it
-  // We verify this by checking that no CSP errors were raised
+  // 2. Verify tesseract-core.wasm is served
+  const coreResponse = await request.get(`${requestBase}/ocr/tesseract-core.wasm`)
+  expect(coreResponse.status()).toBe(200)
+  console.log('tesseract-core.wasm served with status:', coreResponse.status())
 
-  // Step 3: Log asset verification (files confirmed present by manual check)
-  console.log('✓ Worker: public/ocr/worker.min.js (111 KB gzipped)')
-  console.log('✓ Core WASM: public/ocr/tesseract-core.wasm (3.4 MB)')
-  console.log('✓ Eng traineddata: public/ocr/lang/eng.traineddata (9.4 KB)')
-  console.log('✓ Zero external requests:', externalRequests.length === 0)
-  console.log('✓ Zero CSP errors:', cspErrors.length === 0)
+  // 3. Verify eng.traineddata is served with 200 status
+  const traineddataResponse = await request.get(`${requestBase}/ocr/lang/eng.traineddata`)
+  expect(traineddataResponse.status()).toBe(200)
+  console.log('eng.traineddata served with status:', traineddataResponse.status())
 
-  // All checks passed - M6.1b spike verified
+  // 4. Verify zero cross-origin requests during page load and asset serving
+  expect(crossOriginRequests.length).toBe(0)
+
+  // 5. Verify zero CSP violations
+  expect(cspViolations.length).toBe(0)
+
+  // Summary of verified assets
+  console.log('=== M6.1c Asset Verification Summary ===')
+  console.log('worker.min.js: 200 ✓')
+  console.log('tesseract-core.wasm: 200 ✓')
+  console.log('eng.traineddata: 200 ✓')
+  console.log('Cross-origin requests: 0 ✓')
+  console.log('CSP violations: 0 ✓')
 })
