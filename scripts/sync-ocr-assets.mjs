@@ -43,10 +43,10 @@ const ASSETS = {
     // Only ship tesseract-core.wasm - other variants not loaded by tesseract.js v7 Chromium
     'tesseract-core.wasm': join(TESSERACT_CORE, 'tesseract-core.wasm'),
   },
-  // eng.traineddata will be downloaded from the tesseract.js CDN
-  // if not already present (for development; CI should have it vendorized)
+  // eng.traineddata downloaded from tessdata_fast release.
+  // Verified: > 1 MB binary, does NOT start with '<!' (unlike CDN HTML error pages)
   traineddata: {
-    url: `https://tesseract.projectnaptha.com/tesseract.js/4.0.0/eng.traineddata`,
+    url: `https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata`,
     dest: 'lang/eng.traineddata',
   },
 };
@@ -156,13 +156,40 @@ async function main() {
   if (!existsSync(traineddataDest)) {
     console.log('  ↳ eng.traineddata not found locally, attempting download...');
     try {
-      await downloadFile(ASSETS.traineddata.url, ASSETS.traineddata.dest);
+      await downloadFile(ASSETS.traineddata.url, ASSETS.traineddata.dest)
+      // --- validation start ---
+      const buf = await import('node:fs').then(m => m.default.readFileSync(traineddataDest))
+      const str = buf.toString('utf8', 0, 20)
+      if (str.startsWith('<!') || str.startsWith('<!')) {
+        console.error(`✗ eng.traineddata at ${traineddataDest} appears to be an HTML error page (starts with '<!'). Delete and re-download manually.`);
+        process.exit(1)
+      }
+      if (buf.length < 1_000_000) {
+        console.error(`✗ eng.traineddata at ${traineddataDest} is only ${buf.length} bytes, expected > 1 MB. Delete and re-download manually.`);
+        process.exit(1)
+      }
+      // --- validation end ---
     } catch (err) {
       console.error(`✗ Failed to download eng.traineddata: ${err.message}`);
       console.error('  For production use, vendor the traineddata file or include it in the build.');
       // Don't fail here - just warn. The spike test will verify the mechanism.
     }
   } else {
+    // Also validate existing file
+    try {
+      const buf = await import('node:fs').then(m => m.default.readFileSync(traineddataDest))
+      const str = buf.toString('utf8', 0, 20)
+      if (str.startsWith('<!') || str.startsWith('<!')) {
+        console.error(`✗ eng.traineddata at ${traineddataDest} appears to be an HTML error page (starts with '<!'). Delete and re-download manually.`);
+        process.exit(1)
+      }
+      if (buf.length < 1_000_000) {
+        console.error(`✗ eng.traineddata at ${traineddataDest} is only ${buf.length} bytes, expected > 1 MB. Delete and re-download manually.`);
+        process.exit(1)
+      }
+    } catch {
+      // ignore - file may have been placed there by user
+    }
     console.log(`  ✓ eng.traineddata already present at ${traineddataDest}`);
   }
   

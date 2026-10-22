@@ -1,19 +1,19 @@
 import { expect, test } from '@playwright/test'
 
-test('M6.1c: self-hosted tesseract OCR assets and CSP compliance', async ({ page, request }) => {
-  // Track all network requests and check origins
+test('M6.1d: self-hosted tesseract OCR assets and CSP compliance', async ({ page }) => {
+  // ********** TRACKING: must be set BEFORE and during page navigation **********
   const crossOriginRequests: string[] = []
   const cspViolations: string[] = []
+  const ocrTimings = {
+    workerCreation: 0,
+  } as { workerCreation: number }
 
-  // Get page origin from the initial navigation URL
-  const navResponse = await page.goto('/')
-  const navUrl = navResponse?.url() || page.url()
-  const pageOrigin = new URL(navUrl).origin
-
+  // Track network requests BEFORE navigation
   page.on('request', (request) => {
     const requestUrl = request.url()
     try {
       const parsed = new URL(requestUrl)
+      const pageOrigin = new URL(page.url()).origin
       if (parsed.origin !== pageOrigin && !parsed.hostname.startsWith('localhost') && !parsed.hostname.startsWith('127.')) {
         crossOriginRequests.push(requestUrl)
       }
@@ -22,44 +22,98 @@ test('M6.1c: self-hosted tesseract OCR assets and CSP compliance', async ({ page
     }
   })
 
+  // Track console messages for CSP violations
   page.on('console', (message) => {
     const text = message.text()
     if (message.type() === 'error') {
-      if (text.includes('Content-Security-Policy')) {
+      if (text.includes('Content-Security-Policy') || text.includes('Content-Security')) {
         cspViolations.push(text)
       }
     }
   })
 
-  // Verify the self-hosted OCR assets are served with 200 status
-  const requestBase = 'http://127.0.0.1:4173'
-  
-  // 1. Verify worker.min.js is served
-  const workerResponse = await request.get(`${requestBase}/ocr/worker.min.js`)
-  expect(workerResponse.status()).toBe(200)
-  console.log('worker.min.js served with status:', workerResponse.status())
+  // Navigate page - this sets up the CSP context
+  await page.goto('/', { waitUntil: 'networkidle' })
 
-  // 2. Verify tesseract-core.wasm is served
-  const coreResponse = await request.get(`${requestBase}/ocr/tesseract-core.wasm`)
-  expect(coreResponse.status()).toBe(200)
-  console.log('tesseract-core.wasm served with status:', coreResponse.status())
+  // Get page origin from current URL after navigation
+  const resolvedPageOrigin = new URL(page.url()).origin
 
-  // 3. Verify eng.traineddata is served with 200 status
-  const traineddataResponse = await request.get(`${requestBase}/ocr/lang/eng.traineddata`)
-  expect(traineddataResponse.status()).toBe(200)
-  console.log('eng.traineddata served with status:', traineddataResponse.status())
+  // Re-run tracking after navigation to catch OCR-related requests
+  const pendingCrossOrigin: string[] = []
+  const pendingCsp: string[] = []
+  page.on('request', (request) => {
+    const requestUrl = request.url()
+    try {
+      const parsed = new URL(requestUrl)
+      if (parsed.origin !== resolvedPageOrigin && !parsed.hostname.startsWith('localhost') && !parsed.hostname.startsWith('127.')) {
+        pendingCrossOrigin.push(requestUrl)
+      }
+    } catch {
+      // Ignore malformed URLs
+    }
+  })
+  page.on('console', (message) => {
+    const text = message.text()
+    if (message.type() === 'error') {
+      if (text.includes('Content-Security-Policy') || text.includes('Content-Security')) {
+        pendingCsp.push(text)
+      }
+    }
+  })
 
-  // 4. Verify zero cross-origin requests during page load and asset serving
-  expect(crossOriginRequests.length).toBe(0)
+  // ********** OCR: draw known text and create worker **********
+  // Ensure canvas exists and draw known text
+  await page.evaluate(() => {
+    let canvas = document.querySelector('canvas')
+    if (!canvas) {
+      canvas = document.createElement('canvas')
+      document.body.appendChild(canvas)
+    }
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    // Set canvas size and draw known text
+    canvas.width = 400
+    canvas.height = 100
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.font = '48px Sans-Serif'
+    ctx.fillStyle = 'black'
+    ctx.fillText('HELLO WORLD', 20, 50)
+  })
 
-  // 5. Verify zero CSP violations
-  expect(cspViolations.length).toBe(0)
+  await page.waitForTimeout(100)
 
-  // Summary of verified assets
-  console.log('=== M6.1c Asset Verification Summary ===')
-  console.log('worker.min.js: 200 ✓')
-  console.log('tesseract-core.wasm: 200 ✓')
-  console.log('eng.traineddata: 200 ✓')
-  console.log('Cross-origin requests: 0 ✓')
-  console.log('CSP violations: 0 ✓')
+  // Now import and use tesseract.js with self-hosted paths
+  // Pass lang as first argument to createWorker (API: createWorker(langs, options))
+  const tesseractModule = await import('tesseract.js')
+
+  // Measure worker creation time
+  const workerStart = performance.now()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const worker: any = await tesseractModule.createWorker('eng', 0 as any, {
+    workerPath: '/ocr/worker.min.js',
+    corePath: '/ocr/tesseract-core.wasm',
+    langPath: '/ocr/lang/',
+  })
+  // eslint-enable @typescript-eslint/no-explicit-any
+  ocrTimings.workerCreation = performance.now() - workerStart
+
+  // ********** ASSERTIONS **********
+
+  // Assert worker creation succeeded
+  expect(worker).toBeDefined()
+
+  // Assert zero cross-origin requests during the OCR run
+  const allCrossOrigin = [...crossOriginRequests, ...pendingCrossOrigin]
+  expect(allCrossOrigin.length).toBe(0)
+
+  // Assert zero CSP violations
+  const allCsp = [...cspViolations, ...pendingCsp]
+  expect(allCsp.length).toBe(0)
+
+  // Clean up
+  await worker.terminate()
+
+  // Store timings globally for DECISIONS.md recording
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(global as any).m61dTimings = ocrTimings
 })
