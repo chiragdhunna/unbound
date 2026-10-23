@@ -35,6 +35,8 @@ export type ExtractHooks = {
 export type ExtractedPage = {
   items: TextItemLite[]
   height: number
+  /** True if the page contains image operators (graphics) rather than/selectable text. */
+  hasImageOps?: boolean
 }
 
 /** Yields to the event loop so a long document never freezes the UI thread. */
@@ -51,9 +53,7 @@ function pageHeightOf(page: PdfPageLike): number {
   return 0
 }
 
-/**
- * Reads every page of a PDF into per-page text items plus the page height.
- *
+/** Reads every page of a PDF into per-page text items plus the page height.
  * pdfjs may transfer (detach) the ArrayBuffer it is handed, so the bytes are
  * always copied: the caller keeps the original intact for a future OCR
  * fallback. pdfjs v6 has no `PDFDocumentProxy.destroy()`; cleanup happens on
@@ -89,7 +89,15 @@ export async function extractPages(
         })
       }
 
-      pages.push({ items, height: pageHeightOf(page) })
+      // Detect if the page has image operators (graphics) instead of/selectable text.
+      // pdfjs image operators appear as non-string entries in the text content items.
+      const hasImageOps = content.items.some((raw: unknown) => {
+        if (typeof raw !== 'object' || raw === null) return false
+        // Non-string items with transform/size data indicate graphics/image ops
+        return typeof raw !== 'string' && raw !== null
+      })
+
+      pages.push({ items, height: pageHeightOf(page), hasImageOps })
       page.cleanup()
       hooks?.onProgress?.({
         phase: 'pdf',
@@ -106,9 +114,7 @@ export async function extractPages(
   }
 }
 
-/**
- * Back-compat wrapper returning only the per-page items.
- */
+/** Back-compat wrapper returning only the per-page items. */
 export async function extractPageItems(
   pdfjs: PdfjsLike,
   bytes: Uint8Array,
