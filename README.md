@@ -1,67 +1,485 @@
-# Unbound
+<p align="center">
+  <img src="https://img.shields.io/badge/Unbound-v0.1.0-F59E0B?style=for-the-badge&labelColor=0D1117" alt="Unbound v0.1.0" />
+  <img src="https://img.shields.io/badge/100%25_Client--Side-No_Backend-10B981?style=for-the-badge&labelColor=0D1117" alt="100% Client-Side" />
+  <img src="https://img.shields.io/badge/React_18-TypeScript_Strict-3B82F6?style=for-the-badge&labelColor=0D1117" alt="React 18 + TypeScript" />
+  <img src="https://img.shields.io/badge/License-Private-6366F1?style=for-the-badge&labelColor=0D1117" alt="License" />
+</p>
 
-Unbound turns the files you'd attach to an LLM chat — documents, spreadsheets, CSVs, PDFs, code, plain text — into clean, paste-ready markdown or plain text. **Conversion happens entirely in your browser**: files are read with the File API, parsed by bundled JavaScript, and never uploaded anywhere. There is no backend, no account, no analytics, and no CDN — see [Privacy and security](#privacy-and-security).
+<h1 align="center">
+  ⚡ Unbound
+</h1>
 
-## Supported formats
+<p align="center">
+  <strong>Turn any file into clean, paste-ready markdown — so you're never blocked by an LLM's attachment limits again.</strong>
+</p>
 
-| Format                       | Status  | Notes                                                                                                                                                                                                                                                                                                                         |
-| ---------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TXT / MD / JSON / XML / code | working | Pass-through with syntax-aware fenced output; encoding auto-detected                                                                                                                                                                                                                                                          |
-| DOCX                         | working | Headings, lists, tables, links, footnotes; images omitted with a warning                                                                                                                                                                                                                                                      |
-| XLSX / XLS / XLSM            | working | Multi-sheet `## Sheet:` sections, ISO dates, merged-cell and hidden-sheet handling                                                                                                                                                                                                                                            |
-| CSV / TSV                    | working | Exact cell text preserved (leading zeros, quoted spacing, BOM, windows-1252)                                                                                                                                                                                                                                                  |
-| PDF (text-based)             | working | Headings, paragraphs, and lists from embedded text; repeating headers/footers and page numbers are stripped automatically (with a warning); optional per-page markers; a warning appears on very large PDFs; scanned PDFs show a clear message until OCR lands; complex tables and multi-column layouts are not reconstructed |
-| OCR (scanned PDFs, images)   | planned | Planned with tesseract.js, self-hosted worker/wasm/language data                                                                                                                                                                                                                                                              |
-| PPTX, RTF, HTML file, URL    | planned | P1 formats                                                                                                                                                                                                                                                                                                                    |
-| EPUB, ZIP / folders          | planned | P2 formats                                                                                                                                                                                                                                                                                                                    |
+<p align="center">
+  <em>Drop a PDF, DOCX, spreadsheet, or code file → get structured markdown → copy → paste into ChatGPT, Claude, Gemini, or Grok. <br/>
+  Everything runs in your browser. No uploads. No backend. No accounts.</em>
+</p>
 
-## Getting started
+---
 
-Requires **Node.js >= 22** (see `engines` in `package.json`).
+## ✨ What is Unbound?
 
-```bash
-npm ci
-npm run dev        # start the dev server
-npm run build      # production build
-npm run test:unit  # vitest unit tests
-npm run test:e2e   # Playwright e2e tests
-npm run verify     # lint + typecheck + build + unit + e2e + gates
+Every major LLM chat — ChatGPT, Claude, Grok, Gemini — limits file **attachments** but imposes no real limit on **pasted text**. Unbound converts your documents into clean, structured markdown that you can paste directly into any LLM prompt, bypassing attachment restrictions entirely.
+
+```
+  ┌──────────┐     ┌──────────────┐     ┌─────────────┐     ┌───────────────┐
+  │ Drop file │ ──▶ │  Auto-detect  │ ──▶ │  Convert to  │ ──▶ │  Copy & Paste  │
+  │ (.pdf,    │     │  type by magic │     │  Markdown    │     │  into any LLM  │
+  │  .docx…)  │     │  bytes + ext   │     │  or Plain    │     │  chat box      │
+  └──────────┘     └──────────────┘     └─────────────┘     └───────────────┘
 ```
 
-Two notes about dependencies:
+### 🎯 Key Features
 
-- **SheetJS is vendored.** The `xlsx` package is installed from the local tarball `vendor/xlsx-0.20.3.tgz` because the npm registry copy is stale. Do **not** run `npm audit fix --force`; upgrade by replacing the tarball (see `DECISIONS.md`).
-- **WebKit e2e needs system libraries.** On machines without them, run `npm run test:e2e -- --project=chromium --project=mobile-chromium`. CI covers WebKit.
+- **🔒 100% Private** — Files never leave your browser. No server, no analytics, no CDN
+- **📋 One-Click Copy** — Convert → Copy → Paste in ≤ 3 steps
+- **📊 Smart Chunking** — Large outputs auto-split into paste-sized segments with `Part X of Y`
+- **🔍 Magic-Byte Detection** — File types detected by content signatures, not just extensions
+- **📱 Mobile Friendly** — Works on phones and tablets for on-the-go pasting
+- **♿ Accessible** — Keyboard navigable, screen-reader labels, WCAG contrast ratios
 
-## Privacy and security
+---
 
-- Everything runs in your browser; files are never uploaded, and there is no server component.
-- A strict Content-Security-Policy is applied identically in `index.html`, `_headers`, and `vercel.json` (`default-src 'self'`, `worker-src 'self' blob:`); no CDN scripts, fonts, workers, or wasm are fetched from third parties.
-- The pdf.js worker is the copy Vite emits from `node_modules` (same-origin), never a CDN.
-- No analytics, no tracking, no accounts. Only UI settings (never file content or file names) are stored, in `localStorage`.
+## 📁 Supported Formats
 
-## Project docs
+| Format | Extension(s) | Status | Details |
+|:-------|:-------------|:------:|:--------|
+| **Plain Text** | `.txt` | ✅ Working | Pass-through with encoding auto-detection (UTF-8, UTF-16, Windows-1252) |
+| **Markdown** | `.md`, `.markdown` | ✅ Working | Pass-through, preserves structure |
+| **JSON** | `.json` | ✅ Working | Syntax-highlighted fenced code block |
+| **XML** | `.xml` | ✅ Working | Syntax-highlighted fenced code block |
+| **Code** | `.js`, `.ts`, `.py`, `.go`, `.rs`, `.java`, `.c`, `.cpp`, `.rb`, `.php`, `.swift`, `.kt`, `.sql`, `.sh`, `.yaml` + more | ✅ Working | Language-tagged fenced code blocks |
+| **DOCX** | `.docx` | ✅ Working | Headings, lists, tables, links via Mammoth; images counted & warned |
+| **XLSX / XLS** | `.xlsx`, `.xls`, `.xlsm` | ✅ Working | Multi-sheet `## Sheet:` sections, GFM tables, ISO dates, merged cells, hidden sheets |
+| **CSV / TSV** | `.csv`, `.tsv` | ✅ Working | Exact cell text preserved (leading zeros, quoted spacing, BOM, Windows-1252) |
+| **PDF** _(text-based)_ | `.pdf` | ✅ Working | Headings, paragraphs, lists extracted; headers/footers/page numbers auto-stripped |
+| **OCR** _(scanned PDFs + images)_ | `.pdf`, `.jpg`, `.png` | 🔜 Planned | Tesseract.js with self-hosted worker/wasm/language data |
+| **PPTX** | `.pptx` | 🔜 Planned | JSZip + DOMParser, slide boundaries + speaker notes |
+| **RTF** | `.rtf` | 🔜 Planned | Custom lightweight text extractor |
+| **HTML File** | `.html`, `.htm` | 🔜 Planned | Readability + Turndown for main-content extraction |
+| **URL** | — | 🔜 Planned | Direct fetch with CORS fallback guidance |
+| **EPUB** | `.epub` | 🔜 Planned | JSZip + spine-order chapter extraction |
+| **ZIP / Folders** | `.zip` | 🔜 Planned | Recursive conversion of supported files within |
 
-- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — requirements source of truth
-- [PLAN.md](PLAN.md) — implementation order and acceptance criteria
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — module boundaries and data flow
-- [PROGRESS.md](PROGRESS.md) — milestone checklist and latest verification results
-- [DECISIONS.md](DECISIONS.md) — decisions and their consequences
-- [docs/TRACEABILITY.md](docs/TRACEABILITY.md) — requirement ↔ test mapping
+> [!TIP]
+> Unbound detects file types by **magic bytes + MIME + extension** — so even a PDF named `report.txt` will be correctly identified and converted.
 
-## Current status
+---
 
-Matches [PROGRESS.md](PROGRESS.md) exactly (2026-10-21):
+## 🚀 Getting Started
 
-- **M0–M4 complete**: core engine, output shell/copy/chunking, DOCX (Mammoth), XLSX/XLS/XLSM (vendored SheetJS), CSV/TSV (custom exact-text parser) — all with unit and browser tests.
-- **M5 (PDF) in progress**: M5.1 (pdfjs-dist 6.4.299 + self-hosted worker under the existing CSP), M5.2 (text-based PDF extraction: layout, scanned detection, password/corrupt errors, registration, upload e2e) and M5.3 (repeated header/footer and page-number removal, large-PDF warning, page-markers setting) are done. A table heuristic, bold detection, and multi-column handling remain deferred; OCR (M6) is not implemented yet.
-- Verified 2026-10-21: **175 of 175 unit tests** pass (24 files, zero failures; also green under `TZ=Asia/Kolkata`), **56 e2e tests** (chromium + mobile-chromium, including the axe options-bar scan), coverage `All files` 94.44% lines (85% gate; `src/converters/pdf.ts` 100%), initial JS **68,123 bytes gzip** of a 256,000-byte budget.
+### Prerequisites
 
-## Known limitations
+- **Node.js ≥ 22** (see `engines` in `package.json`)
 
-- Scanned/image-only PDFs are detected and reported with a clear message ("OCR support is not available yet"); OCR itself lands with M6.
-- PDF extraction preserves headings, paragraphs, and lists, but complex tables and multi-column layouts are not reconstructed. Repeating headers, footers, and page numbers in the top/bottom 8% band are removed automatically when they appear on 60% or more of the pages (3+ pages); a bare page number is removed on any page count, and a warning lists how many lines were dropped — untick nothing, but a header that only appears on a minority of pages is intentionally kept. Non-Latin/CJK PDFs may need self-hosted cmap/font data later (see `DECISIONS.md`).
-- "Add page markers (PDF)" is off by default; when enabled it prepends `--- Page N ---` to each page. PDFs over 300 pages still convert but carry a "conversion can take a while" warning.
-- DOCX images are counted and warned about, not extracted.
-- XLSX/CSV values are emitted as the library reports them (XLSX) or exactly as written (CSV); formulas are never evaluated.
-- WebKit e2e cannot run on machines missing its system libraries (CI runs it).
+### Installation & Development
+
+```bash
+# Clone the repository
+git clone https://github.com/chiragdhunna/unbound.git
+cd unbound
+
+# Install dependencies
+npm ci
+
+# Start development server
+npm run dev
+```
+
+### Available Commands
+
+| Command | Description |
+|:--------|:------------|
+| `npm run dev` | Start the Vite dev server with HMR |
+| `npm run build` | Production build (TypeScript + Vite) |
+| `npm run preview` | Preview the production build locally |
+| `npm run test:unit` | Run Vitest unit tests |
+| `npm run test:e2e` | Run Playwright E2E tests (Chromium + Mobile) |
+| `npm run verify` | Full gate: lint → typecheck → build → unit → E2E → budget |
+| `npm run typecheck` | TypeScript type checking |
+| `npm run lint` | ESLint |
+| `npm run format:check` | Prettier format verification |
+
+> [!NOTE]
+> **SheetJS is vendored.** The `xlsx` package is installed from a local tarball `vendor/xlsx-0.20.3.tgz` because the npm registry copy is stale. Do **not** run `npm audit fix --force`; upgrade by replacing the tarball (see `DECISIONS.md`).
+
+> [!NOTE]
+> **WebKit E2E needs system libraries.** On machines without them, run with Chromium only: `npm run test:e2e -- --project=chromium --project=mobile-chromium`. CI covers WebKit.
+
+---
+
+## 🏗️ Architecture
+
+Unbound is a **browser-only**, **zero-backend** application. Every conversion happens client-side using JavaScript/TypeScript libraries.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Browser                              │
+│                                                             │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌─────────┐ │
+│  │ DropZone │──▶│ Detector │──▶│ Registry │──▶│Converter│ │
+│  │  (Input) │   │ (Magic   │   │ (Lazy    │   │ (DOCX,  │ │
+│  │          │   │  Bytes)  │   │  Import) │   │  PDF…)  │ │
+│  └──────────┘   └──────────┘   └──────────┘   └────┬────┘ │
+│                                                     │      │
+│  ┌──────────────────────────────────────────────────▼────┐ │
+│  │              Output Pipeline                          │ │
+│  │  Markdown → Plain toggle │ Chunker │ Counters │ Copy  │ │
+│  └──────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Module Map
+
+| Module | Path | Purpose |
+|:-------|:-----|:--------|
+| **Detection** | `src/core/detect.ts` | Magic-byte signatures + MIME + extension → file kind |
+| **Registry** | `src/core/registry.ts` | Lazy-loaded converter dispatch |
+| **Pipeline** | `src/core/pipeline.ts` | Orchestrates detection → conversion → output |
+| **Errors** | `src/core/errors.ts` | Typed error hierarchy (`PasswordRequired`, `CorruptFile`, etc.) |
+| **Chunker** | `src/core/chunk.ts` | Structure-aware splitting with table-header repetition |
+| **Encoding** | `src/core/encoding.ts` | UTF-8/16/Windows-1252 detection and decoding |
+| **Converters** | `src/converters/*.ts` | One module per format (DOCX, XLSX, CSV, PDF, etc.) |
+| **App Shell** | `src/app/AppShell.tsx` | React UI: DropZone, JobList, OutputPanel, settings |
+
+---
+
+## 🔒 Privacy & Security
+
+> [!IMPORTANT]
+> **Your files never leave your browser.** Unbound has no backend, no analytics, no tracking, and no accounts.
+
+- **Content-Security-Policy** is enforced identically in `index.html`, `_headers`, and `vercel.json`:
+  - `default-src 'self'` · `worker-src 'self' blob:` · No CDN scripts, fonts, workers, or WASM
+- The **pdf.js worker** is the Vite-emitted copy from `node_modules` (same-origin), never a CDN
+- Only **UI settings** (never file content or names) are stored in `localStorage`
+- Heavy libraries (pdfjs, SheetJS, tesseract) are **lazy-loaded** only when needed — the initial bundle stays under 68 KB gzip
+
+---
+
+## 📐 How to Add a New Converter
+
+Follow the established pattern in `src/converters/docx.ts`:
+
+1. **Create** `src/converters/<format>.ts` exporting a `convert(bytes, ctx)` function matching the `Converter` type
+2. **Return** a `ConvertResult` with markdown output, warnings array, and stats
+3. **Use typed errors** from `src/core/errors.ts` — never `throw new Error('...')`
+4. **Lazy-load** heavy dependencies with `await import('...')` inside the converter
+5. **Register** in `src/core/registry.ts` with a lazy entry
+6. **Add detection rules** in `src/core/detect.ts` (extension + MIME + magic bytes)
+7. **Update the UI** accept list in `src/app/AppShell.tsx`
+8. **Write tests** — unit tests in `tests/unit/converters/` + E2E in `tests/e2e/`
+
+---
+
+## 🧪 Test Suite
+
+| Layer | Count | Tool | Coverage |
+|:------|------:|:-----|:---------|
+| **Unit** | 175 | Vitest | 94.44% lines (85% gate) |
+| **E2E** | 56 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
+| **Bundle** | — | Custom gzip check | 68,123 B / 256,000 B budget |
+
+```bash
+# Run all checks at once
+npm run verify
+
+# Unit tests with coverage
+npm run test:unit -- --coverage
+
+# E2E with specific browsers
+npm run test:e2e -- --project=chromium --project=mobile-chromium
+```
+
+---
+
+## 🎨 Design System
+
+| Token | Value |
+|:------|:------|
+| **Theme** | Dark terminal aesthetic |
+| **Accent** | Amber / Gold (`#F59E0B`) |
+| **Primary Font** | JetBrains Mono |
+| **Secondary Font** | IBM Plex Mono |
+| **Contrast** | ≥ 4.5:1 for text-on-dark |
+
+Both fonts are **self-hosted** via `@fontsource` — no external font requests.
+
+---
+
+## 📊 Current Status
+
+> Matches [`PROGRESS.md`](PROGRESS.md) exactly — last verified **2026-10-21**.
+
+| Milestone | Description | Status |
+|:----------|:------------|:------:|
+| M0 | Scaffold, tooling, CI gates | ✅ Done |
+| M1 | Core engine (types, detection, registry, converters) | ✅ Done |
+| M2 | App shell (DropZone, copy, chunking, batch, settings) | ✅ Done |
+| M3 | DOCX via Mammoth | ✅ Done |
+| M4 | XLSX / XLS / CSV / TSV | ✅ Done |
+| M5 | PDF text extraction (pdfjs-dist) | 🟨 In Progress |
+| M6 | OCR (scanned PDF + images) | ⬜ Planned |
+| M7 | PPTX | ⬜ Planned |
+| M8 | RTF, HTML file, URL | ⬜ Planned |
+| M9 | EPUB, ZIP, folders | ⬜ Planned |
+| M10 | Edge-case robustness sweep | ⬜ Planned |
+| M11 | Accessibility, mobile, perf, privacy hardening | ⬜ Planned |
+| M12 | Docs, deploy, final audit | ⬜ Planned |
+
+### Latest Verification (2026-10-21)
+
+```
+  Unit Tests  ··········  175 / 175 passed  (24 files)
+  E2E Tests   ··········   56 / 56 passed   (chromium + mobile-chromium)
+  Coverage    ··········  94.44% lines       (85% gate)
+  Bundle Size ··········  68,123 B gzip      (256,000 B budget)
+  Lazy Chunks ··········  14 chunks          (pdfjs, xlsx stay out of initial payload)
+```
+
+---
+
+## ⚠️ Known Limitations
+
+| Area | Limitation | Planned Resolution |
+|:-----|:-----------|:-------------------|
+| **Scanned PDFs** | Detected but not yet converted — shows clear "OCR coming" message | M6 (tesseract.js) |
+| **PDF Tables** | Complex tables & multi-column layouts not reconstructed | M5.4 (table heuristic) |
+| **PDF Headers/Footers** | Auto-removed when on ≥60% of pages (≥3 pages); minority-page headers kept | By design |
+| **PDF Page Markers** | Off by default; toggle "Add page markers (PDF)" in settings | Available now |
+| **Large PDFs** | 300+ pages convert but show a duration warning | Working as intended |
+| **DOCX Images** | Counted and warned about, not extracted as text | By design |
+| **XLSX Formulas** | Never evaluated — values emitted as reported by the library | Security decision |
+| **CSV Values** | Exact source text preserved (SheetJS coerces, so custom parser is used) | By design |
+| **OCR Languages** | English-first in v1 | Future enhancement |
+| **WebKit E2E** | Cannot run locally without system libs; CI covers it | CI-only |
+
+---
+
+## 📂 Project Documentation
+
+| Document | Description |
+|:---------|:------------|
+| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | Requirements source of truth |
+| [`PLAN.md`](PLAN.md) | Implementation order and acceptance criteria |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module boundaries and data flow |
+| [`PROGRESS.md`](PROGRESS.md) | Milestone checklist and latest verification results |
+| [`DECISIONS.md`](DECISIONS.md) | Architectural decisions and their consequences |
+| [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) | Requirement ↔ test mapping |
+
+---
+
+## 🛠️ Tech Stack
+
+| Category | Technology |
+|:---------|:-----------|
+| **Framework** | React 18 + TypeScript (strict mode) |
+| **Build Tool** | Vite 6 |
+| **PDF Parsing** | pdfjs-dist 6.4 (self-hosted worker) |
+| **DOCX Parsing** | Mammoth.js |
+| **Spreadsheets** | SheetJS (vendored 0.20.3) + custom CSV parser |
+| **HTML → Markdown** | Turndown + GFM plugin |
+| **OCR** _(planned)_ | Tesseract.js 7 (self-hosted wasm + worker) |
+| **Unit Tests** | Vitest + Testing Library + Coverage V8 |
+| **E2E Tests** | Playwright + axe-core |
+| **Linting** | ESLint 9 + Prettier |
+| **CI** | GitHub Actions (ubuntu-24.04) |
+| **Deployment** | Vercel (static) |
+
+---
+
+## 🚢 Deployment
+
+Unbound deploys as a **static site** — no server required.
+
+```bash
+# Build for production
+npm run build
+
+# Preview locally
+npm run preview
+```
+
+Security headers are configured identically in:
+- [`index.html`](index.html) — `<meta>` CSP tag
+- [`_headers`](_headers) — Netlify/Cloudflare-style headers
+- [`vercel.json`](vercel.json) — Vercel deployment headers
+
+---
+
+<p align="center">
+  <strong>⚡ Unbound</strong> — Break free from attachment limits.<br/>
+  <sub>Built with 🧡 by <a href="https://github.com/chiragdhunna">Chirag Dhunna</a></sub>
+</p>
+
+## 🔒 Privacy & Security
+
+> [!IMPORTANT]
+> **Your files never leave your browser.** Unbound has no backend, no analytics, no tracking, and no accounts.
+
+- **Content-Security-Policy** is enforced identically in `index.html`, `_headers`, and `vercel.json`:
+  - `default-src 'self'` · `worker-src 'self' blob:` · No CDN scripts, fonts, workers, or WASM
+- The **pdf.js worker** is the Vite-emitted copy from `node_modules` (same-origin), never a CDN
+- Only **UI settings** (never file content or names) are stored in `localStorage`
+- Heavy libraries (pdfjs, SheetJS, tesseract) are **lazy-loaded** only when needed — the initial bundle stays under 68 KB gzip
+
+---
+
+## 📐 How to Add a New Converter
+
+Follow the established pattern in `src/converters/docx.ts`:
+
+1. **Create** `src/converters/<format>.ts` exporting a `convert(bytes, ctx)` function matching the `Converter` type
+2. **Return** a `ConvertResult` with markdown output, warnings array, and stats
+3. **Use typed errors** from `src/core/errors.ts` — never `throw new Error('...')`
+4. **Lazy-load** heavy dependencies with `await import('...')` inside the converter
+5. **Register** in `src/core/registry.ts` with a lazy entry
+6. **Add detection rules** in `src/core/detect.ts` (extension + MIME + magic bytes)
+7. **Update the UI** accept list in `src/app/AppShell.tsx`
+8. **Write tests** — unit tests in `tests/unit/converters/` + E2E in `tests/e2e/`
+
+---
+
+## 🧪 Test Suite
+
+| Layer | Count | Tool | Coverage |
+|:------|------:|:-----|:---------|
+| **Unit** | 175 | Vitest | 94.44% lines (85% gate) |
+| **E2E** | 56 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
+| **Bundle** | — | Custom gzip check | 68,123 B / 256,000 B budget |
+
+```bash
+# Run all checks at once
+npm run verify
+
+# Unit tests with coverage
+npm run test:unit -- --coverage
+
+# E2E with specific browsers
+npm run test:e2e -- --project=chromium --project=mobile-chromium
+```
+
+---
+
+## 🎨 Design System
+
+| Token | Value |
+|:------|:------|
+| **Theme** | Dark terminal aesthetic |
+| **Accent** | Amber / Gold (`#F59E0B`) |
+| **Primary Font** | JetBrains Mono |
+| **Secondary Font** | IBM Plex Mono |
+| **Contrast** | ≥ 4.5:1 for text-on-dark |
+
+Both fonts are **self-hosted** via `@fontsource` — no external font requests.
+
+---
+
+## 📊 Current Status
+
+> Matches [`PROGRESS.md`](PROGRESS.md) exactly — last verified **2026-10-21**.
+
+| Milestone | Description | Status |
+|:----------|:------------|:------:|
+| M0 | Scaffold, tooling, CI gates | ✅ Done |
+| M1 | Core engine (types, detection, registry, converters) | ✅ Done |
+| M2 | App shell (DropZone, copy, chunking, batch, settings) | ✅ Done |
+| M3 | DOCX via Mammoth | ✅ Done |
+| M4 | XLSX / XLS / CSV / TSV | ✅ Done |
+| M5 | PDF text extraction (pdfjs-dist) | 🟨 In Progress |
+| M6 | OCR (scanned PDF + images) | ⬜ Planned |
+| M7 | PPTX | ⬜ Planned |
+| M8 | RTF, HTML file, URL | ⬜ Planned |
+| M9 | EPUB, ZIP, folders | ⬜ Planned |
+| M10 | Edge-case robustness sweep | ⬜ Planned |
+| M11 | Accessibility, mobile, perf, privacy hardening | ⬜ Planned |
+| M12 | Docs, deploy, final audit | ⬜ Planned |
+
+### Latest Verification (2026-10-21)
+
+```
+  Unit Tests  ··········  175 / 175 passed  (24 files)
+  E2E Tests   ··········   56 / 56 passed   (chromium + mobile-chromium)
+  Coverage    ··········  94.44% lines       (85% gate)
+  Bundle Size ··········  68,123 B gzip      (256,000 B budget)
+  Lazy Chunks ··········  14 chunks          (pdfjs, xlsx stay out of initial payload)
+```
+
+---
+
+## ⚠️ Known Limitations
+
+| Area | Limitation | Planned Resolution |
+|:-----|:-----------|:-------------------|
+| **Scanned PDFs** | Detected but not yet converted — shows clear "OCR coming" message | M6 (tesseract.js) |
+| **PDF Tables** | Complex tables & multi-column layouts not reconstructed | M5.4 (table heuristic) |
+| **PDF Headers/Footers** | Auto-removed when on ≥60% of pages (≥3 pages); minority-page headers kept | By design |
+| **PDF Page Markers** | Off by default; toggle "Add page markers (PDF)" in settings | Available now |
+| **Large PDFs** | 300+ pages convert but show a duration warning | Working as intended |
+| **DOCX Images** | Counted and warned about, not extracted as text | By design |
+| **XLSX Formulas** | Never evaluated — values emitted as reported by the library | Security decision |
+| **CSV Values** | Exact source text preserved (SheetJS coerces, so custom parser is used) | By design |
+| **OCR Languages** | English-first in v1 | Future enhancement |
+| **WebKit E2E** | Cannot run locally without system libs; CI covers it | CI-only |
+
+---
+
+## 📂 Project Documentation
+
+| Document | Description |
+|:---------|:------------|
+| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | Requirements source of truth |
+| [`PLAN.md`](PLAN.md) | Implementation order and acceptance criteria |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module boundaries and data flow |
+| [`PROGRESS.md`](PROGRESS.md) | Milestone checklist and latest verification results |
+| [`DECISIONS.md`](DECISIONS.md) | Architectural decisions and their consequences |
+| [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) | Requirement ↔ test mapping |
+
+---
+
+## 🛠️ Tech Stack
+
+| Category | Technology |
+|:---------|:-----------|
+| **Framework** | React 18 + TypeScript (strict mode) |
+| **Build Tool** | Vite 6 |
+| **PDF Parsing** | pdfjs-dist 6.4 (self-hosted worker) |
+| **DOCX Parsing** | Mammoth.js |
+| **Spreadsheets** | SheetJS (vendored 0.20.3) + custom CSV parser |
+| **HTML → Markdown** | Turndown + GFM plugin |
+| **OCR** _(planned)_ | Tesseract.js 7 (self-hosted wasm + worker) |
+| **Unit Tests** | Vitest + Testing Library + Coverage V8 |
+| **E2E Tests** | Playwright + axe-core |
+| **Linting** | ESLint 9 + Prettier |
+| **CI** | GitHub Actions (ubuntu-24.04) |
+| **Deployment** | Vercel (static) |
+
+---
+
+## 🚢 Deployment
+
+Unbound deploys as a **static site** — no server required.
+
+```bash
+# Build for production
+npm run build
+
+# Preview locally
+npm run preview
+```
+
+Security headers are configured identically in:
+- [`index.html`](index.html) — `<meta>` CSP tag
+- [`_headers`](_headers) — Netlify/Cloudflare-style headers
+- [`vercel.json`](vercel.json) — Vercel deployment headers
+
+---
+
+<p align="center">
+  <strong>⚡ Unbound</strong> — Break free from attachment limits.<br/>
+  <sub>Built with 🧡 by <a href="https://github.com/chiragdhunna">Chirag Dhunna</a></sub>
+</p>
+
