@@ -27,54 +27,51 @@ describe('decideOcrPages', () => {
 
   it('classifies a text page as "text" when char count >= threshold', () => {
     const result = decideOcrPages([textPage])
-    expect(result[0].reason).toBe('text')
-    expect(result[0].pageNumber).toBe(1)
+    expect(result).toEqual([{ pageNumber: 1, reason: 'text' }])
   })
 
   it('classifies an image-only page as "image-only" when chars < threshold and hasImageOps', () => {
     const result = decideOcrPages([imageOnlyPage])
-    expect(result[0].reason).toBe('image-only')
-    expect(result[0].pageNumber).toBe(1)
+    expect(result).toEqual([{ pageNumber: 1, reason: 'image-only' }])
   })
 
   it('classifies an empty page as "empty" when chars < threshold and no image ops', () => {
     const result = decideOcrPages([emptyPage])
-    expect(result[0].reason).toBe('empty')
-    expect(result[0].pageNumber).toBe(1)
+    expect(result).toEqual([{ pageNumber: 1, reason: 'empty' }])
   })
 
   it('classifies a mixed document page as "image-only" when chars < threshold and hasImageOps', () => {
     const result = decideOcrPages([mixedPage])
-    expect(result[0].reason).toBe('image-only')
-    expect(result[0].pageNumber).toBe(1)
+    expect(result).toEqual([{ pageNumber: 1, reason: 'image-only' }])
   })
 
   it('respects forceOcr and sends every page to "forced"', () => {
     const result = decideOcrPages([textPage, imageOnlyPage, emptyPage], { forceOcr: true })
-    expect(result[0].reason).toBe('forced')
-    expect(result[1].reason).toBe('forced')
-    expect(result[2].reason).toBe('forced')
+    expect(result).toEqual([
+      { pageNumber: 1, reason: 'forced' },
+      { pageNumber: 2, reason: 'forced' },
+      { pageNumber: 3, reason: 'forced' }
+    ])
   })
 
   it('respects a custom minChars threshold', () => {
     const result = decideOcrPages([textPage], { minChars: 50 })
-    expect(result[0].reason).toBe('empty')
-    expect(result[0].pageNumber).toBe(1)
+    expect(result).toEqual([{ pageNumber: 1, reason: 'empty' }])
   })
 
   it('classifies boundary at 24/25 characters (24 chars with threshold 25 is empty)', () => {
     const result = decideOcrPages([twentyFourCharsPage])
-    expect(result[0].reason).toBe('empty')
+    expect(result).toEqual([{ pageNumber: 1, reason: 'empty' }])
   })
 
   it('classifies boundary at 25/26 characters (25 chars with threshold 25 is text)', () => {
     const result = decideOcrPages([twentyFiveCharsPage])
-    expect(result[0].reason).toBe('text')
+    expect(result).toEqual([{ pageNumber: 1, reason: 'text' }])
   })
 
   it('classifies long text page as "text" with 30 chars', () => {
     const result = decideOcrPages([longTextPage])
-    expect(result[0].reason).toBe('text')
+    expect(result).toEqual([{ pageNumber: 1, reason: 'text' }])
   })
 
   it('returns decisions for all pages in a multi-page document', () => {
@@ -85,14 +82,18 @@ describe('decideOcrPages', () => {
     ]
     const result = decideOcrPages(pages)
     expect(result).toHaveLength(3)
-    expect(result.map((r) => r.reason)).toEqual(['text', 'image-only', 'empty'])
+    expect(result).toEqual([
+      { pageNumber: 1, reason: 'text' },
+      { pageNumber: 2, reason: 'image-only' },
+      { pageNumber: 3, reason: 'empty' }
+    ])
     expect(result.map((r) => r.pageNumber)).toEqual([1, 2, 3])
   })
 
   it('classifies whitespace-only text as "empty"', () => {
     const whitespacePage = { items: [{ str: '   ' }], hasImageOps: false, height: 0 }
     const result = decideOcrPages([whitespacePage])
-    expect(result[0].reason).toBe('empty')
+    expect(result).toEqual([{ pageNumber: 1, reason: 'empty' }])
   })
 })
 

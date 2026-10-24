@@ -234,6 +234,9 @@ describe('pdf extraction and conversion', () => {
                     }
                   ]
                 }),
+              getOperatorList: () => Promise.resolve({
+                fnArray: [1, 2, 3]
+              }),
               cleanup: () => undefined
             })
         }),

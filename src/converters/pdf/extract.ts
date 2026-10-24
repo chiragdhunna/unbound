@@ -1,6 +1,7 @@
 import { CancelledError } from '../../core/errors'
 import { type TextItemLite } from './layout'
 
+
 type RawItem = {
   str?: string
   transform?: number[]
@@ -10,6 +11,7 @@ type RawItem = {
 
 export type PdfPageLike = {
   getTextContent(): Promise<{ items: unknown[] }>
+  getOperatorList(): Promise<{ fnArray: (string | number)[] }>
   cleanup(): void
   /** pdfjs exposes `view` as [x0, y0, x1, y1]; y1 - y0 is the page height. */
   view?: number[]
@@ -53,18 +55,40 @@ function pageHeightOf(page: PdfPageLike): number {
   return 0
 }
 
-/** Reads every page of a PDF into per-page text items plus the page height.
- * pdfjs may transfer (detach) the ArrayBuffer it is handed, so the bytes are
- * always copied: the caller keeps the original intact for a future OCR
- * fallback. pdfjs v6 has no `PDFDocumentProxy.destroy()`; cleanup happens on
- * the loading task.
- */
+/** Checks if a page's operator list contains any image painting operators. */
+function hasImageOpsFromOperatorList(operatorList: { fnArray: (string | number)[] }): boolean {
+  if (!operatorList?.fnArray) return false
+  const fnArray = operatorList.fnArray
+  // Image painting operators from pdfjs OPS table
+  const imageOps = [
+    'paintImageXObject',
+    'paintInlineImageXObject',
+    'paintImageMaskXObject',
+    'paintImageXObject',
+    'paintImageMaskXObject'
+  ]
+  let i = 0
+  while (i < fnArray.length) {
+    const fn = fnArray[i] as string | number
+    if (typeof fn === 'number' || typeof fn === 'string') {
+      for (const op of imageOps) {
+        if (fn === op) {
+          return true
+        }
+      }
+    }
+    i += 1
+  }
+  return false
+}
+
+/** Reads every page of a PDF into per-page text items plus the page height, and detects whether each page has image operators (graphics). */
 export async function extractPages(
   pdfjs: PdfjsLike,
   bytes: Uint8Array,
   hooks?: ExtractHooks
 ): Promise<ExtractedPage[]> {
-  const task = pdfjs.getDocument({ data: new Uint8Array(bytes.slice(0)) })
+  const task = pdfjs.getDocument({ data: bytes.slice(0) })
 
   try {
     const doc = await task.promise
@@ -74,6 +98,22 @@ export async function extractPages(
       if (hooks?.signal?.aborted) throw new CancelledError()
 
       const page = await doc.getPage(pageNumber)
+
+      // Get the operator list to detect image operators (graphics)
+      let hasImageOps = false
+      try {
+        const operatorList = await page.getOperatorList()
+        hasImageOps = hasImageOpsFromOperatorList(operatorList)
+      } catch {
+        // If operator list is not available, fall back to text-content-based detection
+        const content = await page.getTextContent()
+        const imageOpsItems = content.items.some((raw: unknown) => {
+          if (typeof raw !== 'object' || raw === null) return false
+          return typeof raw !== 'string' && raw !== null
+        })
+        ;(hasImageOps = hasImageOps || imageOpsItems)
+      }
+
       const content = await page.getTextContent()
       const items: TextItemLite[] = []
 
@@ -89,16 +129,7 @@ export async function extractPages(
         })
       }
 
-      // Detect if the page has image operators (graphics) instead of/selectable text.
-      // pdfjs image operators appear as non-string entries in the text content items.
-      const hasImageOps = content.items.some((raw: unknown) => {
-        if (typeof raw !== 'object' || raw === null) return false
-        // Non-string items with transform/size data indicate graphics/image ops
-        return typeof raw !== 'string' && raw !== null
-      })
-
       pages.push({ items, height: pageHeightOf(page), hasImageOps })
-      page.cleanup()
       hooks?.onProgress?.({
         phase: 'pdf',
         current: pageNumber,
@@ -123,3 +154,4 @@ export async function extractPageItems(
   const pages = await extractPages(pdfjs, bytes, hooks)
   return pages.map((page) => page.items)
 }
+
