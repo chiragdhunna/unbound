@@ -55,8 +55,8 @@ function pageHeightOf(page: PdfPageLike): number {
   return 0
 }
 
-/** Checks if a page's operator list contains any image painting operators (by numeric OPS code). */
-function hasImageOpsFromOperatorList(operatorList: { fnArray: (string | number)[] }): boolean {
+/** Checks if a page's operator list contains any image painting operators (by numeric OPS code). Imports OPS_CODES from module scope. */
+export function hasImageOpsFromOperatorList(operatorList: { fnArray: (string | number)[] }): boolean {
   if (!operatorList?.fnArray) return false
   const fnArray = operatorList.fnArray
   // Image painting operator codes from pdfjs OPS table (v6.4.299)
@@ -76,7 +76,10 @@ function hasImageOpsFromOperatorList(operatorList: { fnArray: (string | number)[
   return false
 }
 
-/** Reads every page of a PDF into per-page text items plus the page height, and detects whether each page has image operators (graphics). */
+/** Reads every page of a PDF into per-page text items plus the page height, and detects whether each page has image operators (graphics). 
+ * Optimized: only calls getOperatorList() for pages whose non-whitespace character count
+  * is below MIN_CHARS_PER_PAGE (25), since pages with sufficient text cannot be 'image-only'.
+ */
 export async function extractPages(
   pdfjs: PdfjsLike,
   bytes: Uint8Array,
@@ -87,23 +90,37 @@ export async function extractPages(
   try {
     const doc = await task.promise
     const pages: ExtractedPage[] = []
+    const minChars = 25
 
     for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
       if (hooks?.signal?.aborted) throw new CancelledError()
 
       const page = await doc.getPage(pageNumber)
 
-      // Get the operator list to detect image operators (graphics)
-      let hasImageOps = false
-      try {
-        const operatorList = await page.getOperatorList()
-        hasImageOps = hasImageOpsFromOperatorList(operatorList)
-      } catch {
-        // If operator list is not available, treat as no image ops (safe default)
-        hasImageOps = false
+      // Get text content first to count characters
+      const content = await page.getTextContent()
+
+      // Count non-whitespace characters
+      let nonWhitespaceCharCount = 0
+      for (const raw of content.items as RawItem[]) {
+        if (typeof raw.str !== 'string') continue
+        nonWhitespaceCharCount += raw.str.replace(/\s/g, '').length
       }
 
-      const content = await page.getTextContent()
+      // Only detect image ops for pages with few characters;
+      // pages with enough text cannot be 'image-only'
+      let hasImageOps = false
+      if (nonWhitespaceCharCount < minChars) {
+        // Get the operator list to detect image operators (graphics)
+        try {
+          const operatorList = await page.getOperatorList()
+          hasImageOps = hasImageOpsFromOperatorList(operatorList)
+        } catch {
+          // If operator list is not available, treat as no image ops (safe default)
+          hasImageOps = false
+        }
+      }
+
       const items: TextItemLite[] = []
 
       for (const raw of content.items as RawItem[]) {
@@ -135,6 +152,7 @@ export async function extractPages(
 }
 
 /** Back-compat wrapper returning only the per-page items. */
+export const OPS_CODES = new Set([83, 85, 86, 88, 89])
 export async function extractPageItems(
   pdfjs: PdfjsLike,
   bytes: Uint8Array,
