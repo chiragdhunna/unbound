@@ -1,6 +1,6 @@
 import { CancelledError } from '../../core/errors'
+import { MIN_CHARS_PER_PAGE } from '../ocr/decide'
 import { type TextItemLite } from './layout'
-
 
 type RawItem = {
   str?: string
@@ -11,7 +11,7 @@ type RawItem = {
 
 export type PdfPageLike = {
   getTextContent(): Promise<{ items: unknown[] }>
-  getOperatorList(): Promise<{ fnArray: (string | number)[] }>
+  getOperatorList(): Promise<{ fnArray: ArrayLike<number> }>
   cleanup(): void
   /** pdfjs exposes `view` as [x0, y0, x1, y1]; y1 - y0 is the page height. */
   view?: number[]
@@ -37,7 +37,11 @@ export type ExtractHooks = {
 export type ExtractedPage = {
   items: TextItemLite[]
   height: number
-  /** True if the page contains image operators (graphics) rather than/selectable text. */
+  /**
+   * True if the page paints at least one image. Only computed for pages with
+   * fewer than MIN_CHARS_PER_PAGE characters of text (the only pages OCR can
+   * apply to); it is false for every other page.
+   */
   hasImageOps?: boolean
 }
 
@@ -55,29 +59,28 @@ function pageHeightOf(page: PdfPageLike): number {
   return 0
 }
 
-/** Checks if a page's operator list contains any image painting operators (by numeric OPS code). Imports OPS_CODES from module scope. */
-export function hasImageOpsFromOperatorList(operatorList: { fnArray: (string | number)[] }): boolean {
-  if (!operatorList?.fnArray) return false
-  const fnArray = operatorList.fnArray
-  // Image painting operator codes from pdfjs OPS table (v6.4.299)
-  const imageOpCodes = new Set([83, 85, 86, 88, 89])
-  // These are the codes that indicate image/xobject painting ops
-  let i = 0
-  while (i < fnArray.length) {
-    const fn = fnArray[i] as number
-    if (Number.isFinite(fn)) {
-      if (imageOpCodes.has(fn)) {
-        return true
-      }
-    }
-    i += 1
+/**
+ * pdfjs operator codes that paint an image (pdfjs-dist 6.4.299 OPS table):
+ * paintImageMaskXObject, paintImageXObject, paintInlineImageXObject,
+ * paintImageXObjectRepeat, paintImageMaskXObjectRepeat. A unit test pins these
+ * to the installed pdfjs `OPS`, so an upgrade that renumbers them fails CI.
+ */
+export const OPS_CODES: ReadonlySet<number> = new Set([83, 85, 86, 88, 89])
+
+/** True if the page's operator list (numeric op codes) paints any image. */
+export function hasImageOpsFromOperatorList(operatorList: { fnArray: ArrayLike<number> }): boolean {
+  const fnArray = operatorList?.fnArray
+  if (!fnArray) return false
+  for (let i = 0; i < fnArray.length; i += 1) {
+    if (OPS_CODES.has(fnArray[i] as number)) return true
   }
   return false
 }
 
-/** Reads every page of a PDF into per-page text items plus the page height, and detects whether each page has image operators (graphics). 
- * Optimized: only calls getOperatorList() for pages whose non-whitespace character count
-  * is below MIN_CHARS_PER_PAGE (25), since pages with sufficient text cannot be 'image-only'.
+/**
+ * Reads every page of a PDF into per-page text items plus the page height.
+ * Pages with fewer than MIN_CHARS_PER_PAGE characters also get `hasImageOps`
+ * from the operator list; text-rich pages skip that (slower) call.
  */
 export async function extractPages(
   pdfjs: PdfjsLike,
@@ -89,7 +92,7 @@ export async function extractPages(
   try {
     const doc = await task.promise
     const pages: ExtractedPage[] = []
-    const minChars = 25
+    const minChars = MIN_CHARS_PER_PAGE
 
     for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
       if (hooks?.signal?.aborted) throw new CancelledError()
@@ -135,6 +138,7 @@ export async function extractPages(
       }
 
       pages.push({ items, height: pageHeightOf(page), hasImageOps })
+      page.cleanup()
       hooks?.onProgress?.({
         phase: 'pdf',
         current: pageNumber,
@@ -151,7 +155,6 @@ export async function extractPages(
 }
 
 /** Back-compat wrapper returning only the per-page items. */
-export const OPS_CODES = new Set([83, 85, 86, 88, 89])
 export async function extractPageItems(
   pdfjs: PdfjsLike,
   bytes: Uint8Array,

@@ -1,79 +1,130 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  hasImageOpsFromOperatorList,
-  OPS_CODES
-} from '../../../src/converters/pdf/extract'
+import { describe, expect, it, vi } from 'vitest'
+import { PDFDocument, StandardFonts } from 'pdf-lib'
+import * as legacyPdfjs from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { decideOcrPages } from '../../../src/converters/ocr/decide'
+import {
+  extractPages,
+  hasImageOpsFromOperatorList,
+  OPS_CODES,
+  type PdfjsLike
+} from '../../../src/converters/pdf/extract'
 
-vi.mock('../../../src/converters/pdf/worker', () => ({
-  getPdfjs: vi.fn()
-}))
+// 1x1 PNG; scaled to a full page it is what a scanned page looks like to pdfjs.
+const PNG_1X1 = Uint8Array.from(
+  Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  )
+)
 
-describe('PDF image ops detection', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+const TEXT = 'This is a normal text page with plenty of characters.'
+
+/** Builds [image-only, text, blank] as a real PDF. */
+async function buildThreePagePdf(): Promise<Uint8Array> {
+  const doc = await PDFDocument.create()
+  const image = await doc.embedPng(PNG_1X1)
+  doc.addPage([612, 792]).drawImage(image, { x: 0, y: 0, width: 612, height: 792 })
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  doc.addPage([612, 792]).drawText(TEXT, { x: 50, y: 700, size: 12, font })
+  doc.addPage([612, 792])
+  return doc.save()
+}
+
+describe('image operator codes', () => {
+  it('match the installed pdfjs OPS table, so a pdfjs upgrade that renumbers them fails here', () => {
+    const { OPS } = legacyPdfjs
+    expect(new Set(OPS_CODES)).toEqual(
+      new Set([
+        OPS.paintImageMaskXObject,
+        OPS.paintImageXObject,
+        OPS.paintInlineImageXObject,
+        OPS.paintImageXObjectRepeat,
+        OPS.paintImageMaskXObjectRepeat
+      ])
+    )
   })
 
-  it('OPS_CODES exported set contains the correct pdfjs OPS numeric codes', () => {
-    // These are the image painting operator codes from pdfjs OPS table (v6.4.299)
-    expect(OPS_CODES.has(83)).toBe(true)   // paintImageMaskXObject
-    expect(OPS_CODES.has(85)).toBe(true)   // paintImageXObject
-    expect(OPS_CODES.has(86)).toBe(true)   // paintInlineImageXObject
-    expect(OPS_CODES.has(88)).toBe(true)   // paintImageXObjectRepeat
-    expect(OPS_CODES.has(89)).toBe(true)   // paintImageMaskXObjectRepeat
-
-    // These are NOT image-specific image op codes
-    expect(OPS_CODES.has(66)).toBe(false)  // paintXObject (generic paint)
-    expect(OPS_CODES.has(1)).toBe(false)   // arbitrary code
-    expect(OPS_CODES.has(0)).toBe(false)   // arbitrary code
-  })
-
-  it('hasImageOpsFromOperatorList correctly identifies image op codes from fnArray', () => {
-    // fnArray containing image op codes should return true
-    expect(hasImageOpsFromOperatorList({ fnArray: [83, 66, 85] })).toBe(true)
-    expect(hasImageOpsFromOperatorList({ fnArray: [89] })).toBe(true)
-    expect(hasImageOpsFromOperatorList({ fnArray: [85, 86, 88] })).toBe(true)
-
-    // fnArray without image op codes should return false
-    expect(hasImageOpsFromOperatorList({ fnArray: [66, 1, 2] })).toBe(false)
+  it('treats generic form painting and unrelated ops as non-image', () => {
+    const { OPS } = legacyPdfjs
+    expect(hasImageOpsFromOperatorList({ fnArray: [OPS.paintXObject, OPS.save, OPS.restore] })).toBe(
+      false
+    )
+    expect(hasImageOpsFromOperatorList({ fnArray: [OPS.save, OPS.paintImageXObject] })).toBe(true)
     expect(hasImageOpsFromOperatorList({ fnArray: [] })).toBe(false)
-    expect(hasImageOpsFromOperatorList({ fnArray: [100] })).toBe(false)
+  })
+})
+
+describe('extractPages hasImageOps on real PDFs', () => {
+  it('flags an image-only page, not a text page or a blank page', async () => {
+    const pages = await extractPages(legacyPdfjs as unknown as PdfjsLike, await buildThreePagePdf())
+
+    expect(pages).toHaveLength(3)
+    expect(pages[0]?.items.length).toBe(0)
+    expect(pages[0]?.hasImageOps).toBe(true)
+    expect(pages[1]?.items.length).toBeGreaterThan(0)
+    expect(pages[1]?.hasImageOps).toBe(false)
+    expect(pages[2]?.hasImageOps).toBe(false)
   })
 
-  it('decideOcrPages with image-only pages (few chars and hasImageOps)', () => {
-    // Page with few characters AND has image ops -> 'image-only'
-    const page1 = { items: [{ str: 'Hi' }], height: 0, hasImageOps: true }
-    const result1 = decideOcrPages([page1], {})
-    expect(result1).toEqual([{ pageNumber: 1, reason: 'image-only' }])
+  it('feeds decideOcrPages so a scanned page is image-only, text is text, blank is empty', async () => {
+    const pages = await extractPages(legacyPdfjs as unknown as PdfjsLike, await buildThreePagePdf())
 
-    // Page with few characters AND no image ops -> 'empty'
-    const page2 = { items: [{ str: 'Hi' }], height: 0, hasImageOps: false }
-    const result2 = decideOcrPages([page2], {})
-    expect(result2).toEqual([{ pageNumber: 1, reason: 'empty' }])
+    expect(decideOcrPages(pages).map((decision) => decision.reason)).toEqual([
+      'image-only',
+      'text',
+      'empty'
+    ])
+    expect(decideOcrPages(pages, { forceOcr: true }).map((decision) => decision.reason)).toEqual([
+      'forced',
+      'forced',
+      'forced'
+    ])
+  })
+})
 
-    // Page with enough characters -> 'text' regardless of hasImageOps
-    const page3 = { items: [{ str: 'A'.repeat(30) }], height: 0, hasImageOps: true }
-    const result3 = decideOcrPages([page3], {})
-    expect(result3).toEqual([{ pageNumber: 1, reason: 'text' }])
+describe('extractPages page handling', () => {
+  function fakePdfjs(textPerPage: string[]) {
+    const getOperatorList = vi.fn(async () => ({ fnArray: [legacyPdfjs.OPS.paintImageXObject] }))
+    const cleanup = vi.fn()
+    const pdfjs: PdfjsLike = {
+      getDocument: () => ({
+        promise: Promise.resolve({
+          numPages: textPerPage.length,
+          getPage: async (pageNumber: number) => ({
+            getTextContent: async () => ({
+              items: [{ str: textPerPage[pageNumber - 1], transform: [1, 0, 0, 1, 0, 0] }]
+            }),
+            getOperatorList,
+            cleanup,
+            view: [0, 0, 612, 792]
+          })
+        }),
+        destroy: async () => undefined
+      })
+    }
+    return { pdfjs, getOperatorList, cleanup }
+  }
+
+  it('releases every page after reading it', async () => {
+    const { pdfjs, cleanup } = fakePdfjs(['one', 'two', 'three'])
+    await extractPages(pdfjs, new Uint8Array(1))
+    expect(cleanup).toHaveBeenCalledTimes(3)
   })
 
-  it('decideOcrPages respects forceOcr', () => {
-    const page = { items: [{ str: '' }], height: 0, hasImageOps: false }
-    const result = decideOcrPages([page], { forceOcr: true })
-    expect(result).toEqual([{ pageNumber: 1, reason: 'forced' }])
+  it('reads the operator list only for pages with too little text to skip OCR', async () => {
+    const { pdfjs, getOperatorList } = fakePdfjs(['hi', 'x'.repeat(40)])
+    const pages = await extractPages(pdfjs, new Uint8Array(1))
+
+    expect(getOperatorList).toHaveBeenCalledTimes(1)
+    expect(pages[0]?.hasImageOps).toBe(true)
+    expect(pages[1]?.hasImageOps).toBe(false)
   })
 
-  it('decideOcrPages with custom minChars threshold', () => {
-    // 24 chars with threshold 25 -> 'empty' (few chars and no image ops implied)
-    // 25 chars with threshold 25 -> 'text' (sufficient chars)
-    // Using the default MIN_CHARS_PER_PAGE = 25
-    const page24 = { items: [{ str: 'a'.repeat(24) }], height: 0, hasImageOps: false }
-    const result24 = decideOcrPages([page24], { minChars: 25 })
-    expect(result24).toEqual([{ pageNumber: 1, reason: 'empty' }])
-
-    const page25 = { items: [{ str: 'a'.repeat(25) }], height: 0, hasImageOps: false }
-    const result25 = decideOcrPages([page25], { minChars: 25 })
-    expect(result25).toEqual([{ pageNumber: 1, reason: 'text' }])
+  it('treats a page whose operator list cannot be read as having no images', async () => {
+    const { pdfjs, getOperatorList } = fakePdfjs(['hi'])
+    getOperatorList.mockRejectedValueOnce(new Error('boom'))
+    const pages = await extractPages(pdfjs, new Uint8Array(1))
+    expect(pages[0]?.hasImageOps).toBe(false)
   })
 })
