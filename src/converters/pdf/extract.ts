@@ -61,7 +61,6 @@ export function hasImageOpsFromOperatorList(operatorList: { fnArray: (string | n
   const fnArray = operatorList.fnArray
   // Image painting operator codes from pdfjs OPS table (v6.4.299)
   const imageOpCodes = new Set([83, 85, 86, 88, 89])
-  // 66 = paintXObject (generic paint)
   // These are the codes that indicate image/xobject painting ops
   let i = 0
   while (i < fnArray.length) {
