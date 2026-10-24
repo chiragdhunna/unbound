@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Unbound-v0.1.0-F59E0B?style=for-the-badge&labelColor=0D1117" alt="Unbound v0.1.0" />
+  <a href="https://unbound-amber-eight.vercel.app/"><img src="https://img.shields.io/badge/Live_Demo-unbound--amber--eight.vercel.app-F59E0B?style=for-the-badge&logo=vercel&labelColor=0D1117" alt="Live Demo" /></a>
   <img src="https://img.shields.io/badge/100%25_Client--Side-No_Backend-10B981?style=for-the-badge&labelColor=0D1117" alt="100% Client-Side" />
   <img src="https://img.shields.io/badge/React_18-TypeScript_Strict-3B82F6?style=for-the-badge&labelColor=0D1117" alt="React 18 + TypeScript" />
-  <img src="https://img.shields.io/badge/License-Private-6366F1?style=for-the-badge&labelColor=0D1117" alt="License" />
+  <a href="https://github.com/chiragdhunna/unbound/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/chiragdhunna/unbound/ci.yml?branch=main&style=for-the-badge&label=CI&labelColor=0D1117" alt="CI Status" /></a>
 </p>
 
 <h1 align="center">
@@ -11,6 +11,10 @@
 
 <p align="center">
   <strong>Turn any file into clean, paste-ready markdown — so you're never blocked by an LLM's attachment limits again.</strong>
+</p>
+
+<p align="center">
+  <a href="https://unbound-amber-eight.vercel.app/"><strong>🌐 Try the Live App → unbound-amber-eight.vercel.app</strong></a>
 </p>
 
 <p align="center">
@@ -291,9 +295,18 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 
 ---
 
-## 🚢 Deployment
+## 🚢 Deployment & CI/CD
 
 Unbound deploys as a **static site** — no server required.
+
+### 🌐 Live Production
+
+The application is deployed continuously via Vercel:
+- **Production URL:** [https://unbound-amber-eight.vercel.app/](https://unbound-amber-eight.vercel.app/)
+- **Automatic CD:** Every push to `main` builds and deploys directly to production.
+- **Preview Deployments:** Pull requests automatically receive isolated preview URLs for testing.
+
+### Local Build & Preview
 
 ```bash
 # Build for production
@@ -303,10 +316,22 @@ npm run build
 npm run preview
 ```
 
-Security headers are configured identically in:
+### Security Headers
+
+Security headers and Content-Security-Policy are configured identically across:
 - [`index.html`](index.html) — `<meta>` CSP tag
 - [`_headers`](_headers) — Netlify/Cloudflare-style headers
 - [`vercel.json`](vercel.json) — Vercel deployment headers
+
+### 🔄 CI/CD Pipeline (`.github/workflows/ci.yml`)
+
+GitHub Actions runs the comprehensive `scripts/verify.sh` gate on every push to `main` and all pull requests:
+- **Linting:** ESLint 9 + strict typing rules
+- **Typecheck:** `tsc -b` with strict TypeScript configuration
+- **Format & Hygiene:** Prettier check and source hygiene verification
+- **Build & Budget:** Production build + gzip entry budget verification (< 256 KB)
+- **Unit Tests:** Vitest with strict 85% line coverage minimum
+- **E2E Tests:** Playwright running cross-browser tests (Chromium + WebKit) and accessibility scans (axe-core)
 
 ---
 
@@ -314,172 +339,3 @@ Security headers are configured identically in:
   <strong>⚡ Unbound</strong> — Break free from attachment limits.<br/>
   <sub>Built with 🧡 by <a href="https://github.com/chiragdhunna">Chirag Dhunna</a></sub>
 </p>
-
-## 🔒 Privacy & Security
-
-> [!IMPORTANT]
-> **Your files never leave your browser.** Unbound has no backend, no analytics, no tracking, and no accounts.
-
-- **Content-Security-Policy** is enforced identically in `index.html`, `_headers`, and `vercel.json`:
-  - `default-src 'self'` · `worker-src 'self' blob:` · No CDN scripts, fonts, workers, or WASM
-- The **pdf.js worker** is the Vite-emitted copy from `node_modules` (same-origin), never a CDN
-- Only **UI settings** (never file content or names) are stored in `localStorage`
-- Heavy libraries (pdfjs, SheetJS, tesseract) are **lazy-loaded** only when needed — the initial bundle stays under 68 KB gzip
-
----
-
-## 📐 How to Add a New Converter
-
-Follow the established pattern in `src/converters/docx.ts`:
-
-1. **Create** `src/converters/<format>.ts` exporting a `convert(bytes, ctx)` function matching the `Converter` type
-2. **Return** a `ConvertResult` with markdown output, warnings array, and stats
-3. **Use typed errors** from `src/core/errors.ts` — never `throw new Error('...')`
-4. **Lazy-load** heavy dependencies with `await import('...')` inside the converter
-5. **Register** in `src/core/registry.ts` with a lazy entry
-6. **Add detection rules** in `src/core/detect.ts` (extension + MIME + magic bytes)
-7. **Update the UI** accept list in `src/app/AppShell.tsx`
-8. **Write tests** — unit tests in `tests/unit/converters/` + E2E in `tests/e2e/`
-
----
-
-## 🧪 Test Suite
-
-| Layer | Count | Tool | Coverage |
-|:------|------:|:-----|:---------|
-| **Unit** | 175 | Vitest | 94.44% lines (85% gate) |
-| **E2E** | 56 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
-| **Bundle** | — | Custom gzip check | 68,123 B / 256,000 B budget |
-
-```bash
-# Run all checks at once
-npm run verify
-
-# Unit tests with coverage
-npm run test:unit -- --coverage
-
-# E2E with specific browsers
-npm run test:e2e -- --project=chromium --project=mobile-chromium
-```
-
----
-
-## 🎨 Design System
-
-| Token | Value |
-|:------|:------|
-| **Theme** | Dark terminal aesthetic |
-| **Accent** | Amber / Gold (`#F59E0B`) |
-| **Primary Font** | JetBrains Mono |
-| **Secondary Font** | IBM Plex Mono |
-| **Contrast** | ≥ 4.5:1 for text-on-dark |
-
-Both fonts are **self-hosted** via `@fontsource` — no external font requests.
-
----
-
-## 📊 Current Status
-
-> Matches [`PROGRESS.md`](PROGRESS.md) exactly — last verified **2026-10-21**.
-
-| Milestone | Description | Status |
-|:----------|:------------|:------:|
-| M0 | Scaffold, tooling, CI gates | ✅ Done |
-| M1 | Core engine (types, detection, registry, converters) | ✅ Done |
-| M2 | App shell (DropZone, copy, chunking, batch, settings) | ✅ Done |
-| M3 | DOCX via Mammoth | ✅ Done |
-| M4 | XLSX / XLS / CSV / TSV | ✅ Done |
-| M5 | PDF text extraction (pdfjs-dist) | 🟨 In Progress |
-| M6 | OCR (scanned PDF + images) | ⬜ Planned |
-| M7 | PPTX | ⬜ Planned |
-| M8 | RTF, HTML file, URL | ⬜ Planned |
-| M9 | EPUB, ZIP, folders | ⬜ Planned |
-| M10 | Edge-case robustness sweep | ⬜ Planned |
-| M11 | Accessibility, mobile, perf, privacy hardening | ⬜ Planned |
-| M12 | Docs, deploy, final audit | ⬜ Planned |
-
-### Latest Verification (2026-10-21)
-
-```
-  Unit Tests  ··········  175 / 175 passed  (24 files)
-  E2E Tests   ··········   56 / 56 passed   (chromium + mobile-chromium)
-  Coverage    ··········  94.44% lines       (85% gate)
-  Bundle Size ··········  68,123 B gzip      (256,000 B budget)
-  Lazy Chunks ··········  14 chunks          (pdfjs, xlsx stay out of initial payload)
-```
-
----
-
-## ⚠️ Known Limitations
-
-| Area | Limitation | Planned Resolution |
-|:-----|:-----------|:-------------------|
-| **Scanned PDFs** | Detected but not yet converted — shows clear "OCR coming" message | M6 (tesseract.js) |
-| **PDF Tables** | Complex tables & multi-column layouts not reconstructed | M5.4 (table heuristic) |
-| **PDF Headers/Footers** | Auto-removed when on ≥60% of pages (≥3 pages); minority-page headers kept | By design |
-| **PDF Page Markers** | Off by default; toggle "Add page markers (PDF)" in settings | Available now |
-| **Large PDFs** | 300+ pages convert but show a duration warning | Working as intended |
-| **DOCX Images** | Counted and warned about, not extracted as text | By design |
-| **XLSX Formulas** | Never evaluated — values emitted as reported by the library | Security decision |
-| **CSV Values** | Exact source text preserved (SheetJS coerces, so custom parser is used) | By design |
-| **OCR Languages** | English-first in v1 | Future enhancement |
-| **WebKit E2E** | Cannot run locally without system libs; CI covers it | CI-only |
-
----
-
-## 📂 Project Documentation
-
-| Document | Description |
-|:---------|:------------|
-| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | Requirements source of truth |
-| [`PLAN.md`](PLAN.md) | Implementation order and acceptance criteria |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module boundaries and data flow |
-| [`PROGRESS.md`](PROGRESS.md) | Milestone checklist and latest verification results |
-| [`DECISIONS.md`](DECISIONS.md) | Architectural decisions and their consequences |
-| [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) | Requirement ↔ test mapping |
-
----
-
-## 🛠️ Tech Stack
-
-| Category | Technology |
-|:---------|:-----------|
-| **Framework** | React 18 + TypeScript (strict mode) |
-| **Build Tool** | Vite 6 |
-| **PDF Parsing** | pdfjs-dist 6.4 (self-hosted worker) |
-| **DOCX Parsing** | Mammoth.js |
-| **Spreadsheets** | SheetJS (vendored 0.20.3) + custom CSV parser |
-| **HTML → Markdown** | Turndown + GFM plugin |
-| **OCR** _(planned)_ | Tesseract.js 7 (self-hosted wasm + worker) |
-| **Unit Tests** | Vitest + Testing Library + Coverage V8 |
-| **E2E Tests** | Playwright + axe-core |
-| **Linting** | ESLint 9 + Prettier |
-| **CI** | GitHub Actions (ubuntu-24.04) |
-| **Deployment** | Vercel (static) |
-
----
-
-## 🚢 Deployment
-
-Unbound deploys as a **static site** — no server required.
-
-```bash
-# Build for production
-npm run build
-
-# Preview locally
-npm run preview
-```
-
-Security headers are configured identically in:
-- [`index.html`](index.html) — `<meta>` CSP tag
-- [`_headers`](_headers) — Netlify/Cloudflare-style headers
-- [`vercel.json`](vercel.json) — Vercel deployment headers
-
----
-
-<p align="center">
-  <strong>⚡ Unbound</strong> — Break free from attachment limits.<br/>
-  <sub>Built with 🧡 by <a href="https://github.com/chiragdhunna">Chirag Dhunna</a></sub>
-</p>
-
