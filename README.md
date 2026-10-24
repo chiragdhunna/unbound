@@ -60,7 +60,7 @@ Every major LLM chat — ChatGPT, Claude, Grok, Gemini — limits file **attachm
 | **XLSX / XLS** | `.xlsx`, `.xls`, `.xlsm` | ✅ Working | Multi-sheet `## Sheet:` sections, GFM tables, ISO dates, merged cells, hidden sheets |
 | **CSV / TSV** | `.csv`, `.tsv` | ✅ Working | Exact cell text preserved (leading zeros, quoted spacing, BOM, Windows-1252) |
 | **PDF** _(text-based)_ | `.pdf` | ✅ Working | Headings, paragraphs, lists extracted; headers/footers/page numbers auto-stripped |
-| **OCR** _(scanned PDFs + images)_ | `.pdf`, `.jpg`, `.png`, `.webp`, `.bmp`, `.gif` | 🟨 In Progress | Self-hosted Tesseract.js 7.0; runtime spike & page decision logic verified; PDF routing in progress |
+| **OCR** _(scanned PDFs + images)_ | `.pdf`, `.jpg`, `.png`, `.webp`, `.bmp`, `.gif` | 🟨 In Progress | Self-hosted Tesseract.js 7.0; engine (M6.3a), decision logic (M6.2) & spike (M6.1) verified; PDF routing in progress |
 | **PPTX** | `.pptx` | 🔜 Planned | JSZip + DOMParser, slide boundaries + speaker notes |
 | **RTF** | `.rtf` | 🔜 Planned | Custom lightweight text extractor |
 | **HTML File** | `.html`, `.htm` | 🔜 Planned | Readability + Turndown for main-content extraction |
@@ -195,7 +195,7 @@ Follow the established pattern in `src/converters/docx.ts`:
 
 | Layer | Count | Tool | Coverage |
 |:------|------:|:-----|:---------|
-| **Unit** | 193 | Vitest | 94.56% lines (85% gate) |
+| **Unit** | 207 | Vitest | 94.52% lines (85% gate) |
 | **E2E** | 58 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
 | **Bundle** | — | Custom gzip check | 68,120 B / 256,000 B budget |
 
@@ -249,9 +249,9 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 ### Latest Verification (2026-10-25)
 
 ```
-  Unit Tests  ··········  193 / 193 passed  (26 files)
+  Unit Tests  ··········  207 / 207 passed  (27 files)
   E2E Tests   ··········   58 / 58 passed   (chromium + mobile-chromium)
-  Coverage    ··········  94.56% lines       (85% gate)
+  Coverage    ··········  94.52% lines       (85% gate)
   Bundle Size ··········  68,120 B gzip      (256,000 B budget)
   Lazy Chunks ··········  14 chunks          (pdfjs, xlsx stay out of initial payload)
 ```

@@ -115,7 +115,6 @@
 - Decision: after any change that affects browser-visible code, kill the stale preview process and re-run `npm run build` before starting Playwright. Do not change `reuseExistingServer` (it keeps local iteration fast) and do not weaken the tests to match the stale server.
 - Consequences: after rebuilding, all 56 e2e tests pass on chromium + mobile-chromium, including the two new page-markers tests and the axe options-bar scan. Recorded here so a future session that sees "label not found" errors checks the served build before suspecting the selector or the component.
 
-
 ## 2026-10-23 — M6.1 self-hosted OCR runtime (corrected)
 
 - **Context:** ADR-6 requires English OCR with zero external requests. The first M6.1 attempts shipped a bare `tesseract-core.wasm` and never ran OCR in a browser. Running it showed that tesseract.js v7's worker calls `importScripts(corePath + '/tesseract-core-<variant>.wasm.js')`: `corePath` must be a **directory** of `.wasm.js` files, a `.wasm` path 404s, and omitting `corePath` falls back to `cdn.jsdelivr.net` (a violation of ADR-6).
@@ -135,3 +134,15 @@
   - Image operator codes (`paintImageXObject`, `paintImageMaskXObject`, `paintInlineImageXObject`, `paintInlineImageXObjectGroup`) are pinned to installed pdfjs `OPS` in `tests/unit/converters/pdf-image-ops.test.ts`.
 - **Consequences:** 11 unit tests in `tests/unit/converters/ocr-decide.test.ts` and 7 tests in `tests/unit/converters/pdf-image-ops.test.ts` verify page classification and operator matching. A truly blank page (no text, no image ops) is classified as `empty`, preparing the ground for M6.4 to return `NoTextFoundError` on empty documents rather than attempting OCR.
 
+## 2026-10-25 — M6.3a OCR engine worker lifecycle, cancellation, and error handling
+
+- **Context:** PLAN §7.5 and ADR-6 require self-hosted Tesseract OCR execution with sequential page processing, bounded memory, worker reuse, responsive cancellation via `AbortSignal`, and typed error mapping.
+- **Decision:**
+  - `src/converters/ocr/engine.ts` exports `createOcrEngine(options)` returning `{ recognize(image, options), terminate() }`.
+  - Lazy `import('tesseract.js')`: the module is dynamically imported on the first call to `recognize()`, keeping Tesseract completely out of the initial JavaScript bundle.
+  - Worker lifecycle & reuse: a single Web Worker is instantiated on demand via `createWorker(lang, 1, options)` and reused across sequential recognize calls.
+  - Options: configured with exact self-hosted assets under `import.meta.env.BASE_URL`: `workerPath: ${baseUrl}ocr/worker.min.js`, `corePath: ${baseUrl}ocr/core`, `langPath: ${baseUrl}ocr/lang`, `gzip: false`, `workerBlobURL: false`. Omitting `corePath` or pointing to a `.wasm` file is prohibited as it causes silent CDN fallback or 404s.
+  - Cancellation: `AbortSignal` is monitored prior to and during recognition. Aborting triggers immediate worker termination via `worker.terminate()`, resets the worker reference to `null`, and rejects the operation with `CancelledError`. Subsequent calls lazily re-create a fresh worker.
+  - Progress: driven by Tesseract's logger callback during recognition (`m.status === 'recognizing text'`) mapped to `{ phase: 'ocr', current: Math.round(m.progress * 100), total: 100 }`.
+  - Error mapping: recognition rejections and worker failures are mapped to `CorruptFileError`, with the failed worker terminated and cleared to prevent contaminated state.
+- **Consequences:** 14 unit tests in `tests/unit/converters/ocr-engine.test.ts` with 94.07% lines coverage. Initial JS gzip remains 68,120 bytes / 256,000 bytes budget. Mutation checks verified that breaking worker reuse, abort termination, or corePath options fails the test suite.

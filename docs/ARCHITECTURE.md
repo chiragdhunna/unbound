@@ -5,6 +5,7 @@
 Unbound runs entirely in the browser. No file data is sent to external servers. All conversion occurs client-side using Web APIs (`FileReader`, `Blob`, `Canvas`, Web Workers) and JavaScript libraries.
 
 **Privacy boundary:**
+
 - Files never leave the user's device unless explicitly copied or downloaded.
 - Content Security Policy (CSP) is strictly enforced identically across `index.html`, `_headers`, and `vercel.json`:
   `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'`.
@@ -52,6 +53,7 @@ Unbound runs entirely in the browser. No file data is sent to external servers. 
   - Architecture: self-hosted `tesseract.js` (7.0.0) with local worker and wasm cores (`lstm`, `simd-lstm`, `relaxedsimd-lstm`).
   - Page decision logic (`src/converters/ocr/decide.ts`): categorizes pages as `text` (≥ 25 non-whitespace chars), `ocr` (< 25 chars + `hasImageOps`), or `empty`.
   - Image operator detection (`src/converters/pdf/extract.ts`): scans pdfjs operator list only for candidate pages (< 25 chars).
+  - OCR Engine (`src/converters/ocr/engine.ts`): lazy-loads `tesseract.js` on first use, creates a single worker reused across pages, supports immediate termination on `AbortSignal` with `CancelledError` and lazy worker recreation on subsequent calls, maps recognition rejections to `CorruptFileError`, and forwards Tesseract logger events to drive `{ phase: 'ocr', current, total: 100 }` progress.
   - End-to-end PDF OCR routing and image converter in progress.
 
 ## Job Identity, Retry, and Late-Result Rules

@@ -56,7 +56,9 @@
 - 🟨 M6 — OCR (scanned PDF + images)
   - ✅ M6.1 — Self-hosted OCR runtime setup: **tesseract.js 7.0.0**, worker.min.js, core wasm variants, vendored eng.traineddata. Tested in `tests/e2e/ocr-spike.spec.ts` with zero cross-origin requests and zero CSP violations under the real app CSP.
   - ✅ M6.2 — OCR page decision logic & PDF image-op detection: `src/converters/ocr/decide.ts` (`decideOcrPages`, `MIN_CHARS_PER_PAGE = 25`) + real-PDF image-op detection in `src/converters/pdf/extract.ts` (`extractPages` returns `hasImageOps`, only scanned when chars < 25; operator codes pinned to installed pdfjs `OPS`). Verified by 11 tests in `tests/unit/converters/ocr-decide.test.ts` and 7 tests in `tests/unit/converters/pdf-image-ops.test.ts`.
-  - ⬜ M6.3 — Engine & page rendering helpers
+  - 🟨 M6.3 — Engine & page rendering helpers
+    - ✅ M6.3a — Self-hosted Tesseract.js engine (`src/converters/ocr/engine.ts`): lazy dynamic import, single worker reuse across calls, AbortSignal immediate termination with typed CancelledError and lazy recreation, typed error mapping to CorruptFileError, logger-driven progress forwarding (`{ phase: 'ocr', current, total: 100 }`), idempotent `terminate()`. Verified by 14 tests in `tests/unit/converters/ocr-engine.test.ts` with 94.07% lines coverage.
+    - ⬜ M6.3b — Page rendering helpers (`src/converters/ocr/render.ts`)
   - ⬜ M6.4 — PDF routing & scanned PDF integration
   - ⬜ M6.5 — Confidence warnings & embedded-image warnings
   - ⬜ M6.6 — Image files converter (JPG/PNG/WEBP/GIF/BMP)
@@ -207,5 +209,39 @@ Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit t
 - M6.1 self-hosted OCR runtime validated under CSP in `tests/e2e/ocr-spike.spec.ts` (recognizes "HELLO WORLD", zero cross-origin requests, zero CSP violations).
 - M6.2 page decision (`src/converters/ocr/decide.ts`, `decideOcrPages`, `MIN_CHARS_PER_PAGE = 25`) and PDF image-op detection (`src/converters/pdf/extract.ts`) verified with 18 unit tests.
 - Deferred from PDF (M5.4): table heuristic, bold detection, and multi-column handling.
-- Next step: M6.3 OCR engine (`src/converters/ocr/engine.ts`) with lazy-loaded worker and typed error mappings.
+- Next step: M6.3a OCR engine (`src/converters/ocr/engine.ts`) with lazy-loaded worker and typed error mappings.
 
+### 2026-10-25 — M6.3a OCR engine implementation & verification
+
+- Implemented `src/converters/ocr/engine.ts`:
+  - `createOcrEngine({ lang?: string } = {})` returning `recognize(image, { onProgress, signal })` and `terminate()`.
+  - Lazy `import('tesseract.js')` so Tesseract.js never enters the initial bundle.
+  - Single worker created on first recognize and reused across sequential pages/calls.
+  - Passes self-hosted, BASE_URL-prefixed options: `workerPath: ${baseUrl}ocr/worker.min.js`, `corePath: ${baseUrl}ocr/core`, `langPath: ${baseUrl}ocr/lang`, `gzip: false`, `workerBlobURL: false`.
+  - Immediate worker termination on `AbortSignal` with `CancelledError` and lazy worker recreation on subsequent recognize calls.
+  - Rejection mapping from Tesseract failures to typed `CorruptFileError` with worker disposal.
+  - Progress callback driven by Tesseract logger (`status === 'recognizing text'` mapped to `{ phase: 'ocr', current: Math.round(m.progress * 100), total: 100 }`).
+  - Idempotent `terminate()`.
+- Added unit tests in `tests/unit/converters/ocr-engine.test.ts` (14 tests) covering:
+  - Lazy loading only once & module caching.
+  - Worker reuse across calls.
+  - Language (`fra`), OEM 1, and exact self-hosted options verification.
+  - Progress forwarding from logger callback.
+  - Abort before start (`CancelledError`, worker not created).
+  - Abort mid-flight (immediate `worker.terminate()`, `CancelledError`).
+  - Recreate worker on subsequent call after an abort.
+  - Error mapping to `CorruptFileError` on worker or recognize failure.
+  - Non-Error rejection mapping and typed `CorruptFileError` pass-through.
+  - Idempotent `terminate()`.
+  - Abort during in-flight worker creation cleanup.
+- Mutation checks performed and verified failing:
+  1. Break worker reuse: failed with `expected "spy" to be called 1 times, but got 2 times`.
+  2. Break abort termination: failed 5 tests with `expected "spy" to be called 1 times, but got 0 times`.
+  3. Break options (omit `corePath`): failed with `expected "spy" to be called with arguments: [ 'fra', 1, ObjectContaining{...} ]` (`corePath` missing).
+- Verification results:
+  - Unit tests: 207 passed across 27 files (was 193 across 26 files; +14 tests in `tests/unit/converters/ocr-engine.test.ts`).
+  - Line coverage: All files 94.52%, `src/converters/**` 93.09%, `src/converters/ocr/engine.ts` 94.07%, `src/core/**` 93.23% (85% gate).
+  - E2E tests: 58 passed across chromium and mobile-chromium (28.0s).
+  - Bundle size check: initial JS gzip 68,120 bytes / 256,000 bytes budget (14 lazy chunks).
+  - Hygiene greps & traceability: clean.
+- Next step: M6.3b page rendering helpers (`src/converters/ocr/render.ts`).
