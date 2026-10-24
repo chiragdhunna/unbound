@@ -55,26 +55,20 @@ function pageHeightOf(page: PdfPageLike): number {
   return 0
 }
 
-/** Checks if a page's operator list contains any image painting operators. */
+/** Checks if a page's operator list contains any image painting operators (by numeric OPS code). */
 function hasImageOpsFromOperatorList(operatorList: { fnArray: (string | number)[] }): boolean {
   if (!operatorList?.fnArray) return false
   const fnArray = operatorList.fnArray
-  // Image painting operators from pdfjs OPS table
-  const imageOps = [
-    'paintImageXObject',
-    'paintInlineImageXObject',
-    'paintImageMaskXObject',
-    'paintImageXObject',
-    'paintImageMaskXObject'
-  ]
+  // Image painting operator codes from pdfjs OPS table (v6.4.299)
+  const imageOpCodes = new Set([83, 85, 86, 88, 89])
+  // 66 = paintXObject (generic paint)
+  // These are the codes that indicate image/xobject painting ops
   let i = 0
   while (i < fnArray.length) {
-    const fn = fnArray[i] as string | number
-    if (typeof fn === 'number' || typeof fn === 'string') {
-      for (const op of imageOps) {
-        if (fn === op) {
-          return true
-        }
+    const fn = fnArray[i] as number
+    if (Number.isFinite(fn)) {
+      if (imageOpCodes.has(fn)) {
+        return true
       }
     }
     i += 1
@@ -105,13 +99,8 @@ export async function extractPages(
         const operatorList = await page.getOperatorList()
         hasImageOps = hasImageOpsFromOperatorList(operatorList)
       } catch {
-        // If operator list is not available, fall back to text-content-based detection
-        const content = await page.getTextContent()
-        const imageOpsItems = content.items.some((raw: unknown) => {
-          if (typeof raw !== 'object' || raw === null) return false
-          return typeof raw !== 'string' && raw !== null
-        })
-        ;(hasImageOps = hasImageOps || imageOpsItems)
+        // If operator list is not available, treat as no image ops (safe default)
+        hasImageOps = false
       }
 
       const content = await page.getTextContent()
