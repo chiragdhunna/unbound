@@ -125,3 +125,13 @@
 - **Evidence:** the spike runs inside the page under the real CSP, draws "HELLO WORLD" on a canvas, recognizes it (twice, on one worker), and asserts the recognized text, that `/ocr/worker.min.js`, `/ocr/core/tesseract-core-*.wasm.js` and `/ocr/lang/eng.traineddata` were requested, zero cross-origin requests, zero `securitypolicyviolation` events and zero console errors. It was mutation-checked: a `.wasm` `corePath`, and no `corePath` at all, both make it fail. The CSP is unchanged (`worker-src 'self' blob:`, `script-src 'self' 'wasm-unsafe-eval'`, `connect-src 'self'`).
 - **Cleanup:** removed the placeholder `src/converters/ocr.ts` (it only threw, had no importers, and failed lint and typecheck) and the bare `tesseract-core.wasm`.
 - **Open for M6.3:** the app's real lazy loader must call `createWorker` with the options above. The spike loads the UMD build from `/ocr/tesseract.js` only because it needs a page-side API; the app should bundle `tesseract.js` as a lazy chunk instead. The app serves no `/favicon.ico` (it ships `favicon.svg`), which logs a harmless 404; the spike ignores that one URL.
+
+## 2026-10-24 — M6.2 OCR page decision and PDF image-op detection
+
+- **Context:** PLAN §7.5 requires per-page routing: scanned/image-only pages route to OCR, text pages keep extracted text, and empty pages are ignored. Rather than treating entire PDFs as scanned or text, pages must be evaluated individually.
+- **Decision:**
+  - `src/converters/ocr/decide.ts` implements `decideOcrPages(pages, options)` with `MIN_CHARS_PER_PAGE = 25`. Each page is categorized as `text` (≥ 25 non-whitespace characters, unless `forceOcr: true`), `ocr` (< 25 characters AND `hasImageOps: true`, or `forceOcr: true`), or `empty` (< 25 characters AND no image ops).
+  - In `src/converters/pdf/extract.ts`, `hasImageOps` is detected by scanning `page.getOperatorList()`. To preserve performance, operator list inspection is only performed for candidate pages where non-whitespace character count is < 25.
+  - Image operator codes (`paintImageXObject`, `paintImageMaskXObject`, `paintInlineImageXObject`, `paintInlineImageXObjectGroup`) are pinned to installed pdfjs `OPS` in `tests/unit/converters/pdf-image-ops.test.ts`.
+- **Consequences:** 11 unit tests in `tests/unit/converters/ocr-decide.test.ts` and 7 tests in `tests/unit/converters/pdf-image-ops.test.ts` verify page classification and operator matching. A truly blank page (no text, no image ops) is classified as `empty`, preparing the ground for M6.4 to return `NoTextFoundError` on empty documents rather than attempting OCR.
+

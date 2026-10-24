@@ -34,7 +34,7 @@
   - ✅ M4.4 — Register + detect: `csv` registered in `src/core/registry.ts`; `csv` + `xlsx` added to `src/core/pipeline.ts` supported kinds (previously unreachable from the app); detect already maps `.csv/.tsv` → `csv` and `.xlsx/.xls/.xlsm` → `xlsx`. Verified by `tests/unit/core/registry-more.test.ts`::detects csv/tsv files and routes them to the csv converter and `tests/unit/core/pipeline.test.ts`::converts a File named a.csv into the exact markdown table
   - ✅ M4.5 — UI accept-list + e2e: DropZone file input `accept` list and "supported formats" text now include csv, tsv, xlsx, xls, xlsm (`src/app/AppShell.tsx`); browser e2e uploads a generated `.csv` and asserts the rendered table — `tests/e2e/csv.spec.ts`::uploads a generated csv and renders the table in the output panel (passes on chromium and mobile-chromium)
   - ✅ M4.6 — Browser XLSX upload e2e + zip-detection fix: `tests/e2e/xlsx.spec.ts`::uploads a generated xlsx and renders the sheet table in the output panel generates a workbook with SheetJS inside the test and asserts `## Sheet: Budget` plus the exact `| Item | Amount |` header row. The first run exposed a pre-existing bug: SheetJS writes `xl/workbook.xml` ~11 KB into a minimal workbook, past detect's first-4096-byte sample, so real uploads classified as `zip` → "Unsupported format". `src/core/detect.ts` now also reads entry names from the zip central directory (located via the end-of-central-directory record, bounded search); regression tests in `tests/unit/core/detect-zip.test.ts`, including a real SheetJS buffer with a misleading `.bin` name
-- 🟨 M5 — PDF (text)
+- ✅ M5 — PDF (text)
   - ✅ M5.1 — Library + self-hosted worker setup: **pdfjs-dist 6.4.299** (registry dependency) and **pdf-lib 1.17.1** (devDependency, test/spike fixtures). `src/converters/pdf/worker.ts` lazily `import('pdfjs-dist')` — pdfjs must never be a top-level import of anything in the initial bundle — and sets `GlobalWorkerOptions.workerSrc` from `import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'` (file name confirmed by listing `node_modules/pdfjs-dist/build/`; no CDN). CSP `worker-src 'self' blob:` was already present and byte-identical in `index.html`, `_headers` and `vercel.json` (verified by grep before install) — no CSP change was needed. Verified by `tests/unit/converters/pdf-worker.test.ts`::points GlobalWorkerOptions at the self-hosted worker asset and `tests/unit/converters/pdf-worker.test.ts`::caches the configured module across calls; spike evidence in DECISIONS.md 2026-10-20
   - ✅ M5.2 — Text extraction for text-based PDFs, end to end (this supersedes the old M5.2–M5.6 split: scanned detection, typed errors, extraction tests, registration, and the upload e2e all landed in this milestone's four commits):
     - **Layout** `src/converters/pdf/layout.ts` — pure module (no pdfjs import, no UI) with every threshold as a named constant: same-line grouping `|Δy| ≤ 0.3 × max height`, space insertion `gap > 0.2 × line height` (never double spaces), paragraphs join when baseline distance `≤ 1.7 × line height`, headings `≥ 1.2 ×` the length-weighted median font size and `< 120 chars` ranked into `# `/`## `/`### `, bullets/`1. `/`a) ` normalised as tight list blocks, de-hyphenation across line breaks, pages joined by a blank line. Verified by 11 tests in `tests/unit/converters/pdf-layout.test.ts` including the exact golden markdown (`matches the golden two-page markdown`)
@@ -53,7 +53,16 @@
     - **Tests** 3 new in `tests/unit/converters/pdf.test.ts` (4-page header/footer fixture asserts both bands gone, body kept, `PDF_BANDS_REMOVED` warning; **320-page** fixture asserts the `PDF_LARGE` warning, all 320 pages present, and prints/ asserts a measured **728 ms** against a 60 s budget; `pdfPageMarkers: true` yields `--- Page 1 ---`) and 2 new in `tests/e2e/pdf.spec.ts` (markers on → both marker blocks visible; markers off → absent, body still rendered) × 2 projects
     - **Verification evidence (2026-10-21):** `LINT_EXIT=0`, `TSC_EXIT=0`, `npm run test:unit` → `Test Files 24 passed (24)`, `Tests 175 passed (175)` (run twice with identical output; `TZ=Asia/Kolkata` identical); `npm run build` + `node scripts/check-bundle.mjs` → `Initial JavaScript gzip: 68123 bytes / 256000 bytes`, `Lazy JavaScript chunks: 14`, `BUNDLE_EXIT=0`; `npx playwright test --project=chromium --project=mobile-chromium` → `56 passed`, `E2E_EXIT=0`, no skips (52 was + 2 new tests × 2 projects); `npm run test:unit -- --coverage` → `COV_EXIT=0`, `All files 94.44 % lines`, `pdf.ts` 100%, `layout.ts` 99.63%, no threshold errors
   - ⬜ M5.4 — Still deferred from PDF extraction: table heuristic, bold detection, multi-column handling; OCR for scanned PDFs belongs to M6
-- ⬜ M6 — OCR (scanned PDF + images)
+- 🟨 M6 — OCR (scanned PDF + images)
+  - ✅ M6.1 — Self-hosted OCR runtime setup: **tesseract.js 7.0.0**, worker.min.js, core wasm variants, vendored eng.traineddata. Tested in `tests/e2e/ocr-spike.spec.ts` with zero cross-origin requests and zero CSP violations under the real app CSP.
+  - ✅ M6.2 — OCR page decision logic & PDF image-op detection: `src/converters/ocr/decide.ts` (`decideOcrPages`, `MIN_CHARS_PER_PAGE = 25`) + real-PDF image-op detection in `src/converters/pdf/extract.ts` (`extractPages` returns `hasImageOps`, only scanned when chars < 25; operator codes pinned to installed pdfjs `OPS`). Verified by 11 tests in `tests/unit/converters/ocr-decide.test.ts` and 7 tests in `tests/unit/converters/pdf-image-ops.test.ts`.
+  - ⬜ M6.3 — Engine & page rendering helpers
+  - ⬜ M6.4 — PDF routing & scanned PDF integration
+  - ⬜ M6.5 — Confidence warnings & embedded-image warnings
+  - ⬜ M6.6 — Image files converter (JPG/PNG/WEBP/GIF/BMP)
+  - ⬜ M6.7 — OCR UI states (progress bar, ETA, cancel, language consent)
+  - ⬜ M6.8 — E2E test sweep
+  - ⬜ M6.9 — Final docs
 - ⬜ M7 — PPTX
 - ⬜ M8 — P1 formats: RTF, HTML file, URL
 - ⬜ M9 — P2 formats: EPUB, ZIP/folders
@@ -75,9 +84,9 @@
 | M3 golden output and image warning                                                                                                             | `src/converters/docx.ts`, `tests/unit/converters/docx.test.ts`    | `tests/unit/converters/docx.test.ts`::preserves structured DOCX content and warns for omitted images                                                                                                                                                         | `npm run test:unit -- --coverage --reporter=verbose`                  | PASS   |
 | M3 browser upload acceptance                                                                                                                   | `tests/e2e/docx.spec.ts`                                          | `tests/e2e/docx.spec.ts`::uploads a generated docx and renders markdown output                                                                                                                                                                               | `npx playwright test --project=chromium --project=mobile-chromium`    | PASS   |
 
-## Closure evidence (refreshed 2026-10-21, after M5.3)
+## Closure evidence (refreshed 2026-10-25, at 986f21a baseline)
 
-Current runnable evidence (2026-10-21, after M5.3 — supersedes every earlier number): **175 of 175 unit tests pass** (24 files, zero failures), run twice plus once under `TZ=Asia/Kolkata` with identical output. Earlier the same day one test was red — `tests/unit/core/registry-more.test.ts`::rejects unregistered kinds, which used `'pdf'` as its example of an _unregistered_ kind; registering `pdf` necessarily resolves that promise. It was fixed by moving the test's subject to `'legacy-office'` (a kind that can never have a converter) with an unchanged assertion — see the DECISIONS.md 2026-10-21 entry "Registry test subject". **56 Chromium/mobile-Chromium E2E tests passed** (52 was + 2 page-markers tests × 2 projects), `E2E_EXIT=0`, no skips, including the axe options-bar scan which still reports zero serious/critical violations. Coverage `COV_EXIT=0`: `All files` **94.44%** lines, `src/converters/pdf.ts` **100%**, `layout.ts` **99.63%**, `extract.ts` **100%** (85% gate, no threshold errors). Initial JS entry **68,123 bytes gzip** of 256,000 budget with 14 lazy chunks. pdfjs is proven lazy in the committed tree: the registry's `pdf` entry pulls `src/converters/pdf.ts`, which emits `pdf-*.js` as its own chunk (483.74 kB │ gzip 144.43 kB) plus the self-hosted worker asset `pdf.worker.min-*.mjs` (1,264.34 kB), with initial gzip unchanged at ~68 KB.
+Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit tests pass** (26 files, zero failures). **58 Chromium/mobile-Chromium E2E tests passed**, `E2E_EXIT=0`, no skips, including axe options-bar, empty, error-card, and preview-cap scans. Coverage `COV_EXIT=0`: `All files` **94.56%** lines (85% gate), `src/converters/pdf` **99.72%** lines, `src/converters/ocr` **100%** lines, `src/core` **93.23%** lines. Initial JS entry **68,120 bytes gzip** of 256,000 budget with 14 lazy chunks. pdfjs and SheetJS are proven lazy: neither enters the initial payload. OCR assets are self-hosted under `/public/ocr/` (generated on `prebuild` via `scripts/sync-ocr-assets.mjs` and verified zero-request in `tests/e2e/ocr-spike.spec.ts`).
 
 ## Iteration Log
 
@@ -185,3 +194,18 @@ Current runnable evidence (2026-10-21, after M5.3 — supersedes every earlier n
   - `node scripts/check-traceability.mjs` → re-run after this docs commit.
 - Still deferred from PDF extraction (M5.4 or later): the table heuristic, bold detection, and multi-column handling. OCR for scanned PDFs remains M6.
 - Blockers: mobile-webkit e2e still cannot launch on this machine (`libicudata.so.74` missing; no apt) — accepted per docs/AGENT_PROMPT.md; `format:check` still fails on the pre-existing baseline files (47 files; needs its own `chore:` commit and is **not** part of `scripts/verify.sh` or CI).
+
+### 2026-10-25 — M6.1/M6.2 baseline and Dependabot updates
+
+- Baseline verification after merging Dependabot updates:
+  - Unit tests: 193 of 193 passed across 26 test files (vitest 3.2.7).
+  - E2E tests: 58 of 58 passed across chromium and mobile-chromium.
+  - Code coverage: All files 94.56% lines (85% threshold gate).
+  - Production build & bundle check: initial JS gzip 68,120 bytes / 256,000 bytes budget (14 lazy chunks).
+  - Absolute path and hygiene checks: 100% clean.
+  - Traceability: 63 rows verified.
+- M6.1 self-hosted OCR runtime validated under CSP in `tests/e2e/ocr-spike.spec.ts` (recognizes "HELLO WORLD", zero cross-origin requests, zero CSP violations).
+- M6.2 page decision (`src/converters/ocr/decide.ts`, `decideOcrPages`, `MIN_CHARS_PER_PAGE = 25`) and PDF image-op detection (`src/converters/pdf/extract.ts`) verified with 18 unit tests.
+- Deferred from PDF (M5.4): table heuristic, bold detection, and multi-column handling.
+- Next step: M6.3 OCR engine (`src/converters/ocr/engine.ts`) with lazy-loaded worker and typed error mappings.
+

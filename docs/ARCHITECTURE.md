@@ -1,63 +1,85 @@
 # Architecture Overview
 
-## Browser-only processing and privacy boundaries
-Unbound runs entirely in the browser. No file data is sent to external servers. All conversion occurs client-side using Web APIs (FileReader, Blob, etc.) and JavaScript libraries. Privacy boundary: files never leave the user's device unless explicitly copied/downloaded by the user.
+## Browser-Only Processing and Privacy Boundaries
 
-## Actual current flow
+Unbound runs entirely in the browser. No file data is sent to external servers. All conversion occurs client-side using Web APIs (`FileReader`, `Blob`, `Canvas`, Web Workers) and JavaScript libraries.
+
+**Privacy boundary:**
+- Files never leave the user's device unless explicitly copied or downloaded.
+- Content Security Policy (CSP) is strictly enforced identically across `index.html`, `_headers`, and `vercel.json`:
+  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'`.
+- Zero cross-origin network requests during conversion.
+- No analytics, third-party tracking, or external CDNs.
+- OCR runtime is completely self-hosted: worker (`/public/ocr/worker.min.js`), core wasm (`/public/ocr/core/tesseract-core-*.wasm.js`), and traineddata (`/public/ocr/lang/eng.traineddata`).
+- Only UI settings (never file content or file names) are persisted in `localStorage`.
+
+## Actual Current Flow
+
 1. **Input**: User selects file(s) via drag-and-drop, file picker, or paste.
-2. **Detection**: `detectFileKind` (src/core/detect.ts) examines file signature/mimetype/extension to determine file kind (text, markdown, json, xml, code, docx, etc.).
-3. **Registry**: `loadConverter` (src/core/registry.ts) dynamically imports the appropriate converter module.
-4. **Converter**: The converter's `convert` method processes the file bytes with a `ConvertContext` (abort signal, progress callback, options) and returns a `ConvertResult` (markdown output, warnings, stats).
-5. **Output**: The result is stored in the job's `output` and `rawMarkdown` fields. UI updates via React state.
+2. **Detection** (`src/core/detect.ts`):
+   - Inspects magic bytes (first 4 KB): `%PDF-`, PK ZIP family (`50 4B 03 04`), OLE2 (`D0 CF 11 E0`), `{\rtf`, PNG, JPEG, GIF, WEBP, BMP.
+   - For ZIP files, inspects the central directory (end-of-central-directory record) to differentiate DOCX (`word/`), PPTX (`ppt/`), XLSX (`xl/`), and EPUB.
+   - For text without binary signatures, tests UTF-8/UTF-16/Windows-1252 decoding and maps by extension.
+3. **Registry** (`src/core/registry.ts`):
+   - Dynamically imports the appropriate converter module on demand via lazy `import()`.
+   - Heavy dependencies (pdfjs, SheetJS, tesseract.js) remain in lazy chunks and are never in the initial bundle.
+4. **Converter**:
+   - The converter's `convert` method processes the file bytes with a `ConvertContext` (`signal`, `onProgress`, `requestPassword`, `options`).
+   - Returns a `ConvertResult` containing `markdown`, `warnings` array, and `stats`.
+5. **Output**:
+   - Converted markdown is stored in the job's `rawMarkdown` and `output` fields.
+   - React state triggers output rendering, live token/character counting, structure-aware chunking, and clipboard/download handlers.
 
-## Actual supported formats (M1/M2 slice)
-- Text (.txt)
-- Markdown (.md/.markdown)
-- JSON (.json)
-- XML (.xml)
-- Code (.js, .ts, .tsx, .jsx, .py, .go, .rs, .java, .c, .cpp, .cs, .rb, .php, .swift, .kt, .sql, .sh, .yaml, .yml)
-- DOCX (.docx) via mammoth.js
+## Supported Formats (Current Status)
 
-## Job identity, attempt identity, retry/removal, and late-result rules
-- **Job ID**: UUIDv4-like string (`${name}-${random}-${timestamp}`) assigned at file ingestion. Identifies the input file throughout its lifetime.
-- **Attempt identity**: Each conversion attempt (initial or retry) increments an implicit attempt counter (not stored explicitly; implied by job state transitions). An obsolete attempt (e.g., from a prior retry) cannot overwrite a newer result.
-- **Retry**: Only allowed on jobs with status `error`. Uses the original `job.file` object. Updates the same job in place (status → `converting` → `done`/`error`). Does not create a new job.
-- **Removal**: Removes the job from the `jobs` array. The job cannot be resurrected; associated UI elements (toasts, selection, clipboard) are cleared.
-- **Late-result rule**: If an older attempt finishes after a newer attempt has already updated the job, the older result is ignored. The job state reflects the latest successful or failed attempt.
+- **Plain Text** (`.txt`): encoding auto-detection (UTF-8, UTF-16, Windows-1252 fallback with warning).
+- **Markdown** (`.md`, `.markdown`): pass-through, structure preserved.
+- **JSON** (`.json`): pretty-printed 2-space indented inside language-tagged code fence.
+- **XML** (`.xml`): pass-through inside syntax-aware code fence.
+- **Code** (20+ languages): language-tagged fenced code blocks with backtick run safety.
+- **DOCX** (`.docx`): parsed via Mammoth.js into semantic HTML, converted to ATX markdown via Turndown + GFM. Images counted and warned (`IMAGES_OMITTED`).
+- **XLSX / XLS / XLSM** (`.xlsx`, `.xls`, `.xlsm`): parsed via vendored SheetJS (`vendor/xlsx-0.20.3.tgz`). Multi-sheet `## Sheet: <name>` sections, GFM tables, ISO dates, merged-cell top-left replication, hidden sheets labelled.
+- **CSV / TSV** (`.csv`, `.tsv`): custom RFC-4180 parser preserving exact cell text (leading zeros, quoted spaces, exponent notation), BOM stripping, delimiter sniffing (comma, semicolon, tab).
+- **PDF (text-based)** (`.pdf`): parsed via `pdfjs-dist` (6.4.299) with self-hosted Vite-bundled worker.
+  - Page heights and text item grouping by coordinate (`layout.ts`).
+  - Automatic removal of repeated running headers/footers in the 8% top/bottom band (appearing on ≥ 60% of pages, for ≥ 3 pages).
+  - Bare page numbers stripped automatically across any page count.
+  - Heading detection via length-weighted median font size (rank-ordered into `#`, `##`, `###`).
+  - De-hyphenation across line breaks.
+  - Optional page markers (`--- Page N ---`, persisted setting).
+  - Large PDF warning (`LARGE_PDF_PAGE_THRESHOLD = 300`) with UI-thread yielding via macrotask (`setTimeout(0)`) between pages.
+- **OCR (M6 in progress)**:
+  - Architecture: self-hosted `tesseract.js` (7.0.0) with local worker and wasm cores (`lstm`, `simd-lstm`, `relaxedsimd-lstm`).
+  - Page decision logic (`src/converters/ocr/decide.ts`): categorizes pages as `text` (≥ 25 non-whitespace chars), `ocr` (< 25 chars + `hasImageOps`), or `empty`.
+  - Image operator detection (`src/converters/pdf/extract.ts`): scans pdfjs operator list only for candidate pages (< 25 chars).
+  - End-to-end PDF OCR routing and image converter in progress.
 
-## Canonical conversion results versus per-document/per-mode draft overrides
-- **Canonical result**: The `output` field holds the final conversion result (markdown or plain text) based on the latest successful attempt.
-- **Draft override**: When edit mode is enabled, the `draftText` field holds user-edited text, which overrides the canonical result for preview and copy actions. Leaving edit mode resets `draftText` to the canonical result.
-- **Per-mode toggle**: Switching between markdown/plain output modes does not alter the canonical result; it only changes the displayed/projected text.
+## Job Identity, Retry, and Late-Result Rules
 
-## One effective output projection for preview/counts/chunks/copy/download
-- **Effective text**: `activeText = editMode ? draftText : displayText`.
-- **`displayText`**: Derived from `sourceMarkdown` via `outputMode` (markdown/plain).
-- **`sourceMarkdown`**: 
-  - In `batchMode: 'separate'`: `selectedJob?.rawMarkdown ?? selectedJob?.output ?? ''`.
-  - In `batchMode: 'combined'`: Concatenation of all visible jobs' `output ?? rawMarkdown ?? 'No content converted.'`, each prefixed with `# File: {job.name}`.
-- **Visible jobs**: Jobs with status `done`, `error`, or non-empty `output`.
-- **Preview**: Shows first 200,000 characters of `activeText` with a notice if truncated.
-- **Counts/Chunks**: Computed from `displayText` (not `activeText`; chunking uses the canonical output, not the draft).
-- **Copy/Drop**: Use `activeText` (respects edit mode) for copy; download uses `activeText` as well.
+- **Job ID**: Unique string (`${name}-${random}-${timestamp}`) assigned at file ingestion.
+- **Attempt Identity**: Conversion operations receive a fresh attempt context. An obsolete attempt from a prior run or retry cannot overwrite a newer result.
+- **Retry**: Available for jobs in `error` status. Uses the stored `job.file` object, updating the job in place (`status: converting → done | error`).
+- **Removal**: Cleans up the job from the active queue and resets associated UI state.
+- **Cancellation**: Supported via `AbortSignal`. When aborted, active conversion loops terminate and resources (pdfjs loading task, tesseract worker) are cleaned up.
 
-## Intended worker/queue boundary (NOT implemented)
-- The architecture assumes a potential worker/queue boundary for off-main-thread conversion, but the current implementation runs converters synchronously on the main thread. 
-- **Intended**: A worker pool (e.g., via WorkerPool API) would handle `convertFile` calls, with the main thread managing job state and UI.
-- **Current**: Converter invocation blocks the UI during processing. A `signal` (AbortSignal) is passed to allow future cancellation, but is not yet wired to a worker boundary.
+## Output Projection Pipeline
 
-## Current limitations and next stabilization stages
-- **Limitations**:
-  - Main-thread blocking during conversion.
-  - Only M1/M2 slice formats supported (text, markdown, json, xml, code, docx).
-  - No OCR for scanned PDFs/images.
-  - No PPTX, XLSX, CSV, RTF, HTML, EPUB, URL, ZIP, folder workflows.
-  - No advanced privacy/network controls (though files stay local by design).
-  - No accessibility refinements (focus order, ARIA labels, etc.).
-  - No strict-mode safety guarantees (React 18).
-- **Next stabilization stages** (P0):
-  - PDF text-based extraction.
-  - Scanned PDF OCR.
-  - PPTX slide extraction.
-  - XLSX/CSV to markdown tables.
-  - Each with fidelity, error handling, privacy, and resource acceptance tests.
+1. **Active Text**: `activeText = editMode ? draftText : displayText`.
+2. **Display Text**: Derived from `sourceMarkdown` via `outputMode` (`markdown` or `plain`).
+   - Plain text conversion (`src/core/plain.ts`) uses the Marked AST lexer to walk tokens and output unformatted text without regular expression stripping.
+3. **Batch Modes**:
+   - `separate`: output reflects the currently selected job.
+   - `combined`: output concatenates all completed jobs, each delimited with `# File: <name>`.
+4. **Preview Cap**: If output exceeds 200,000 characters, the preview renders the first 200,000 characters with an explicit notice, while Copy and Download operations always access the full output text.
+5. **Structure-Aware Chunking** (`src/core/chunk.ts`):
+   - Splits content on section headings (`##`), paragraph breaks, and lines.
+   - Never splits inside code fences or table rows; repeats table header rows across splits.
+   - Computes live token estimates using script-aware heuristics (Latin ≈ 4 chars/token, CJK ≈ 1.2 chars/token).
+
+## Execution Boundary & Resource Safety
+
+- Converters yield to the UI thread between document pages using `await new Promise(r => setTimeout(r, 0))` to prevent UI freezing.
+- Memory safety:
+  - PDF byte buffers are always cloned (`new Uint8Array(bytes.slice(0))`) before passing to pdfjs so the original buffer remains intact for OCR fallback.
+  - Per-page `page.cleanup()` is explicitly called in extraction loops.
+  - `loadingTask.destroy()` is executed in `finally` blocks.

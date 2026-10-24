@@ -60,7 +60,7 @@ Every major LLM chat — ChatGPT, Claude, Grok, Gemini — limits file **attachm
 | **XLSX / XLS** | `.xlsx`, `.xls`, `.xlsm` | ✅ Working | Multi-sheet `## Sheet:` sections, GFM tables, ISO dates, merged cells, hidden sheets |
 | **CSV / TSV** | `.csv`, `.tsv` | ✅ Working | Exact cell text preserved (leading zeros, quoted spacing, BOM, Windows-1252) |
 | **PDF** _(text-based)_ | `.pdf` | ✅ Working | Headings, paragraphs, lists extracted; headers/footers/page numbers auto-stripped |
-| **OCR** _(scanned PDFs + images)_ | `.pdf`, `.jpg`, `.png` | 🔜 Planned | Tesseract.js with self-hosted worker/wasm/language data |
+| **OCR** _(scanned PDFs + images)_ | `.pdf`, `.jpg`, `.png`, `.webp`, `.bmp`, `.gif` | 🟨 In Progress | Self-hosted Tesseract.js 7.0; runtime spike & page decision logic verified; PDF routing in progress |
 | **PPTX** | `.pptx` | 🔜 Planned | JSZip + DOMParser, slide boundaries + speaker notes |
 | **RTF** | `.rtf` | 🔜 Planned | Custom lightweight text extractor |
 | **HTML File** | `.html`, `.htm` | 🔜 Planned | Readability + Turndown for main-content extraction |
@@ -160,7 +160,19 @@ Unbound is a **browser-only**, **zero-backend** application. Every conversion ha
   - `default-src 'self'` · `worker-src 'self' blob:` · No CDN scripts, fonts, workers, or WASM
 - The **pdf.js worker** is the Vite-emitted copy from `node_modules` (same-origin), never a CDN
 - Only **UI settings** (never file content or names) are stored in `localStorage`
-- Heavy libraries (pdfjs, SheetJS, tesseract) are **lazy-loaded** only when needed — the initial bundle stays under 68 KB gzip
+- Heavy libraries (pdfjs, SheetJS, tesseract) are **lazy-loaded** only when needed — the initial bundle stays under 69 KB gzip
+
+### 🧠 How OCR Works (and why nothing leaves your browser)
+
+Most web-based OCR tools send your documents to a cloud service for recognition. **Unbound does not.**
+- All OCR processing executes locally inside a Web Worker via **Tesseract.js (v7.0.0)** compiled to WebAssembly (WASM).
+- The worker script, WASM engine, and language models run entirely from same-origin static assets (`/ocr/worker.min.js`, `/ocr/core/`, `/ocr/lang/`).
+- Even on scanned documents, **zero bytes of document content or image data are transmitted across the network**.
+
+### 📦 Self-Hosted OCR Assets
+- **Automatic Asset Sync:** A `prebuild` hook (`scripts/sync-ocr-assets.mjs`) synchronizes `worker.min.js`, `tesseract.js`, and the three LSTM core variants (`lstm`, `simd-lstm`, `relaxedsimd-lstm`) directly from `node_modules` into `public/ocr/`.
+- **Git-Ignored Binaries:** Generated runtime assets in `public/ocr/` are git-ignored and regenerated deterministically on every build.
+- **Vendored Language Model:** `public/ocr/lang/eng.traineddata` (tessdata_fast, ~4.1 MB) is vendored and tracked in git so no runtime CDN downloads are needed.
 
 ---
 
@@ -183,9 +195,9 @@ Follow the established pattern in `src/converters/docx.ts`:
 
 | Layer | Count | Tool | Coverage |
 |:------|------:|:-----|:---------|
-| **Unit** | 175 | Vitest | 94.44% lines (85% gate) |
-| **E2E** | 56 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
-| **Bundle** | — | Custom gzip check | 68,123 B / 256,000 B budget |
+| **Unit** | 193 | Vitest | 94.56% lines (85% gate) |
+| **E2E** | 58 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
+| **Bundle** | — | Custom gzip check | 68,120 B / 256,000 B budget |
 
 ```bash
 # Run all checks at once
@@ -216,7 +228,7 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 
 ## 📊 Current Status
 
-> Matches [`PROGRESS.md`](PROGRESS.md) exactly — last verified **2026-10-21**.
+> Matches [`PROGRESS.md`](PROGRESS.md) exactly — last verified **2026-10-25**.
 
 | Milestone | Description | Status |
 |:----------|:------------|:------:|
@@ -225,8 +237,8 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 | M2 | App shell (DropZone, copy, chunking, batch, settings) | ✅ Done |
 | M3 | DOCX via Mammoth | ✅ Done |
 | M4 | XLSX / XLS / CSV / TSV | ✅ Done |
-| M5 | PDF text extraction (pdfjs-dist) | 🟨 In Progress |
-| M6 | OCR (scanned PDF + images) | ⬜ Planned |
+| M5 | PDF text extraction (pdfjs-dist) | ✅ Done |
+| M6 | OCR (scanned PDF + images) | 🟨 In Progress |
 | M7 | PPTX | ⬜ Planned |
 | M8 | RTF, HTML file, URL | ⬜ Planned |
 | M9 | EPUB, ZIP, folders | ⬜ Planned |
@@ -234,13 +246,13 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 | M11 | Accessibility, mobile, perf, privacy hardening | ⬜ Planned |
 | M12 | Docs, deploy, final audit | ⬜ Planned |
 
-### Latest Verification (2026-10-21)
+### Latest Verification (2026-10-25)
 
 ```
-  Unit Tests  ··········  175 / 175 passed  (24 files)
-  E2E Tests   ··········   56 / 56 passed   (chromium + mobile-chromium)
-  Coverage    ··········  94.44% lines       (85% gate)
-  Bundle Size ··········  68,123 B gzip      (256,000 B budget)
+  Unit Tests  ··········  193 / 193 passed  (26 files)
+  E2E Tests   ··········   58 / 58 passed   (chromium + mobile-chromium)
+  Coverage    ··········  94.56% lines       (85% gate)
+  Bundle Size ··········  68,120 B gzip      (256,000 B budget)
   Lazy Chunks ··········  14 chunks          (pdfjs, xlsx stay out of initial payload)
 ```
 
