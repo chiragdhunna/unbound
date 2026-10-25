@@ -121,10 +121,10 @@ describe('extractPages page handling', () => {
     expect(pages[1]?.hasImageOps).toBe(false)
   })
 
-  it('treats a page whose operator list cannot be read as having no images', async () => {
+  it('fails open when an operator list cannot be read so low-text pages route to OCR', async () => {
     const { pdfjs, getOperatorList } = fakePdfjs(['hi'])
     getOperatorList.mockRejectedValueOnce(new Error('boom'))
     const pages = await extractPages(pdfjs, new Uint8Array(1))
-    expect(pages[0]?.hasImageOps).toBe(false)
+    expect(pages[0]?.hasImageOps).toBe(true)
   })
 })

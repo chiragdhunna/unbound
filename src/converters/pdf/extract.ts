@@ -118,8 +118,9 @@ export async function extractPages(
           const operatorList = await page.getOperatorList()
           hasImageOps = hasImageOpsFromOperatorList(operatorList)
         } catch {
-          // If operator list is not available, treat as no image ops (safe default)
-          hasImageOps = false
+          // Fail open: if operator list cannot be read on a low-text page,
+          // assume images may be present so the page routes to OCR.
+          hasImageOps = true
         }
       }
 
@@ -163,4 +164,3 @@ export async function extractPageItems(
   const pages = await extractPages(pdfjs, bytes, hooks)
   return pages.map((page) => page.items)
 }
-

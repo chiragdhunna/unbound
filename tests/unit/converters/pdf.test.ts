@@ -286,6 +286,52 @@ describe('pdf extraction and conversion', () => {
     expect(progress).toContainEqual({ phase: 'ocr', current: 1, total: 1 })
   })
 
+  it('routes to OCR when getOperatorList throws on a low-text page (fail open)', async () => {
+    const rawPdf = await buildBlankPdf()
+    const realDoc = await legacyPdfjs.getDocument({ data: rawPdf.slice(0) }).promise
+
+    const fakePdfjs = {
+      ...legacyPdfjs,
+      getDocument: () => ({
+        promise: Promise.resolve({
+          numPages: realDoc.numPages,
+          getPage: async (num: number) => {
+            const page = await realDoc.getPage(num)
+            return {
+              ...page,
+              view: page.view,
+              cleanup: () => page.cleanup(),
+              getTextContent: () => page.getTextContent(),
+              getOperatorList: async () => {
+                throw new Error('Simulated operator list failure')
+              }
+            }
+          }
+        }),
+        destroy: async () => undefined
+      })
+    }
+    vi.mocked(getPdfjs).mockResolvedValue(fakePdfjs as unknown as typeof legacyPdfjs)
+    mockRecognize
+      .mockResolvedValueOnce({
+        text: 'PAGE 1 RECOVERED VIA FAIL OPEN',
+        confidence: 90
+      })
+      .mockResolvedValueOnce({
+        text: 'PAGE 2 RECOVERED VIA FAIL OPEN',
+        confidence: 90
+      })
+
+    const result = await pdfConverter.convert(
+      converterInput(rawPdf),
+      createConvertContext()
+    )
+
+    expect(result.markdown).toContain('PAGE 1 RECOVERED VIA FAIL OPEN')
+    expect(result.markdown).toContain('PAGE 2 RECOVERED VIA FAIL OPEN')
+    expect(result.stats.ocrPages).toBe(2)
+  })
+
   it('routes mixed PDF pages correctly, applying page markers when requested', async () => {
     vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
     mockRecognize.mockResolvedValueOnce({
