@@ -366,3 +366,36 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - Unit tests added in `tests/unit/converters/pdf.test.ts` verifying fail-open OCR routing on operator list error, 40–69% vs < 40% vs < 10 characters confidence messages, embedded image warning emission, and `forceOcr: true` full OCR rerun.
   - Unit tests added in `tests/unit/app-shell.test.tsx` verifying warning display and "Run OCR on this PDF" button invoking `convertFile` with `forceOcr: true`.
   - E2E tests added in `tests/e2e/pdf.spec.ts` testing upload of a PDF with embedded image, warning presentation, "Run OCR on this PDF" click, and subsequent OCR text extraction across Chromium and mobile-Chromium.
+
+### 2026-10-25 — UI Redesign: Design Tokens, Hero DropZone, Status Chips, Sticky Mobile Copy, and A11y
+
+- **Design System Tokens (`src/styles/tokens.css`):**
+  - Complete typography scale (`--text-2xs` to `--text-4xl`), proportional spacing scale (`--space-0-5` to `--space-12`), and border radii (`--radius-xs` to `--radius-2xl`, `--radius-full`).
+  - Terminal-inspired amber dark theme as default on `:root` and `[data-theme='dark']`.
+  - High-contrast warm paper light theme via `@media (prefers-color-scheme: light)` and `[data-theme='light']`.
+  - All color combinations verified for WCAG AA compliance (≥ 4.5:1 text, ≥ 3:1 graphical elements).
+- **Hero DropZone (`src/app/components/DropZone.tsx` and `src/styles/base.css`):**
+  - Redesigned as a prominent hero component with upload glyph badge, format guidance tags, and distinct primary ("Choose files") and secondary ("Choose folder") buttons.
+  - Smooth hover and dragging transitions with warm amber border glow and elevation.
+- **Semantic Status Chips (Icon + Text):**
+  - Job rows render semantic chips (`.job-status`) with an SVG icon and text: checkmark for `done`, spinning loader for `converting`, exclamation triangle for `error`, and clock circle for `queued`.
+  - SVGs use `aria-hidden="true"` and carry zero text content, preserving exact string assertions (`chip.textContent.trim()`) across existing tests.
+- **OCR Progress & Cancel Design:**
+  - High-contrast progress bar with gradient fill and clear page/percent text ("Page X of Y — Z%").
+  - Prominent, styled Cancel button wired to `AbortController`.
+- **Sticky Mobile Copy Button:**
+  - On viewports ≤ 640px, the converted output toolbar and primary Copy button use `position: sticky; bottom: 1rem;` with elevated z-index and shadow, allowing one-tap copying during mobile scrolling.
+- **Actionable OCR Warnings & "Run OCR on this PDF" Action:**
+  - Styled warning callouts with warning icons and amber accents.
+  - Prominent "Run OCR on this PDF" call-to-action button with amber highlight and icon.
+- **Accessibility & Motion Guards:**
+  - Added `@media (prefers-reduced-motion: reduce)` globally resetting transitions and animations.
+  - Added E2E tests in `tests/e2e/axe-test.spec.ts` verifying light theme axe compliance (0 violations), status chip icon+text rendering, hero dropzone styling, prefers-reduced-motion guard activation, and mobile sticky copy positioning.
+- **Component Architecture:**
+  - Refactored `AppShell.tsx` into modular components (`DropZone`, `JobCard`, `OptionsBar`, `OutputPanel`, `StatusIcon`, `WarningIcon`) under `src/app/components/` and types in `src/app/types.ts`.
+- **Verification Results:**
+  - Unit tests: 268 passed across 31 files (`npm run test:unit`, vitest 5.0.5, 0 failed).
+  - Repeated E2E tests: 110/110 passed with 0 retries and 0 flaky (`npx playwright test tests/e2e/axe-test.spec.ts --repeat-each=5 --retries=0`).
+  - Full E2E suite: 78 passed across Chromium and Mobile Chromium (28.9s).
+  - Production build: initial JS gzip 70,507 bytes / 256,000 bytes budget (19 lazy chunks; heavy libraries strictly segregated).
+

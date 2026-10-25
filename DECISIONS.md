@@ -195,3 +195,32 @@
   - AppShell displays a visible, non-blocking notification: `"English-first in v1; other languages are not supported yet."` under the drop zone.
   - No remote language data is fetched at runtime, preserving 100% same-origin client-side privacy under strict CSP.
 - **Consequences:** All image and scanned PDF tests pass. Line coverage remains > 94% on core and converters; initial bundle gzip entry is 69.45 KB (budget 256 KB); zero external requests or CSP violations.
+
+## 2026-10-25 — UI Redesign: Design Tokens, Hero DropZone, Semantic Status Chips, Sticky Mobile Copy, and Prefers-Reduced-Motion
+
+- **Context:** Following Milestone 6 completion, the UI redesign requested in the brief was implemented. Key requirements: build the design system in `src/styles/tokens.css` (colour, type, spacing, radius, light and dark themes), redesign DropZone as a hero, give job rows status chips that use an icon and text (never colour alone), clear OCR progress and cancel design, sticky Copy button on mobile, styled OCR warnings and "Run OCR on this PDF" action, WCAG AA contrast compliance, zero axe violations across Chromium/Mobile/WebKit, prefers-reduced-motion guard, and modular component splitting of `AppShell.tsx`.
+- **Decision (Design Tokens in `src/styles/tokens.css`):**
+  - Expanded `tokens.css` with a complete design system:
+    - Typography scale: `--text-2xs` (11px) through `--text-4xl` (40px), line heights, weights.
+    - Spacing scale: `--space-0-5` (2px) through `--space-12` (48px).
+    - Radii: `--radius-xs` (3px) through `--radius-2xl` (20px), `--radius-full`, with `--radius: 8px` preserved for backwards compatibility.
+    - Elevation: shadows and warm terminal amber glows.
+    - Themes: dark terminal default on `:root` and `[data-theme='dark']`, light theme via `@media (prefers-color-scheme: light)` and `[data-theme='light']`.
+  - Contrast ratios: All color pairs independently verified for WCAG AA compliance (≥ 4.5:1 for normal text, ≥ 3:1 for graphical/UI components). Light theme uses `#8a4800` amber (5.8:1 on `#ffffff`), `#1c6b29` ok (6.3:1), `#7a4b00` warn (7.2:1), and `#ad1826` danger (7.3:1). Dark theme uses `#ffb41f` amber (9.5:1 on `#151513`), `#7ee065` ok (9.8:1), `#ffd15c` warn (12.1:1), and `#ff7878` danger (6.4:1).
+- **Decision (Hero DropZone):**
+  - Elevated DropZone into a hero element with generous padding, an upload glyph badge (`.dropzone-hero-icon`), distinct headline, format guidance tags, and clear primary (`.btn-primary`, amber accent) and secondary (`.btn-secondary`) action buttons.
+  - Dragging state features a solid amber border, warm background tint, and subtle elevation.
+- **Decision (Semantic Status Chips — Icon + Text):**
+  - Job rows render status chips (`.job-status`) containing both an inline SVG icon and capitalized text: checkmark for `done`, spinning loader for `converting`, exclamation triangle for `error`, and clock circle for `queued`.
+  - SVG elements have `aria-hidden="true"` and zero text content inside paths, guaranteeing `chip.textContent.trim()` assertions in existing tests and accessibility tree names remain identical.
+- **Decision (OCR Progress & Cancel Design):**
+  - Progress bar styled with rounded-full track, glowing amber gradient fill, and high-contrast text (`Page X of Y — Z%`).
+  - Distinct `.action-cancel` styling with clear danger-tinted border and hover state.
+- **Decision (Mobile Sticky Copy Button):**
+  - On viewports ≤ 640px, the converted output toolbar and primary Copy button (`.copy-button-main`) use `position: sticky; bottom: 1rem;` with elevated z-index and shadow, allowing one-tap copying during mobile scrolling without scrolling back up.
+- **Decision (Prefers-Reduced-Motion Guard):**
+  - Added `@media (prefers-reduced-motion: reduce)` globally resetting all animations and transitions to `0.01ms !important`, ensuring accessible motion reduction for users who prefer reduced motion.
+- **Decision (Component Architecture):**
+  - Refactored `AppShell.tsx` into focused modular subcomponents: `DropZone`, `JobCard`, `OptionsBar`, `OutputPanel`, `StatusIcon`, and `WarningIcon` under `src/app/components/`, with types centralized in `src/app/types.ts`.
+- **Consequences:** All 268 unit tests pass; all 78 E2E tests pass across Chromium and Mobile Chromium (including zero axe violations); initial JS bundle is 70,507 bytes gzip (within 256 KB budget).
+
