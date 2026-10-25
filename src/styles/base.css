@@ -169,6 +169,37 @@ button.active {
   color: var(--amber);
 }
 
+.job-progress {
+  position: relative;
+  margin: 0.5rem 0;
+  height: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(255, 176, 0, 0.25);
+  border-right: 1px solid var(--amber);
+  transition: width 0.15s ease;
+}
+
+.progress-text {
+  position: relative;
+  z-index: 1;
+  font-size: 0.75rem;
+  padding-left: 0.5rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
 .warning-list,
 .job-error {
   margin: 0.4rem 0 0;

@@ -9,7 +9,7 @@ import {
 import { chunkMarkdown } from '../core/chunk'
 import { countText } from '../core/tokens'
 import { createConvertContext } from '../core/context'
-import { type ConvertContext } from '../core/types'
+import { type ConvertContext, type ConvertProgress } from '../core/types'
 import { errorMessage } from '../core/errors'
 import { convertFile } from '../core/pipeline'
 import { markdownToPlain } from '../core/plain'
@@ -29,6 +29,7 @@ type Job = {
   size: number
   file: File
   attemptId: number
+  progress?: ConvertProgress
 }
 
 type Settings = {
@@ -103,12 +104,14 @@ async function copyText(text: string): Promise<boolean> {
 
 function buildConvertContext(
   settings: Settings,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onProgress?: (progress: ConvertProgress) => void
 ): ConvertContext {
   const context = createConvertContext()
   return {
     ...context,
     signal: signal ?? context.signal,
+    onProgress: onProgress ?? context.onProgress,
     options: { ...context.options, pdfPageMarkers: settings.pageMarkers }
   }
 }
@@ -280,10 +283,20 @@ export function AppShell() {
       const controller = new AbortController()
       abortControllersRef.current.set(jobId, controller)
 
+      const handleProgress = (progress: ConvertProgress) => {
+        setJobs((previous) =>
+          previous.map((job) =>
+            job.id === jobId && job.attemptId === attemptId
+              ? { ...job, progress }
+              : job
+          )
+        )
+      }
+
       try {
         const result = await convertFile(
           file!,
-          buildConvertContext(settings, controller.signal)
+          buildConvertContext(settings, controller.signal, handleProgress)
         )
         setJobs((previous) =>
           previous.map((job) =>
@@ -295,7 +308,8 @@ export function AppShell() {
                     output: result.markdown,
                     rawMarkdown: result.markdown,
                     warnings: result.warnings.map((warning) => warning.message),
-                    error: null
+                    error: null,
+                    progress: undefined
                   }
                 : job // attemptId changed, ignore this result
               : job
@@ -320,7 +334,8 @@ export function AppShell() {
                     error: message,
                     warnings: [],
                     rawMarkdown: '',
-                    output: ''
+                    output: '',
+                    progress: undefined
                   }
                 : job // attemptId changed, ignore this error
               : job
@@ -370,7 +385,7 @@ export function AppShell() {
     setJobs((previous) =>
       previous.map((j) =>
         j.id === jobId
-          ? { ...j, status: 'converting' as JobStatus, error: null, attemptId }
+          ? { ...j, status: 'converting' as JobStatus, error: null, attemptId, progress: undefined }
           : j
       )
     )
@@ -378,11 +393,21 @@ export function AppShell() {
     const controller = new AbortController()
     abortControllersRef.current.set(jobId, controller)
 
+    const handleProgress = (progress: ConvertProgress) => {
+      setJobs((previous) =>
+        previous.map((j) =>
+          j.id === jobId && j.attemptId === attemptId
+            ? { ...j, progress }
+            : j
+        )
+      )
+    }
+
     try {
       // Convert the file
       const result = await convertFile(
         file,
-        buildConvertContext(settings, controller.signal)
+        buildConvertContext(settings, controller.signal, handleProgress)
       )
       setJobs((previous) =>
         previous.map((j) =>
@@ -394,7 +419,8 @@ export function AppShell() {
                   output: result.markdown,
                   rawMarkdown: result.markdown,
                   warnings: result.warnings.map((w) => w.message),
-                  error: null
+                  error: null,
+                  progress: undefined
                 }
               : j // attemptId changed, ignore this result
             : j
@@ -412,7 +438,8 @@ export function AppShell() {
                   error: message,
                   warnings: [],
                   rawMarkdown: '',
-                  output: ''
+                  output: '',
+                  progress: undefined
                 }
               : j // attemptId changed, ignore this error
             : j
@@ -694,104 +721,144 @@ export function AppShell() {
 
         {jobs.length > 0 ? (
           <ul className="job-list" aria-label="Conversion jobs">
-            {jobs.map((job) => (
-              <li
-                key={job.id}
-                data-job-id={job.id}
-                className={`job-card ${selectedJobId === job.id ? 'selected' : ''}`}
-              >
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    setSelectedJobId(job.id)
-                  }}
+            {jobs.map((job) => {
+              const page =
+                job.progress?.page ??
+                (job.progress && job.progress.total > 1
+                  ? job.progress.current
+                  : 1)
+              const totalPages =
+                job.progress?.totalPages ??
+                (job.progress && job.progress.total > 1
+                  ? job.progress.total
+                  : 1)
+              const percent =
+                job.progress?.percent !== undefined
+                  ? job.progress.percent
+                  : job.progress
+                    ? job.progress.total === 100
+                      ? job.progress.current
+                      : Math.round((job.progress.current / (job.progress.total || 1)) * 100)
+                    : 0
+              const valuenow = Math.min(100, Math.max(0, percent))
+
+              const progressText = `Page ${page} of ${totalPages} — ${valuenow}%`
+
+              return (
+                <li
+                  key={job.id}
+                  data-job-id={job.id}
+                  className={`job-card ${selectedJobId === job.id ? 'selected' : ''}`}
                 >
-                  <div className="job-header">
-                    <strong>{job.name}</strong>
-                    <span className={`job-status ${job.status}`}>
-                      {job.status}
-                    </span>
-                  </div>
-                </button>
-                {job.error ? <p className="job-error">{job.error}</p> : null}
-                {job.warnings.length > 0 ? (
-                  <ul className="warning-list">
-                    {job.warnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                ) : null}
-                <div className="job-actions">
-                  {job.status === 'done' ? (
-                    <button
-                      type="button"
-                      onClick={async (event) => {
-                        event.stopPropagation()
-                        const textToCopy =
-                          settings.outputMode === 'markdown'
-                            ? job.rawMarkdown
-                            : markdownToPlain(job.rawMarkdown)
-                        const success = await copyText(textToCopy)
-                        setToast(success ? 'File copied' : 'File copy failed')
-                      }}
-                      className="job-action-button"
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setSelectedJobId(job.id)
+                    }}
+                  >
+                    <div className="job-header">
+                      <strong>{job.name}</strong>
+                      <span className={`job-status ${job.status}`}>
+                        {job.status}
+                      </span>
+                    </div>
+                  </button>
+                  {job.status === 'converting' && job.progress ? (
+                    <div
+                      role="progressbar"
+                      aria-valuenow={valuenow}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`Progress for ${job.name}`}
+                      className="job-progress"
                     >
-                      Copy file
-                    </button>
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${valuenow}%` }}
+                      />
+                      <span className="progress-text">{progressText}</span>
+                    </div>
                   ) : null}
-                  {job.status === 'done' ? (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        handleJobDownload(job)
-                      }}
-                      className="job-action-button"
-                    >
-                      Download file
-                    </button>
+                  {job.error ? <p className="job-error">{job.error}</p> : null}
+                  {job.warnings.length > 0 ? (
+                    <ul className="warning-list">
+                      {job.warnings.map((warning) => (
+                        <li key={warning}>{warning}</li>
+                      ))}
+                    </ul>
                   ) : null}
-                  {job.status === 'converting' ? (
+                  <div className="job-actions">
+                    {job.status === 'done' ? (
+                      <button
+                        type="button"
+                        onClick={async (event) => {
+                          event.stopPropagation()
+                          const textToCopy =
+                            settings.outputMode === 'markdown'
+                              ? job.rawMarkdown
+                              : markdownToPlain(job.rawMarkdown)
+                          const success = await copyText(textToCopy)
+                          setToast(success ? 'File copied' : 'File copy failed')
+                        }}
+                        className="job-action-button"
+                      >
+                        Copy file
+                      </button>
+                    ) : null}
+                    {job.status === 'done' ? (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleJobDownload(job)
+                        }}
+                        className="job-action-button"
+                      >
+                        Download file
+                      </button>
+                    ) : null}
+                    {job.status === 'converting' ? (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          cancelJob(job.id)
+                        }}
+                        className="job-action-button"
+                      >
+                        Cancel
+                      </button>
+                    ) : null}
+                    {job.status === 'error' ? (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          retryJob(job)
+                        }}
+                        className="job-action-button"
+                      >
+                        Retry
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation()
                         cancelJob(job.id)
+                        setJobs((previous) =>
+                          previous.filter((item) => item.id !== job.id)
+                        )
                       }}
                       className="job-action-button"
                     >
-                      Cancel
+                      Remove
                     </button>
-                  ) : null}
-                  {job.status === 'error' ? (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        retryJob(job)
-                      }}
-                      className="job-action-button"
-                    >
-                      Retry
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      cancelJob(job.id)
-                      setJobs((previous) =>
-                        previous.filter((item) => item.id !== job.id)
-                      )
-                    }}
-                    className="job-action-button"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </li>
-            ))}
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         ) : null}
         {sourceMarkdown ? (

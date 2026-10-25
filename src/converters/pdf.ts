@@ -142,11 +142,14 @@ export const pdfConverter: Converter = {
           canvas = rendered.canvas
           const res = await ocrEngine.recognize(canvas, {
             signal: ctx.signal,
-            onProgress: () => {
+            onProgress: (p) => {
               ctx.onProgress({
                 phase: 'ocr',
                 current: pageNumber,
-                total: pages.length
+                total: pages.length,
+                page: pageNumber,
+                totalPages: pages.length,
+                percent: p.current
               })
             }
           })

@@ -44,7 +44,14 @@ export const imageConverter: Converter = {
       const result = await ocrEngine.recognize(renderedCanvas, {
         signal: ctx.signal,
         onProgress: (progress) => {
-          ctx.onProgress(progress)
+          ctx.onProgress({
+            phase: 'ocr',
+            current: progress.current,
+            total: 100,
+            page: 1,
+            totalPages: 1,
+            percent: progress.current
+          })
         }
       })
 
@@ -65,7 +72,7 @@ export const imageConverter: Converter = {
             confidence < 40 || nonWhitespaceChars < 10
               ? `OCR output looks unreliable (mean confidence: ${confidence}%).`
               : `Low OCR confidence (mean confidence: ${confidence}%).`,
-          severity: 'warn'
+        severity: 'warn'
         })
       }
 

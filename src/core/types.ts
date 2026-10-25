@@ -48,9 +48,18 @@ export interface ConvertOptions {
   pdfPageMarkers?: boolean
 }
 
+export interface ConvertProgress {
+  phase: string
+  current: number
+  total: number
+  percent?: number
+  page?: number
+  totalPages?: number
+}
+
 export interface ConvertContext {
   signal: AbortSignal
-  onProgress: (p: { phase: string; current: number; total: number }) => void
+  onProgress: (p: ConvertProgress) => void
   requestPassword: (reason: 'required' | 'incorrect') => Promise<string | null>
   options: ConvertOptions
 }
