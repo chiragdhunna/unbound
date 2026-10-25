@@ -250,3 +250,34 @@ Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit t
   - Bundle size check: initial JS gzip 68,572 bytes / 256,000 bytes budget (14 lazy chunks).
   - Hygiene greps & traceability: clean.
 - Next step: M6.3b page rendering helpers (`src/converters/ocr/render.ts`).
+
+### 2026-10-25 — M6.3b PDF page canvas rendering helpers implementation & verification
+
+- Implemented `src/converters/ocr/render.ts`:
+  - `computeRenderScale(width, height, options)`: pure function defaulting to 2.0 scale (150-300 DPI OCR balance) and maxLongEdge 3000px (~36 MB RGBA buffer ceiling). Clamps scale down when `longEdge * scale > maxLongEdge` so the long edge equals `maxLongEdge`.
+  - `renderPdfPageToCanvas(page, options)`: renders a pdfjs page to canvas (`HTMLCanvasElement` / `OffscreenCanvas`) at computed scale. Yields to UI macrotask before and in `finally` block; guarantees `page.cleanup()` in `finally` to release internal pdfjs buffers.
+  - `releaseCanvas(canvas)`: zeroes canvas dimensions (`width = 0, height = 0`) to encourage GC on detached buffers.
+  - `createCanvas(width, height)`: environment-aware canvas creator (DOM canvas in browser, `OffscreenCanvas` fallback).
+- Added unit tests in `tests/unit/converters/ocr-render.test.ts` (14 tests) covering:
+  - Standard page scaling (612x792 -> 2.0, 1224x1584).
+  - Large page clamping (3000x4000 -> 0.75, long edge clamped to 3000).
+  - Landscape orientation handling (normal and large).
+  - Custom scale override.
+  - Custom maxLongEdge override.
+  - Zero and negative dimension safety.
+  - `releaseCanvas` zeroing and null/undefined safety.
+  - `createCanvas` dimensions.
+  - `renderPdfPageToCanvas` viewport scaling, context/viewport args, `page.cleanup()` execution, and return structure.
+  - `page.cleanup()` on async render rejection and synchronous throw.
+  - `OcrFailedError` on missing 2D canvas context with cleanup.
+- Mutation checks performed and verified failing:
+  1. Break clamping in `computeRenderScale`: failed 4 tests with `AssertionError: expected 2 to be 0.75`.
+  2. Break cleanup in `renderPdfPageToCanvas`: failed 5 tests with `AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times`.
+  3. Break `releaseCanvas` zeroing: failed 1 test with `AssertionError: expected 1200 to be +0`.
+- Verification results:
+  - Unit tests: 222 passed across 28 files (was 208 across 27 files; +14 in `ocr-render.test.ts`).
+  - Line coverage: All files 94.91%, `src/converters/**` 93.42%, `src/converters/ocr/render.ts` 92.10%, `src/converters/ocr/engine.ts` 95.45%, `src/core/**` 93.60% (85% gate).
+  - E2E tests: 58 passed across chromium and mobile-chromium (20.4s).
+  - Bundle size check: initial JS gzip 68,572 bytes / 256,000 bytes budget (14 lazy chunks).
+  - Hygiene greps & traceability: clean.
+- Next step: M6.4 PDF routing (per-page OCR vs text extraction).

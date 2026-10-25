@@ -195,7 +195,7 @@ Follow the established pattern in `src/converters/docx.ts`:
 
 | Layer | Count | Tool | Coverage |
 |:------|------:|:-----|:---------|
-| **Unit** | 208 | Vitest (v5.0.5) | 95.00% lines (85% gate) |
+| **Unit** | 222 | Vitest (v5.0.5) | 94.91% lines (85% gate) |
 | **E2E** | 58 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
 | **Bundle** | — | Custom gzip check | 68,572 B / 256,000 B budget |
 
@@ -249,9 +249,9 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 ### Latest Verification (2026-10-25)
 
 ```
-  Unit Tests  ··········  208 / 208 passed  (27 files)
+  Unit Tests  ··········  222 / 222 passed  (28 files)
   E2E Tests   ··········   58 / 58 passed   (chromium + mobile-chromium)
-  Coverage    ··········  95.00% lines       (85% gate)
+  Coverage    ··········  94.91% lines       (85% gate)
   Bundle Size ··········  68,572 B gzip      (256,000 B budget)
   Lazy Chunks ··········  14 chunks          (pdfjs, xlsx stay out of initial payload)
 ```

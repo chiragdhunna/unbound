@@ -147,3 +147,15 @@
   - Progress: driven by Tesseract's logger callback during recognition (`m.status === 'recognizing text'`) mapped to `{ phase: 'ocr', current: Math.round(m.progress * 100), total: 100 }`.
   - Error mapping: recognition rejections and worker creation failures are mapped to `OcrFailedError`, with the failed worker terminated and cleared to prevent contaminated state.
 - **Consequences:** 15 unit tests in `tests/unit/converters/ocr-engine.test.ts` with 95.45% lines coverage. Fresh measured initial JS gzip after `npm ci`: 68,572 bytes / 256,000 bytes budget. Mutation checks verified that breaking worker reuse, abort termination, or corePath options fails the test suite.
+
+## 2026-10-25 — M6.3b PDF page canvas rendering, DPI scaling, and memory bounds
+
+- **Context:** Feeding PDF pages to Tesseract OCR requires rasterizing vector pages to pixel buffers (`HTMLCanvasElement` / `OffscreenCanvas`). An optimal balance must be struck between OCR recognition accuracy (sufficient DPI) and mobile browser heap memory limits.
+- **Decision:**
+  - `src/converters/ocr/render.ts` implements `computeRenderScale(width, height, options)` and `renderPdfPageToCanvas(page, options)`.
+  - Default OCR scale: `DEFAULT_OCR_SCALE = 2.0`. PDF points (typically 72 DPI, e.g. 612x792 pt for US Letter) scaled by 2.0 yield ~144 DPI (1224x1584 px), providing strong OCR character separation while keeping memory modest (~7.7 MB RGBA).
+  - Memory ceiling: `DEFAULT_MAX_LONG_EDGE = 3000`. If `Math.max(width, height) * scale > 3000`, scale is clamped down so the long edge is exactly 3000 px (3000x3000 RGBA is ~36 MB, well within mobile browser canvas heap limits).
+  - Mandatory resource cleanup: `page.cleanup()` is guaranteed in a `finally` block in `renderPdfPageToCanvas` to immediately release pdfjs internal mask and font buffers after rendering.
+  - Canvas disposal helper: `releaseCanvas(canvas)` sets `width = 0` and `height = 0` to trigger browser garbage collection of detached canvas memory.
+  - UI thread responsiveness: `await yieldToUi()` macrotask yields before rendering and in the `finally` block prevent UI lockup on complex vector pages.
+- **Consequences:** 14 unit tests in `tests/unit/converters/ocr-render.test.ts` with 92.10% lines coverage verify scale math, budget clamping, canvas zeroing, context error handling, and guaranteed cleanup on success, sync throw, and async rejection. Mutation checks confirmed tests catch broken clamping, omitted cleanup, or broken canvas release.

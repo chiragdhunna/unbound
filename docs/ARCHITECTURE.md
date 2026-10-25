@@ -54,6 +54,7 @@ Unbound runs entirely in the browser. No file data is sent to external servers. 
   - Page decision logic (`src/converters/ocr/decide.ts`): categorizes pages as `'text'` (≥ 25 non-whitespace chars), `'image-only'` (< 25 chars + `hasImageOps`), `'forced'` (`forceOcr: true`), or `'empty'`.
   - Image operator detection (`src/converters/pdf/extract.ts`): scans pdfjs operator list only for candidate pages (< 25 chars).
   - OCR Engine (`src/converters/ocr/engine.ts`): dynamic-imports `tesseract.js` on first use, creates a single worker reused across pages, executes strictly sequentially (a second concurrent call rejects immediately with `OcrFailedError`), supports immediate termination on `AbortSignal` with `CancelledError` and lazy worker recreation on subsequent calls, maps worker creation/recognition rejections to `OcrFailedError`, and forwards Tesseract logger events to drive `{ phase: 'ocr', current, total: 100 }` progress.
+  - Page rendering helpers (`src/converters/ocr/render.ts`): `computeRenderScale(width, height, options)` computes scale (default 2.0, max long edge 3000px ceiling to bound memory); `renderPdfPageToCanvas(page, options)` renders a pdfjs page to an HTMLCanvasElement/OffscreenCanvas with UI thread macrotask yields before/after and guaranteed `page.cleanup()` in `finally`; `releaseCanvas(canvas)` zeroes dimensions (`0x0`) to trigger GC.
   - End-to-end PDF OCR routing and image converter in progress.
 
 ## Job Identity, Retry, and Late-Result Rules
