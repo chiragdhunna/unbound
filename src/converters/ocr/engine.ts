@@ -1,4 +1,18 @@
-import { CancelledError, CorruptFileError } from '../../core/errors'
+/**
+ * Self-hosted Tesseract.js OCR Engine (PLAN §7.5, ADR-6).
+ *
+ * Design constraints:
+ * - Sequential execution only: ONE recognition at a time. The underlying Web Worker
+ *   is single-threaded and the progress callback is shared across the worker logger.
+ *   Concurrent calls to `recognize()` on the same engine instance reject immediately
+ *   with `OcrFailedError` to preserve bounded memory (single canvas in flight) and
+ *   unambiguous abort semantics.
+ * - Single worker reuse: the worker is created lazily on first use and reused across
+ *   sequential pages.
+ * - Cancellation: aborting an in-flight operation terminates the worker immediately,
+ *   rejects with `CancelledError`, and lazily re-instantiates a fresh worker on the next call.
+ */
+import { CancelledError, OcrFailedError } from '../../core/errors'
 
 export interface OcrEngineOptions {
   lang?: string
@@ -21,7 +35,10 @@ export interface OcrRecognizeResult {
 }
 
 export type OcrImageSource =
-  HTMLCanvasElement | OffscreenCanvas | ImageBitmap | ImageData | unknown
+  | HTMLCanvasElement
+  | OffscreenCanvas
+  | ImageBitmap
+  | ImageData
 
 export interface OcrEngine {
   recognize(
@@ -48,6 +65,7 @@ export function createOcrEngine(options: OcrEngineOptions = {}): OcrEngine {
   let worker: TesseractWorker | null = null
   let workerPromise: Promise<TesseractWorker> | null = null
   let creationId = 0
+  let isBusy = false
   let activeProgress: ((progress: OcrProgress) => void) | null = null
 
   const rawBase = (import.meta.env?.BASE_URL ?? '/').replace(/\/+$/, '')
@@ -72,6 +90,7 @@ export function createOcrEngine(options: OcrEngineOptions = {}): OcrEngine {
     worker = null
     workerPromise = null
     activeProgress = null
+    isBusy = false
 
     if (currentWorker) {
       try {
@@ -133,6 +152,13 @@ export function createOcrEngine(options: OcrEngineOptions = {}): OcrEngine {
     image: OcrImageSource,
     recognizeOptions: OcrRecognizeOptions = {}
   ): Promise<OcrRecognizeResult> {
+    if (isBusy) {
+      throw new OcrFailedError(
+        'OCR engine is busy: concurrent recognition is not supported.'
+      )
+    }
+    isBusy = true
+
     const { signal, onProgress } = recognizeOptions
 
     if (signal?.aborted) {
@@ -161,7 +187,7 @@ export function createOcrEngine(options: OcrEngineOptions = {}): OcrEngine {
         throw new CancelledError()
       }
       const res = await activeWorker.recognize(
-        image as Parameters<TesseractWorker['recognize']>[0]
+        image as unknown as Parameters<TesseractWorker['recognize']>[0]
       )
       return {
         text: res?.data?.text ?? '',
@@ -180,19 +206,20 @@ export function createOcrEngine(options: OcrEngineOptions = {}): OcrEngine {
       if (signal?.aborted || error instanceof CancelledError) {
         throw new CancelledError()
       }
-      if (error instanceof CorruptFileError) {
+      if (error instanceof OcrFailedError) {
         throw error
       }
       const message =
         error instanceof Error && error.message
           ? `OCR failed: ${error.message}`
           : 'OCR failed; the image could not be processed.'
-      throw new CorruptFileError(message)
+      throw new OcrFailedError(message)
     } finally {
       if (signal && onAbort) {
         signal.removeEventListener('abort', onAbort)
       }
       activeProgress = null
+      isBusy = false
     }
   }
 

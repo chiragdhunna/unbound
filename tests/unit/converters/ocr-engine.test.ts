@@ -1,11 +1,10 @@
-// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createOcrEngine,
   getTesseract,
   type OcrProgress
 } from '../../../src/converters/ocr/engine'
-import { CancelledError, CorruptFileError } from '../../../src/core/errors'
+import { CancelledError, OcrFailedError } from '../../../src/core/errors'
 
 interface MockWorkerInstance {
   recognize: ReturnType<typeof vi.fn>
@@ -18,6 +17,10 @@ const mockCreateWorker = vi.fn()
 vi.mock('tesseract.js', () => ({
   createWorker: (...args: unknown[]) => mockCreateWorker(...args)
 }))
+
+function createTestCanvas(): HTMLCanvasElement {
+  return document.createElement('canvas')
+}
 
 describe('ocr engine (M6.3a)', () => {
   beforeEach(() => {
@@ -39,7 +42,7 @@ describe('ocr engine (M6.3a)', () => {
     const engine = createOcrEngine()
     expect(mockCreateWorker).not.toHaveBeenCalled()
 
-    const result = await engine.recognize({})
+    const result = await engine.recognize(createTestCanvas())
     expect(mockCreateWorker).toHaveBeenCalledTimes(1)
     expect(result).toEqual({ text: 'Recognized test text', confidence: 92 })
   })
@@ -53,8 +56,8 @@ describe('ocr engine (M6.3a)', () => {
   it('reuses the single worker across multiple recognize calls', async () => {
     const engine = createOcrEngine()
 
-    const res1 = await engine.recognize({ id: 1 })
-    const res2 = await engine.recognize({ id: 2 })
+    const res1 = await engine.recognize(createTestCanvas())
+    const res2 = await engine.recognize(createTestCanvas())
 
     expect(mockCreateWorker).toHaveBeenCalledTimes(1)
     expect(createdWorkers).toHaveLength(1)
@@ -65,7 +68,7 @@ describe('ocr engine (M6.3a)', () => {
 
   it('passes language, oem 1, and exact self-hosted paths to createWorker', async () => {
     const engine = createOcrEngine({ lang: 'fra' })
-    await engine.recognize({})
+    await engine.recognize(createTestCanvas())
 
     expect(mockCreateWorker).toHaveBeenCalledWith(
       'fra',
@@ -106,12 +109,9 @@ describe('ocr engine (M6.3a)', () => {
       }
     )
 
-    const result = await engine.recognize(
-      {},
-      {
-        onProgress: (p) => progressList.push(p)
-      }
-    )
+    const result = await engine.recognize(createTestCanvas(), {
+      onProgress: (p) => progressList.push(p)
+    })
 
     expect(result.text).toBe('Done')
     expect(progressList).toEqual([
@@ -131,7 +131,7 @@ describe('ocr engine (M6.3a)', () => {
       return workerInstance
     })
 
-    const res = await engine.recognize({})
+    const res = await engine.recognize(createTestCanvas())
     expect(res).toEqual({ text: '', confidence: 0 })
   })
 
@@ -141,7 +141,7 @@ describe('ocr engine (M6.3a)', () => {
     controller.abort()
 
     await expect(
-      engine.recognize({}, { signal: controller.signal })
+      engine.recognize(createTestCanvas(), { signal: controller.signal })
     ).rejects.toBeInstanceOf(CancelledError)
 
     expect(mockCreateWorker).not.toHaveBeenCalled()
@@ -161,14 +161,21 @@ describe('ocr engine (M6.3a)', () => {
 
     mockCreateWorker.mockImplementationOnce(async () => {
       const workerInstance: MockWorkerInstance = {
-        recognize: vi.fn().mockReturnValue(recognizeWait),
+        recognize: vi
+          .fn()
+          .mockReturnValueOnce(recognizeWait)
+          .mockResolvedValue({
+            data: { text: 'Recognized test text', confidence: 90 }
+          }),
         terminate: vi.fn().mockResolvedValue({})
       }
       createdWorkers.push(workerInstance)
       return workerInstance
     })
 
-    const recognizePromise = engine.recognize({}, { signal: controller.signal })
+    const recognizePromise = engine.recognize(createTestCanvas(), {
+      signal: controller.signal
+    })
 
     // Trigger abort mid-flight
     controller.abort()
@@ -198,20 +205,22 @@ describe('ocr engine (M6.3a)', () => {
       return workerInstance
     })
 
-    const abortedCall = engine.recognize({}, { signal: controller.signal })
+    const abortedCall = engine.recognize(createTestCanvas(), {
+      signal: controller.signal
+    })
     controller.abort()
     await expect(abortedCall).rejects.toBeInstanceOf(CancelledError)
     expect(createdWorkers).toHaveLength(1)
     expect(createdWorkers[0]!.terminate).toHaveBeenCalledTimes(1)
 
     // Second call without abort signal
-    const secondResult = await engine.recognize({})
+    const secondResult = await engine.recognize(createTestCanvas())
     expect(mockCreateWorker).toHaveBeenCalledTimes(2)
     expect(createdWorkers).toHaveLength(2)
     expect(secondResult.text).toBe('Recognized test text')
   })
 
-  it('maps recognize rejection to CorruptFileError and resets worker', async () => {
+  it('maps recognize rejection to OcrFailedError and resets worker', async () => {
     const engine = createOcrEngine()
 
     mockCreateWorker.mockImplementationOnce(async () => {
@@ -225,16 +234,18 @@ describe('ocr engine (M6.3a)', () => {
       return workerInstance
     })
 
-    await expect(engine.recognize({})).rejects.toBeInstanceOf(CorruptFileError)
+    await expect(engine.recognize(createTestCanvas())).rejects.toBeInstanceOf(
+      OcrFailedError
+    )
     expect(createdWorkers[0]!.terminate).toHaveBeenCalled()
 
     // Subsequent call succeeds with a recreated worker
-    const recovered = await engine.recognize({})
+    const recovered = await engine.recognize(createTestCanvas())
     expect(recovered.text).toBe('Recognized test text')
     expect(mockCreateWorker).toHaveBeenCalledTimes(2)
   })
 
-  it('maps non-Error recognize rejection and rethrows CorruptFileError', async () => {
+  it('maps non-Error recognize rejection and rethrows OcrFailedError', async () => {
     const engine = createOcrEngine()
 
     mockCreateWorker.mockImplementationOnce(async () => {
@@ -246,30 +257,77 @@ describe('ocr engine (M6.3a)', () => {
       return workerInstance
     })
 
-    await expect(engine.recognize({})).rejects.toBeInstanceOf(CorruptFileError)
+    await expect(engine.recognize(createTestCanvas())).rejects.toBeInstanceOf(
+      OcrFailedError
+    )
 
-    // And if CorruptFileError is thrown directly
+    // And if OcrFailedError is thrown directly
     mockCreateWorker.mockImplementationOnce(async () => {
       const workerInstance: MockWorkerInstance = {
         recognize: vi
           .fn()
-          .mockRejectedValue(new CorruptFileError('Already corrupt')),
+          .mockRejectedValue(new OcrFailedError('Already failed')),
         terminate: vi.fn().mockResolvedValue({})
       }
       createdWorkers.push(workerInstance)
       return workerInstance
     })
 
-    await expect(engine.recognize({})).rejects.toThrow('Already corrupt')
+    await expect(engine.recognize(createTestCanvas())).rejects.toThrow(
+      'Already failed'
+    )
   })
 
-  it('maps createWorker rejection to CorruptFileError', async () => {
+  it('maps createWorker rejection to OcrFailedError', async () => {
     const engine = createOcrEngine()
     mockCreateWorker.mockRejectedValueOnce(
       new Error('WASM core failed to compile')
     )
 
-    await expect(engine.recognize({})).rejects.toBeInstanceOf(CorruptFileError)
+    await expect(engine.recognize(createTestCanvas())).rejects.toBeInstanceOf(
+      OcrFailedError
+    )
+  })
+
+  it('rejects a second concurrent recognize call with OcrFailedError', async () => {
+    const engine = createOcrEngine()
+    let releaseRecognize!: () => void
+    const recognizeWait = new Promise<{
+      data: { text: string; confidence: number }
+    }>((resolve) => {
+      releaseRecognize = () =>
+        resolve({ data: { text: 'First call done', confidence: 99 } })
+    })
+
+    mockCreateWorker.mockImplementationOnce(async () => {
+      const workerInstance: MockWorkerInstance = {
+        recognize: vi
+          .fn()
+          .mockReturnValueOnce(recognizeWait)
+          .mockResolvedValue({
+            data: { text: 'Recognized test text', confidence: 90 }
+          }),
+        terminate: vi.fn().mockResolvedValue({})
+      }
+      createdWorkers.push(workerInstance)
+      return workerInstance
+    })
+
+    const call1 = engine.recognize(createTestCanvas())
+    const call2Promise = engine.recognize(createTestCanvas())
+
+    await expect(call2Promise).rejects.toBeInstanceOf(OcrFailedError)
+    await expect(call2Promise).rejects.toThrow(
+      'OCR engine is busy: concurrent recognition is not supported.'
+    )
+
+    releaseRecognize()
+    const res1 = await call1
+    expect(res1.text).toBe('First call done')
+
+    // Subsequent call after call1 settles succeeds
+    const call3 = await engine.recognize(createTestCanvas())
+    expect(call3.text).toBe('Recognized test text')
   })
 
   it('terminate is idempotent and safely cleans up active worker', async () => {
@@ -280,7 +338,7 @@ describe('ocr engine (M6.3a)', () => {
     expect(mockCreateWorker).not.toHaveBeenCalled()
 
     // Create worker
-    await engine.recognize({})
+    await engine.recognize(createTestCanvas())
     expect(createdWorkers).toHaveLength(1)
     expect(createdWorkers[0]!.terminate).not.toHaveBeenCalled()
 
@@ -304,7 +362,9 @@ describe('ocr engine (M6.3a)', () => {
 
     mockCreateWorker.mockImplementationOnce(async () => creationPromise)
 
-    const pendingRecognize = engine.recognize({}, { signal: controller.signal })
+    const pendingRecognize = engine.recognize(createTestCanvas(), {
+      signal: controller.signal
+    })
     controller.abort()
 
     await expect(pendingRecognize).rejects.toBeInstanceOf(CancelledError)

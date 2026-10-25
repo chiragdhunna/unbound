@@ -54,6 +54,13 @@ export class ScannedPdfError extends Error {
   }
 }
 
+export class OcrFailedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'OcrFailedError'
+  }
+}
+
 export function errorMessage(error: unknown): string {
   if (error instanceof PasswordRequiredError)
     return `${error.message} Save the file without a password and try again.`
@@ -66,6 +73,8 @@ export function errorMessage(error: unknown): string {
     return `${error.message} Try a file with selectable text or enable OCR.`
   if (error instanceof TooLargeError)
     return `${error.message} Reduce the file size and try again.`
+  if (error instanceof OcrFailedError)
+    return `${error.message} Reload the page and try again; if it keeps failing, the OCR files may not have loaded.`
   if (error instanceof CancelledError) return error.message
   if (error instanceof UnsupportedFormatError) return error.message
   if (error instanceof Error) return error.message
