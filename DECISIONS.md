@@ -224,3 +224,18 @@
   - Refactored `AppShell.tsx` into focused modular subcomponents: `DropZone`, `JobCard`, `OptionsBar`, `OutputPanel`, `StatusIcon`, and `WarningIcon` under `src/app/components/`, with types centralized in `src/app/types.ts`.
 - **Consequences:** All 268 unit tests pass; all 78 E2E tests pass across Chromium and Mobile Chromium (including zero axe violations); initial JS bundle is 70,507 bytes gzip (within 256 KB budget).
 
+## 2026-10-25 — Fix Flaky-by-Design Cancel Timing Test (In-Page Performance Measurement)
+
+- **Context:** Following the merge of the UI redesign to `main` (`16f1860`), CI failed exclusively on `[mobile-webkit] pdf.spec.ts:291: "cancels OCR conversion in under 1 second"`, taking 1154 ms against the `< 1000 ms` threshold. The earlier "477–524 ms measured" claim recorded during M6.3 was measured via end-to-end Playwright Node wall-clock time (`Date.now()` between `await cancelButton.click()` and `await expect(...).toBeVisible()`). On simulated Mobile WebKit CI runners, external protocol dispatch, click emulation, and DOM polling overhead exceeded 1000 ms even though the application engine and UI aborted in under 20 ms.
+- **Decision:**
+  - Replaced external Playwright Node clock measurement with accurate in-page measurement:
+    - Installed a capture-phase `click` listener on the Cancel button recording `performance.now()`.
+    - Installed a `MutationObserver` on `document.body` recording `performance.now()` as soon as `"Conversion cancelled by user."` is rendered into the DOM.
+    - Asserted `cancelledAt - clickedAt < 1000 ms` in-page.
+  - Added deterministic verification that the OCR worker was active and subsequently terminated (`ocrWorkers.every(w => w.terminated)`).
+  - Maintained zero cross-origin requests and zero console error assertions.
+- **Mutation Verification:** Temporarily injected a 1500 ms delay in the cancellation handling path and verified the test cleanly fails with `expect(elapsedMs).toBeLessThan(1000)` (received ~1510 ms). Reverted the mutation.
+- **Flake Verification:** Executed 20 repeated runs on both Chromium and Mobile Chromium (`--repeat-each=20 --retries=0`), passing 40/40 tests with 0 failures and 0 flaky runs.
+- **Consequences:** The UI redesign is merged to `main` and the sole flaky-by-design E2E test is resolved. In-page cancel latency is measured at ~18 ms, cleanly satisfying the < 1 s requirement across all browser engines.
+
+

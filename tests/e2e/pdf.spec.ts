@@ -288,7 +288,49 @@ test('warns when a text PDF contains large embedded images and provides Run OCR 
   await expect(output).toContainText('INVOICE', { timeout: 30_000 })
 })
 
-test('cancels OCR conversion in under 1 second', async ({ page }) => {
+test('cancels OCR conversion in under 1 second', async ({ page, baseURL }) => {
+  const pageOrigin = new URL(baseURL ?? 'http://127.0.0.1:4173').origin
+  const crossOrigin: string[] = []
+  const consoleErrors: string[] = []
+
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (
+      url.protocol !== 'blob:' &&
+      url.protocol !== 'data:' &&
+      url.origin !== pageOrigin
+    ) {
+      crossOrigin.push(request.url())
+    }
+  })
+  page.on('console', (message) => {
+    const source = new URL(message.location().url || pageOrigin).pathname
+    if (message.type() === 'error' && source !== '/favicon.ico') {
+      consoleErrors.push(message.text())
+    }
+  })
+
+  await page.addInitScript(() => {
+    const OriginalWorker = window.Worker
+    ;(window as unknown as { __workers: { url: string; terminated: boolean }[] }).__workers = []
+    ;(window as unknown as { __terminatedWorkers: { url: string; terminated: boolean }[] }).__terminatedWorkers = []
+
+    window.Worker = class extends OriginalWorker {
+      constructor(scriptURL: string | URL, options?: WorkerOptions) {
+        super(scriptURL, options)
+        const urlStr = String(scriptURL)
+        const record = { url: urlStr, terminated: false }
+        ;(window as unknown as { __workers: { url: string; terminated: boolean }[] }).__workers.push(record)
+        const origTerminate = this.terminate.bind(this)
+        this.terminate = () => {
+          record.terminated = true
+          ;(window as unknown as { __terminatedWorkers: { url: string; terminated: boolean }[] }).__terminatedWorkers.push(record)
+          return origTerminate()
+        }
+      }
+    }
+  })
+
   await ensureFixtures()
   await page.goto('/')
   await page
@@ -298,13 +340,81 @@ test('cancels OCR conversion in under 1 second', async ({ page }) => {
   const cancelButton = page.getByRole('button', { name: 'Cancel' })
   await expect(cancelButton).toBeVisible()
 
-  const started = Date.now()
+  // Wait for OCR worker to be spawned so we are cancelling an active OCR conversion
+  await page.waitForFunction(() => {
+    const workers = (window as unknown as { __workers?: { url: string; terminated: boolean }[] }).__workers?.filter(
+      (w) => w.url.includes('worker.min.js') || w.url.includes('ocr')
+    )
+    return workers && workers.length > 0
+  })
+
+  await page.evaluate(() => {
+    ;(window as unknown as { __cancelTiming: { clickedAt: number; cancelledAt: number } }).__cancelTiming = {
+      clickedAt: 0,
+      cancelledAt: 0
+    }
+
+    const btn = Array.from(document.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Cancel'
+    )
+    if (btn) {
+      btn.addEventListener(
+        'click',
+        () => {
+          ;(window as unknown as { __cancelTiming: { clickedAt: number; cancelledAt: number } }).__cancelTiming.clickedAt = performance.now()
+        },
+        { capture: true }
+      )
+    }
+
+    const observer = new MutationObserver(() => {
+      if (document.body.textContent?.includes('Conversion cancelled by user.')) {
+        const timing = (window as unknown as { __cancelTiming: { clickedAt: number; cancelledAt: number } }).__cancelTiming
+        if (!timing.cancelledAt) {
+          timing.cancelledAt = performance.now()
+        }
+        observer.disconnect()
+      }
+    })
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    })
+  })
+
   await cancelButton.click()
 
   await expect(
     page.getByText('Conversion cancelled by user.')
   ).toBeVisible()
-  const elapsedMs = Date.now() - started
+
+  const timing = await page.evaluate(
+    () => (window as unknown as { __cancelTiming: { clickedAt: number; cancelledAt: number } }).__cancelTiming
+  )
+  expect(timing.clickedAt).toBeGreaterThan(0)
+  expect(timing.cancelledAt).toBeGreaterThan(timing.clickedAt)
+  const elapsedMs = timing.cancelledAt - timing.clickedAt
 
   expect(elapsedMs).toBeLessThan(1000)
+
+  // Assert OCR worker was terminated
+  await page.waitForFunction(() => {
+    const workers = (window as unknown as { __workers?: { url: string; terminated: boolean }[] }).__workers?.filter(
+      (w) => w.url.includes('worker.min.js') || w.url.includes('ocr')
+    )
+    return workers && workers.length > 0 && workers.every((w) => w.terminated)
+  })
+
+  const ocrWorkers = await page.evaluate(() => {
+    return (window as unknown as { __workers?: { url: string; terminated: boolean }[] }).__workers?.filter(
+      (w) => w.url.includes('worker.min.js') || w.url.includes('ocr')
+    )
+  })
+  expect(ocrWorkers?.length).toBeGreaterThan(0)
+  expect(ocrWorkers?.every((w) => w.terminated)).toBe(true)
+
+  expect(crossOrigin, crossOrigin.join('\n')).toEqual([])
+  expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
 })

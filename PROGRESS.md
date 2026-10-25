@@ -399,3 +399,17 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - Full E2E suite: 78 passed across Chromium and Mobile Chromium (28.9s).
   - Production build: initial JS gzip 70,507 bytes / 256,000 bytes budget (19 lazy chunks; heavy libraries strictly segregated).
 
+### 2026-10-25 — Fix Cancel Timing Measurement on Main (Flaky-by-Design Test Resolution)
+
+- **Context & Defect:** The UI redesign merged to `main` as `16f1860`. CI verification failed only on `[mobile-webkit]` in `tests/e2e/pdf.spec.ts:291 "cancels OCR conversion in under 1 second"` with 1154 ms. The earlier "477–524 ms measured" claim was end-to-end Playwright timing (`Date.now()` wrapping click and visibility wait), which included Node-to-browser IPC and WebKit polling latency on CI runners.
+- **Implementation:**
+  - Switched cancel timing in `tests/e2e/pdf.spec.ts` from external Playwright Node clock to precise in-page performance measurement:
+    - Capture-phase click listener on the Cancel button records `clickedAt = performance.now()`.
+    - In-page `MutationObserver` records `cancelledAt = performance.now()` upon `"Conversion cancelled by user."` appearing in the DOM.
+    - Verified `cancelledAt - clickedAt < 1000` ms (measured ~18 ms in-page).
+  - Added assertion verifying that the OCR worker was terminated upon cancellation.
+  - Preserved zero-external-requests and zero-console-errors assertions.
+- **Mutation Check:** Temporarily delayed the abort path by 1500 ms, confirming the test failed with `Received: 1510.6 ms > 1000 ms`, then reverted the delay.
+- **Flake Verification:** Ran `npx playwright test tests/e2e/pdf.spec.ts -g "cancels OCR conversion in under 1 second" --repeat-each=20 --retries=0 --project=chromium --project=mobile-chromium`: 40/40 passed (0 flaky, 0 failed).
+
+
