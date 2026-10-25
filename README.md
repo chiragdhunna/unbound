@@ -196,9 +196,9 @@ Follow the established pattern in `src/converters/docx.ts`:
 
 | Layer | Count | Tool | Coverage |
 |:------|------:|:-----|:---------|
-| **Unit** | 252 | Vitest (v5.0.5) | 94.13% lines (85% gate) |
-| **E2E** | 66 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
-| **Bundle** | — | Custom gzip check | 69,450 B / 256,000 B budget |
+| **Unit** | 268 | Vitest (v5.0.5) | 94.13% lines (85% gate) |
+| **E2E** | 78 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
+| **Bundle** | — | Custom gzip check | 70,507 B / 256,000 B budget |
 
 ```bash
 # Run all checks at once
@@ -215,15 +215,25 @@ npm run test:e2e -- --project=chromium --project=mobile-chromium
 
 ## 🎨 Design System
 
-| Token | Value |
-|:------|:------|
-| **Theme** | Dark terminal aesthetic |
-| **Accent** | Amber / Gold (`#F59E0B`) |
-| **Primary Font** | JetBrains Mono |
-| **Secondary Font** | IBM Plex Mono |
-| **Contrast** | ≥ 4.5:1 for text-on-dark |
+Unbound features a purposeful terminal-inspired design system built on custom CSS variables (`src/styles/tokens.css`):
 
-Both fonts are **self-hosted** via `@fontsource` — no external font requests.
+| Token Category | Description |
+|:---------------|:------------|
+| **Theme Modes** | Dark terminal aesthetic by default with high-contrast light theme support (`@media (prefers-color-scheme: light)` and `[data-theme='light']`) |
+| **Brand & Accents** | Warm terminal amber (`#ffb41f` dark, `#8a4800` light) with subtle glows and distinct focus rings |
+| **Typography** | Self-hosted `JetBrains Mono` and `IBM Plex Mono` via `@fontsource` with complete scale (`--text-2xs` to `--text-4xl`) |
+| **Spacing & Radius** | Proportional spacing scale (`--space-0-5` to `--space-12`) and rounded radii (`--radius-sm` to `--radius-2xl`, `--radius-full`) |
+| **Contrast & A11y** | Strictly WCAG AA compliant (≥ 4.5:1 text, ≥ 3:1 graphical components) with 0 axe violations |
+| **Motion** | Built-in `@media (prefers-reduced-motion: reduce)` guard disabling animations for reduced-motion preferences |
+
+### 🌟 Redesigned Components
+
+- **Hero DropZone:** Spacious drag-and-drop hero section with file upload badge, format guidance badges, and distinct primary ("Choose files") and secondary ("Choose folder") action buttons.
+- **Semantic Status Chips:** Job cards feature inline status chips combining an SVG icon and text (checkmark for "Done", animated spinner for "Converting…", alert for "Error", clock for "Queued") — never color alone.
+- **OCR Progress & Cancel:** Sleek high-contrast progress bar with clear page and percent indicators ("Page X of Y — Z%") and a responsive, styled Cancel button.
+- **Sticky Mobile Copy:** Output toolbar and primary Copy button pin stickily to the mobile viewport (`position: sticky`), making one-tap copying effortless during mobile scrolling.
+- **Actionable OCR Warnings:** Visual callouts for OCR quality with a prominent "Run OCR on this PDF" action button for documents containing large embedded images.
+- **Modular Component Architecture:** Cleanly separated React components (`DropZone`, `JobCard`, `OptionsBar`, `OutputPanel`, `StatusIcon`, `WarningIcon`) under `src/app/components/`.
 
 ---
 
@@ -240,6 +250,7 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 | M4 | XLSX / XLS / CSV / TSV | ✅ Done |
 | M5 | PDF text extraction (pdfjs-dist) | ✅ Done |
 | M6 | OCR (scanned PDF + images) | ✅ Done |
+| Redesign | Design system, hero dropzone, chips, sticky copy, a11y | ✅ Done |
 | M7 | PPTX | ⬜ Planned |
 | M8 | RTF, HTML file, URL | ⬜ Planned |
 | M9 | EPUB, ZIP, folders | ⬜ Planned |
@@ -250,10 +261,10 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 ### Latest Verification (2026-10-25)
 
 ```
-  Unit Tests  ··········  252 / 252 passed  (31 files)
-  E2E Tests   ··········   66 / 66 passed   (chromium + mobile-chromium)
+  Unit Tests  ··········  268 / 268 passed  (31 files)
+  E2E Tests   ··········   78 / 78 passed   (chromium + mobile-chromium)
   Coverage    ··········  94.13% lines       (85% gate)
-  Bundle Size ··········  69,450 B gzip      (256,000 B budget)
+  Bundle Size ··········  70,507 B gzip      (256,000 B budget)
   Lazy Chunks ··········  19 chunks          (tesseract, pdfjs, xlsx stay out of initial payload)
 ```
 
