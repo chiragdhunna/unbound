@@ -41,7 +41,7 @@ Unbound runs entirely in the browser. No file data is sent to external servers. 
 - **DOCX** (`.docx`): parsed via Mammoth.js into semantic HTML, converted to ATX markdown via Turndown + GFM. Images counted and warned (`IMAGES_OMITTED`).
 - **XLSX / XLS / XLSM** (`.xlsx`, `.xls`, `.xlsm`): parsed via vendored SheetJS (`vendor/xlsx-0.20.3.tgz`). Multi-sheet `## Sheet: <name>` sections, GFM tables, ISO dates, merged-cell top-left replication, hidden sheets labelled.
 - **CSV / TSV** (`.csv`, `.tsv`): custom RFC-4180 parser preserving exact cell text (leading zeros, quoted spaces, exponent notation), BOM stripping, delimiter sniffing (comma, semicolon, tab).
-- **PDF (text-based)** (`.pdf`): parsed via `pdfjs-dist` (6.4.299) with self-hosted Vite-bundled worker.
+- **PDF (text-based)** (`.pdf`): parsed via `pdfjs-dist` (6.4.299) legacy build (`pdfjs-dist/legacy/build/pdf.mjs`) with self-hosted Vite-bundled worker (`pdfjs-dist/legacy/build/pdf.worker.min.mjs?url`).
   - Page heights and text item grouping by coordinate (`layout.ts`).
   - Automatic removal of repeated running headers/footers in the 8% top/bottom band (appearing on ≥ 60% of pages, for ≥ 3 pages).
   - Bare page numbers stripped automatically across any page count.
@@ -49,13 +49,39 @@ Unbound runs entirely in the browser. No file data is sent to external servers. 
   - De-hyphenation across line breaks.
   - Optional page markers (`--- Page N ---`, persisted setting).
   - Large PDF warning (`LARGE_PDF_PAGE_THRESHOLD = 300`) with UI-thread yielding via macrotask (`setTimeout(0)`) between pages.
-- **OCR (M6 in progress)**:
-  - Architecture: self-hosted `tesseract.js` (7.0.0) with local worker and wasm cores (`lstm`, `simd-lstm`, `relaxedsimd-lstm`).
+- **OCR (Shipped)**:
+  - Architecture: self-hosted `tesseract.js` (7.0.0) with local worker (`/ocr/worker.min.js`), wasm cores (`lstm`, `simd-lstm`, `relaxedsimd-lstm` under `/ocr/core/`), and vendored language model (`/ocr/lang/eng.traineddata`).
+  - Pipeline modules: `decide.ts` → `extract.ts` → `render.ts` → `engine.ts` → `pdf.ts` / `image.ts`.
   - Page decision logic (`src/converters/ocr/decide.ts`): categorizes pages as `'text'` (≥ 25 non-whitespace chars), `'image-only'` (< 25 chars + `hasImageOps`), `'forced'` (`forceOcr: true`), or `'empty'`.
-  - Image operator detection (`src/converters/pdf/extract.ts`): scans pdfjs operator list only for candidate pages (< 25 chars).
-  - OCR Engine (`src/converters/ocr/engine.ts`): dynamic-imports `tesseract.js` on first use, creates a single worker reused across pages, executes strictly sequentially (a second concurrent call rejects immediately with `OcrFailedError`), supports immediate termination on `AbortSignal` with `CancelledError` and lazy worker recreation on subsequent calls, maps worker creation/recognition rejections to `OcrFailedError`, and forwards Tesseract logger events to drive `{ phase: 'ocr', current, total: 100 }` progress.
-  - Page rendering helpers (`src/converters/ocr/render.ts`): `computeRenderScale(width, height, options)` computes scale (default 2.0, max long edge 3000px ceiling to bound memory); `renderPdfPageToCanvas(page, options)` renders a pdfjs page to an HTMLCanvasElement/OffscreenCanvas with UI thread macrotask yields before/after and guaranteed `page.cleanup()` in `finally`; `releaseCanvas(canvas)` zeroes dimensions (`0x0`) to trigger GC.
-  - End-to-end PDF OCR routing and image converter in progress.
+  - Image operator detection (`src/converters/pdf/extract.ts`): scans pdfjs operator list for low-text pages (< 25 chars; fails open to OCR if `getOperatorList` throws). Detects large embedded images (≥ 30% page area) capped at the first 20 text pages (`MAX_TEXT_PAGES_FOR_IMAGE_DETECTION = 20`) to bound extraction overhead on large documents. Emits `EMBEDDED_IMAGES_MAY_CONTAIN_TEXT` warning, wired in UI to "Run OCR on this PDF" (`forceOcr: true`).
+  - OCR Engine (`src/converters/ocr/engine.ts`): dynamic-imports `tesseract.js` on first use, creates a single worker reused across pages, executes strictly sequentially (concurrent calls reject immediately with `OcrFailedError`), supports immediate cancellation via `AbortSignal` with `CancelledError` (worker terminated in < 1s) and lazy worker recreation on subsequent jobs, maps worker rejections to `OcrFailedError`, and forwards Tesseract logger events to drive `{ phase: 'ocr', current, total: 100 }` progress.
+  - Rendering helpers (`src/converters/ocr/render.ts`): `computeRenderScale(width, height, options)` computes scale (default 2.0, capped at max long edge 3000px to bound memory); `renderPdfPageToCanvas(page, options)` renders a pdfjs page to an `HTMLCanvasElement` or `OffscreenCanvas` with UI-thread macrotask yields before/after and guaranteed `page.cleanup()` in `finally`; `releaseCanvas(canvas)` explicitly sets `0x0` dimensions to trigger prompt garbage collection.
+  - Image Converter (`src/converters/image.ts`): converts standalone image files (`.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif`) using `decodeImageToCanvas` (downscales > 3000px, upscales 2× for images < 1000px), processes OCR sequentially, and emits formatted markdown.
+  - Quality warnings: surfaces `LOW_OCR_CONFIDENCE` when mean confidence < 70%, with "unreliable" wording when confidence < 40% or non-whitespace characters < 10.
+  - Cancellation path: `AppShell` AbortController triggers `signal.abort()`, propagated via `ConvertContext` into `tesseractEngine.terminateWorker()`, terminating the active Web Worker in < 1s.
+
+### PDF OCR Flow
+
+```mermaid
+flowchart TD
+    PDF[Input PDF Document] --> Load[Load Document via pdfjs legacy]
+    Load --> Extract[Extract Pages & Text]
+    Extract --> Decision{Decision Rule per Page}
+    Decision -- ">= 25 chars (Text)" --> TextPage[Extract Text / Markdown]
+    TextPage --> EmbedCheck{Image Area >= 30%<br/>& Page <= 20?}
+    EmbedCheck -- Yes --> WarnEmbed[Emit EMBEDDED_IMAGES warning]
+    EmbedCheck -- No --> OutputAcc[Accumulate Output]
+    WarnEmbed --> OutputAcc
+    Decision -- "< 25 chars & hasImageOps<br/>or forceOcr: true" --> RenderCanvas[Render Page to Canvas<br/>2x scale, max 3000px edge]
+    Decision -- "< 25 chars & no images" --> EmptyPage[Empty Page]
+    RenderCanvas --> TesseractEngine[Tesseract OCR Engine<br/>Single Reused Worker]
+    TesseractEngine --> ConfCheck{Confidence < 70?}
+    ConfCheck -- Yes --> WarnConf[Emit LOW_OCR_CONFIDENCE warning]
+    ConfCheck -- No --> CleanCanvas[Zero Canvas Dimensions]
+    WarnConf --> CleanCanvas
+    CleanCanvas --> OutputAcc
+    EmptyPage --> OutputAcc
+```
 
 ## Job Identity, Retry, and Late-Result Rules
 

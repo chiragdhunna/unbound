@@ -255,5 +255,19 @@
   - The low-text fail-open routing path for OCR (`nonWhitespaceCharCount < MIN_CHARS_PER_PAGE`) continues to run on every single page regardless of page count.
 - **Consequences:** Eliminates unbounded operator-list overhead on 100+ page text documents while reliably detecting presentation slides and early figures. Unit tests verify page 20 is detected and page 21 is skipped, with low-text OCR routing remaining uninhibited; mutation tests confirmed failure when the cap was removed.
 
+## 2026-10-25 — Browser Support Policy and pdfjs Legacy Build Runtime
+
+- **Context:** `pdfjs-dist` standard build (6.4.299) relies on recent ECMAScript stage 3/4 features such as `Map.prototype.getOrInsertComputed`, which are missing in Chromium < 142 (including Chromium 141 and older WebKit/Safari releases). This caused runtime exceptions when parsing PDFs in older browsers.
+- **Decision:**
+  - Switched the application's runtime PDF parser and worker to `pdfjs-dist/legacy/build/pdf.mjs` and `pdfjs-dist/legacy/build/pdf.worker.min.mjs?url`.
+  - The legacy build maintains strict adherence to the project's CSP (`script-src 'self' 'wasm-unsafe-eval'`) and easily satisfies the 256,000-byte initial JS bundle budget (initial JS is ~70.5 KB gzip; pdfjs remains in a lazy chunk).
+  - Defined explicit browser support tier:
+    - **Tested & Verified:** Modern desktop Chromium (Linux/macOS/Windows), mobile Chromium (Android), and mobile WebKit (iOS) verified in CI.
+    - **Untested:** Firefox is not currently tested in CI.
+    - **Minimum Requirements:** Any browser supporting modern ES2022, Web Workers, WASM (`wasm-unsafe-eval`), and Canvas 2D / OffscreenCanvas.
+    - **Graceful Failure:** Any missing modern JS/Canvas API in an outdated browser is caught and surfaced as an actionable error directing the user to update their browser (e.g. `"Your browser is missing a feature required to process this PDF (...). Please update your browser."`), never as an unhelpful `"No text found"`.
+- **Consequences:** Broader browser compatibility without increasing bundle budget or altering CSP rules. All unit and cross-browser E2E suites pass green.
+
+
 
 

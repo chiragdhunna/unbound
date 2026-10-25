@@ -412,4 +412,33 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
 - **Mutation Check:** Temporarily delayed the abort path by 1500 ms, confirming the test failed with `Received: 1510.6 ms > 1000 ms`, then reverted the delay.
 - **Flake Verification:** Ran `npx playwright test tests/e2e/pdf.spec.ts -g "cancels OCR conversion in under 1 second" --repeat-each=20 --retries=0 --project=chromium --project=mobile-chromium`: 40/40 passed (0 flaky, 0 failed).
 
+### 2026-10-25 — M6 + Redesign Closure & Final Polish Verification
+
+- **Explicit Corrections to Prior Progress Entries:**
+  - *Correction on historical M5 scanned PDF entries (lines 42, 171):* Earlier entries stated "OCR support is not available yet" when throwing `ScannedPdfError`. In Milestone 6, OCR was fully implemented, integrated, and verified; scanned PDFs and images are now automatically routed through self-hosted Tesseract.js (WASM + worker).
+  - *Correction on earlier M6.5 completion claims:* Earlier progress entries marked M6.5 complete prior to the implementation of embedded-image detection in text PDFs and the "Run OCR on this PDF" force-OCR action. These capabilities are now fully implemented (`src/converters/pdf/extract.ts`, `src/converters/pdf.ts`, `src/app/AppShell.tsx`), bounded by `MAX_TEXT_PAGES_FOR_IMAGE_DETECTION = 20`, and verified by unit and E2E suites.
+  - *Correction on cancel timing measurement:* The "477–524 ms measured" figure in M6.3 was measured via Playwright Node-side wall-clock timing; in-page measurement installed via click capture listener and MutationObserver now accurately measures ~18 ms abort latency, and tests verify worker termination under 1 second without flakiness across all browsers.
+- **Milestone 6 Shipped Scope:**
+  - Full client-side OCR for scanned PDFs, mixed PDFs, and standalone images (`.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif`) using self-hosted Tesseract.js 7.0 (WASM cores + worker + `eng.traineddata`).
+  - Strict CSP compliance (`default-src 'self'`) with 0 external requests and 0 CSP violations.
+  - Fail-open operator list error handling for degraded/non-standard PDFs.
+  - Embedded image detection on text pages with 20-page bounding cap and "Run OCR on this PDF" (`forceOcr: true`) user action.
+  - Quality thresholds: `< 70%` mean confidence warns low confidence, `< 40%` or `< 10` chars warns output looks unreliable.
+  - UI Redesign: Dark/light design tokens (`tokens.css`), hero DropZone, semantic status chips (icon + text), sticky mobile Copy button, accessible OCR progress and cancellation (< 1s), and prefers-reduced-motion guard.
+- **Coverage & Test Gaps Closed:**
+  - `src/converters/ocr/render.ts`: 100% line coverage (was 82.9%).
+  - `src/converters/image.ts`: 100% line coverage (was 92.5%).
+  - `src/core/pipeline.ts`: 94.44% line coverage (was 83.3%).
+  - `src/core/registry.ts`: 100% line coverage (was 84.2%).
+  - `src/core/context.ts`: 100% line coverage (was 66.6%).
+  - Overall project line coverage: 95.73% (gate requirement: 85%).
+- **Verification Results:**
+  - Unit tests: 286 passed across 32 files (`vitest`, 0 failed).
+  - E2E tests: 78 passed across Chromium and Mobile Chromium (Playwright).
+  - Production build: initial JS gzip 70,509 bytes / 256,000 bytes budget (19 lazy chunks).
+  - Traceability: all 63 rows verified with real existing tests (`node scripts/check-traceability.mjs`, exit 0).
+  - Security audit: 0 high or critical vulnerabilities (`npm audit --omit=dev --audit-level=high`).
+  - Source hygiene: 0 absolute local paths, 0 unauthorized console statements, 0 unapproved CSP alterations.
+
+
 
