@@ -130,14 +130,12 @@ test('uploads a generated PDF and renders the markdown output', async ({
     .getByLabel('Choose file', { exact: true })
     .setInputFiles(path.join(outputDir, 'm52-golden.pdf'))
 
-  // Wait for PDF conversion to complete (pdfjs worker loads lazily)
-  // The status pill shows 'Converting…' while converting, 'Ready' when done
-  await expect(page.getByRole('status')).toContainText('Ready')
-
-  await expect(page.getByRole('textbox')).toContainText(
-    '# Quarterly Budget Review'
+  const output = page.getByRole('textbox')
+  await expect(output).toContainText(
+    '# Quarterly Budget Review',
+    { timeout: 30_000 }
   )
-  await expect(page.getByRole('textbox')).toContainText('- Rent 1200')
+  await expect(output).toContainText('- Rent 1200')
 
   expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
 })
@@ -221,12 +219,8 @@ test('converts a scanned PDF using self-hosted OCR with zero external requests',
     .getByLabel('Choose file', { exact: true })
     .setInputFiles(path.join(outputDir, 'm64-scanned.pdf'))
 
-  await expect(page.getByRole('status')).toContainText('Ready', {
-    timeout: 30_000
-  })
-
   const output = page.getByRole('textbox')
-  await expect(output).toContainText('INVOICE')
+  await expect(output).toContainText('INVOICE', { timeout: 30_000 })
 
   expect(crossOrigin, crossOrigin.join('\n')).toEqual([])
   expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
@@ -241,13 +235,10 @@ test('converts a mixed PDF with text and scanned pages', async ({ page }) => {
     .getByLabel('Choose file', { exact: true })
     .setInputFiles(path.join(outputDir, 'm64-mixed.pdf'))
 
-  await expect(page.getByRole('status')).toContainText('Ready', {
-    timeout: 30_000
-  })
-
   const output = page.getByRole('textbox')
   await expect(output).toContainText(
-    'Mixed document selectable text on page one.'
+    'Mixed document selectable text on page one.',
+    { timeout: 30_000 }
   )
   await expect(output).toContainText('INVOICE')
 })

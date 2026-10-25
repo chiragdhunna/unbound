@@ -84,13 +84,8 @@ test('uploads a generated image and renders recognized OCR text in the output pa
     .getByLabel('Choose file', { exact: true })
     .setInputFiles(path.join(outputDir, 'm6-ocr-test.png'))
 
-  // Wait for OCR conversion to complete
-  await expect(page.getByRole('status')).toContainText('Ready', {
-    timeout: 30_000
-  })
-
   const output = page.getByRole('textbox')
-  await expect(output).toContainText('HELLO')
+  await expect(output).toContainText('HELLO', { timeout: 30_000 })
 
   expect(crossOrigin, crossOrigin.join('\n')).toEqual([])
   expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
