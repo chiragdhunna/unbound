@@ -281,3 +281,30 @@ Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit t
   - Bundle size check: initial JS gzip 68,572 bytes / 256,000 bytes budget (14 lazy chunks).
   - Hygiene greps & traceability: clean.
 - Next step: M6.4 PDF routing (per-page OCR vs text extraction).
+
+### 2026-10-25 — M6.4 PDF routing (scanned and mixed page conversion, cancellation, empty document handling)
+
+- Implemented in `src/converters/pdf.ts` and `src/converters/pdf/layout.ts`:
+  - `layoutPages` updated to provide optional `pageMarkdowns?: string[]` returning per-page formatted text alongside combined markdown.
+  - Fast-path for text PDFs: if `ocrIndices.length === 0`, skips OCR module imports entirely, bypassing Tesseract.js.
+  - Truly empty PDF detection: if `charCount === 0` (no selectable text and no image ops), throws `NoTextFoundError('No text found in this PDF.')`.
+  - Lazy OCR import: dynamically loads `createOcrEngine` and `renderPdfPageToCanvas`/`releaseCanvas` only when pages require OCR.
+  - Mixed-document routing & page marker alignment: text pages formatted via layout engine, image pages rasterized and OCR'd; merged with `--- Page N ---` markers when `pdfPageMarkers: true`.
+  - Low confidence warning: emits `OCR_LOW_CONFIDENCE` when mean confidence < 70% or total characters < 10.
+  - AppShell cancellation: tracked via `abortControllersRef = useRef<Map<string, AbortController>>(new Map())`, wired into `ConvertContext.signal`, with "Cancel" button rendered in `.job-actions` during conversion. Immediate worker termination aborts in under 1 second.
+- Unit & E2E tests:
+  - Replaced stale blank-page scanned test with `throws NoTextFoundError for a blank-page PDF (no text and no images)` in `pdf.test.ts`.
+  - Added unit tests for scanned PDF page OCR routing, mixed PDF routing with page markers, low confidence warning, whitespace-only OCR rejection (`NoTextFoundError`), and `CancelledError` propagation with cleanup.
+  - Replaced stale E2E test with `shows no-text-found message for a blank PDF with no images` in `pdf.spec.ts`.
+  - Added E2E tests for scanned PDF with zero external requests, mixed PDF conversion, and cancel in under 1 second.
+- Mutation checks performed and verified failing:
+  1. Break empty document check: failed unit test with `AssertionError: expected { markdown: '\n', warnings: [], …(1) } to be an instance of NoTextFoundError`.
+  2. Break OCR routing condition: failed 4 unit tests (`routes a scanned PDF page with images to OCR`, `routes mixed PDF pages correctly`, `warns when OCR confidence is low`, `propagates CancelledError`).
+  3. Break signal propagation during OCR: failed unit test with `AssertionError: promise resolved "{ …(3) }" instead of rejecting`.
+- Verification results:
+  - Unit tests: 227 passed across 28 files (all 16 tests in `pdf.test.ts` pass).
+  - Line coverage: All files 94.75%, `src/converters/pdf.ts` 96.51%, `src/converters/ocr/engine.ts` 95.45%, `src/converters/ocr/render.ts` 92.10%, `src/converters/ocr/decide.ts` 100%, `src/converters/pdf/extract.ts` 100%, `src/converters/pdf/layout.ts` 100% (85% gate).
+  - E2E tests: 64 passed across chromium and mobile-chromium (was 58; +6 tests from new scanned, mixed, and cancel tests across 2 projects).
+  - Bundle size check: initial JS gzip 68,922 bytes / 256,000 bytes budget (18 lazy chunks; Tesseract chunk is `index-DatDqUtQ.js` 15.70 kB / 6.70 kB gzip, `engine-T_Z68q_j.js` 2.18 kB / 1.11 kB gzip, absent from initial bundle).
+  - Traceability check: R007 updated to ✅ with passing unit and E2E references; R057 updated with fresh test names.
+- Next step: M6.5 confidence warnings & post-OCR cleanup, M6.6 image file converter (`.png`, `.jpg`, `.webp`).

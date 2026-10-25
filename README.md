@@ -60,7 +60,7 @@ Every major LLM chat — ChatGPT, Claude, Grok, Gemini — limits file **attachm
 | **XLSX / XLS** | `.xlsx`, `.xls`, `.xlsm` | ✅ Working | Multi-sheet `## Sheet:` sections, GFM tables, ISO dates, merged cells, hidden sheets |
 | **CSV / TSV** | `.csv`, `.tsv` | ✅ Working | Exact cell text preserved (leading zeros, quoted spacing, BOM, Windows-1252) |
 | **PDF** _(text-based)_ | `.pdf` | ✅ Working | Headings, paragraphs, lists extracted; headers/footers/page numbers auto-stripped |
-| **OCR** _(scanned PDFs)*_ | `.pdf` | 🟨 In Progress | Self-hosted Tesseract.js 7.0; engine (M6.3a), decision logic (M6.2) & spike (M6.1) verified; PDF routing in progress (*scanned image-only PDFs; image files planned in M6.6) |
+| **OCR** _(scanned PDFs)*_ | `.pdf` | ✅ Working | Self-hosted Tesseract.js 7.0; scanned & mixed PDF page routing with cancellation and empty document detection verified (*image files planned in M6.6) |
 | **PPTX** | `.pptx` | 🔜 Planned | JSZip + DOMParser, slide boundaries + speaker notes |
 | **RTF** | `.rtf` | 🔜 Planned | Custom lightweight text extractor |
 | **HTML File** | `.html`, `.htm` | 🔜 Planned | Readability + Turndown for main-content extraction |
@@ -298,7 +298,7 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 | **DOCX Parsing** | Mammoth.js |
 | **Spreadsheets** | SheetJS (vendored 0.20.3) + custom CSV parser |
 | **HTML → Markdown** | Turndown + GFM plugin |
-| **OCR** _(planned)_ | Tesseract.js 7 (self-hosted wasm + worker) |
+| **OCR** | Tesseract.js 7 (self-hosted wasm + worker) |
 | **Unit Tests** | Vitest + Testing Library + Coverage V8 |
 | **E2E Tests** | Playwright + axe-core |
 | **Linting** | ESLint 9 + Prettier |
