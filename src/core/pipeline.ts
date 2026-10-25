@@ -12,7 +12,8 @@ const supportedKinds = new Set([
   'docx',
   'xlsx',
   'csv',
-  'pdf'
+  'pdf',
+  'image'
 ])
 
 async function readFileBytes(file: File): Promise<ArrayBuffer> {
@@ -48,7 +49,7 @@ export async function convertFile(
 
   if (!supportedKinds.has(kind)) {
     throw new UnsupportedFormatError(
-      `Unsupported format for now (${kind}). Supported: txt, md, json, xml, code, pdf, docx, xlsx, xls, xlsm, csv, and tsv files.`
+      `Unsupported format for now (${kind}). Supported: txt, md, json, xml, code, pdf, docx, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files.`
     )
   }
 

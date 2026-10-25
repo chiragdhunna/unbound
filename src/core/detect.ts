@@ -30,6 +30,15 @@ const imageMimes = new Set([
   'image/bmp'
 ])
 
+const imageExtensions = new Set([
+  'png',
+  'jpg',
+  'jpeg',
+  'webp',
+  'gif',
+  'bmp'
+])
+
 function getExtension(name: string): string {
   const dotIndex = name.lastIndexOf('.')
   if (dotIndex < 0 || dotIndex === name.length - 1) {
@@ -45,6 +54,22 @@ function startsWith(bytes: Uint8Array, signature: number[]): boolean {
   }
 
   return signature.every((value, index) => bytes[index] === value)
+}
+
+function isWebp(bytes: Uint8Array): boolean {
+  if (bytes.length < 12) {
+    return false
+  }
+  return (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  )
 }
 
 function decodeAsUtf8(sample: Uint8Array): string | null {
@@ -176,6 +201,7 @@ export function detectFileKindWithWarnings(input: {
     startsWith(sample, [0xff, 0xd8, 0xff]) ||
     startsWith(sample, [0x47, 0x49, 0x46, 0x38]) ||
     startsWith(sample, [0x42, 0x4d]) ||
+    isWebp(sample) ||
     imageMimes.has(input.mime)
   )
     kind = 'image'
@@ -201,7 +227,7 @@ export function detectFileKindWithWarnings(input: {
           ? 'pptx'
           : extension === 'xlsx' || extension === 'xls'
             ? 'xlsx'
-            : extension === 'png' || extension === 'jpg' || extension === 'jpeg'
+            : imageExtensions.has(extension)
               ? 'image'
               : undefined
   if (extensionKind && extensionKind !== kind && kind !== 'unknown')

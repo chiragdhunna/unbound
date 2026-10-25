@@ -46,6 +46,10 @@ const registry: Partial<
   pdf: () =>
     import('../converters/pdf').then((module) => ({
       converter: module.pdfConverter
+    })),
+  image: () =>
+    import('../converters/image').then((module) => ({
+      converter: module.imageConverter
     }))
 }
 

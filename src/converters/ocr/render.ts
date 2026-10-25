@@ -1,5 +1,5 @@
 import type { PDFPageProxy } from 'pdfjs-dist'
-import { OcrFailedError } from '../../core/errors'
+import { CorruptFileError, OcrFailedError } from '../../core/errors'
 
 export const DEFAULT_OCR_SCALE = 2.0
 export const DEFAULT_MAX_LONG_EDGE = 3000
@@ -38,6 +38,25 @@ export function computeRenderScale(
     return maxLongEdge / longEdge
   }
   return targetScale
+}
+
+/**
+ * Pure function: computes scale for standalone image files (PLAN §7.5, AGENT_PROMPT §6.3).
+ * Downscales images wider or taller than 3000px so max long edge is 3000px.
+ * Upscales small text images (< 1000px wide and < 1000px high) 2× to improve OCR character separation.
+ */
+export function computeImageScale(width: number, height: number): number {
+  if (width <= 0 || height <= 0) {
+    return 1.0
+  }
+  const longEdge = Math.max(width, height)
+  if (longEdge > DEFAULT_MAX_LONG_EDGE) {
+    return DEFAULT_MAX_LONG_EDGE / longEdge
+  }
+  if (width < 1000 && height < 1000) {
+    return 2.0
+  }
+  return 1.0
 }
 
 /**
@@ -125,6 +144,91 @@ export async function renderPdfPageToCanvas(
     return { canvas, width, height, scale }
   } finally {
     page.cleanup()
+    await yieldToUi()
+  }
+}
+
+/**
+ * Decodes an image from byte buffer, scales it via computeImageScale,
+ * and renders it to a canvas.
+ */
+export async function decodeImageToCanvas(
+  bytes: ArrayBuffer,
+  mime: string
+): Promise<RenderedPageCanvas> {
+  await yieldToUi()
+  let imageSource: ImageBitmap | HTMLImageElement | null = null
+  let objectUrl: string | null = null
+
+  try {
+    if (typeof createImageBitmap === 'function') {
+      const blob = new Blob([bytes], { type: mime || 'image/png' })
+      imageSource = await createImageBitmap(blob).catch(() => {
+        throw new CorruptFileError(
+          'This image could not be read; it may be corrupted.'
+        )
+      })
+    } else if (typeof Image !== 'undefined' && typeof URL !== 'undefined') {
+      const blob = new Blob([bytes], { type: mime || 'image/png' })
+      objectUrl = URL.createObjectURL(blob)
+      const img = new Image()
+      imageSource = await new Promise<HTMLImageElement>((resolve, reject) => {
+        img.onload = () => resolve(img)
+        img.onerror = () =>
+          reject(
+            new CorruptFileError(
+              'This image could not be read; it may be corrupted.'
+            )
+          )
+        img.src = objectUrl!
+      })
+    } else {
+      throw new CorruptFileError(
+        'This image could not be read; it may be corrupted.'
+      )
+    }
+
+    const naturalWidth =
+      'naturalWidth' in imageSource
+        ? imageSource.naturalWidth
+        : imageSource.width
+    const naturalHeight =
+      'naturalHeight' in imageSource
+        ? imageSource.naturalHeight
+        : imageSource.height
+
+    if (naturalWidth <= 0 || naturalHeight <= 0) {
+      throw new CorruptFileError(
+        'This image could not be read; it may be corrupted.'
+      )
+    }
+
+    const scale = computeImageScale(naturalWidth, naturalHeight)
+    const width = Math.round(naturalWidth * scale)
+    const height = Math.round(naturalHeight * scale)
+
+    const canvas = createCanvas(width, height)
+    const canvasContext = canvas.getContext('2d')
+    if (!canvasContext) {
+      throw new OcrFailedError(
+        'Failed to obtain 2D canvas context for image.'
+      )
+    }
+
+    canvasContext.drawImage(imageSource, 0, 0, width, height)
+
+    return { canvas, width, height, scale }
+  } finally {
+    if (
+      imageSource &&
+      'close' in imageSource &&
+      typeof imageSource.close === 'function'
+    ) {
+      imageSource.close()
+    }
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl)
+    }
     await yieldToUi()
   }
 }

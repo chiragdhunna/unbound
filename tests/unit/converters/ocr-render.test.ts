@@ -1,14 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PDFPageProxy } from 'pdfjs-dist'
 import {
+  computeImageScale,
   computeRenderScale,
   createCanvas,
+  decodeImageToCanvas,
   DEFAULT_MAX_LONG_EDGE,
   DEFAULT_OCR_SCALE,
   releaseCanvas,
   renderPdfPageToCanvas
 } from '../../../src/converters/ocr/render'
-import { OcrFailedError } from '../../../src/core/errors'
+import { CorruptFileError, OcrFailedError } from '../../../src/core/errors'
 
 describe('ocr render helpers (M6.3b)', () => {
   describe('computeRenderScale math', () => {
@@ -55,6 +57,29 @@ describe('ocr render helpers (M6.3b)', () => {
     it('safely handles zero or negative dimensions by returning target scale', () => {
       expect(computeRenderScale(0, 0)).toBe(DEFAULT_OCR_SCALE)
       expect(computeRenderScale(-100, -200)).toBe(DEFAULT_OCR_SCALE)
+    })
+  })
+
+  describe('computeImageScale math', () => {
+    it('upscales small images (< 1000x1000) 2x for OCR separation', () => {
+      expect(computeImageScale(600, 200)).toBe(2.0)
+      expect(computeImageScale(999, 500)).toBe(2.0)
+    })
+
+    it('returns 1.0 for normal images between 1000px and 3000px', () => {
+      expect(computeImageScale(1200, 800)).toBe(1.0)
+      expect(computeImageScale(2500, 2000)).toBe(1.0)
+      expect(computeImageScale(3000, 1500)).toBe(1.0)
+    })
+
+    it('clamps down large images (> 3000px) so max edge is 3000px', () => {
+      expect(computeImageScale(4000, 2000)).toBe(0.75) // 3000 / 4000
+      expect(computeImageScale(2000, 6000)).toBe(0.5) // 3000 / 6000
+    })
+
+    it('handles zero or negative dimensions safely', () => {
+      expect(computeImageScale(0, 0)).toBe(1.0)
+      expect(computeImageScale(-50, 100)).toBe(1.0)
     })
   })
 
@@ -155,11 +180,9 @@ describe('ocr render helpers (M6.3b)', () => {
 
       const result = await renderPdfPageToCanvas(page)
 
-      // Verifies viewport was requested for base scale (1.0) and computed OCR scale (2.0)
       expect(getViewport).toHaveBeenCalledWith({ scale: 1.0 })
       expect(getViewport).toHaveBeenCalledWith({ scale: 2.0 })
 
-      // Verifies page.render was called with canvasContext and scaled viewport
       expect(render).toHaveBeenCalledTimes(1)
       expect(render).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -168,10 +191,8 @@ describe('ocr render helpers (M6.3b)', () => {
         })
       )
 
-      // Verifies page.cleanup() was called
       expect(cleanup).toHaveBeenCalledTimes(1)
 
-      // Verifies return value shape and dimensions
       expect(result.scale).toBe(2.0)
       expect(result.width).toBe(1224)
       expect(result.height).toBe(1584)
@@ -233,6 +254,108 @@ describe('ocr render helpers (M6.3b)', () => {
         'Failed to obtain 2D canvas context for page rendering.'
       )
       expect(cleanup).toHaveBeenCalled()
+    })
+  })
+
+  describe('decodeImageToCanvas', () => {
+    let mockContext: unknown
+    let contextSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+      mockContext = {
+        drawImage: vi.fn(),
+        save: vi.fn(),
+        restore: vi.fn()
+      }
+      contextSpy = vi
+        .spyOn(HTMLCanvasElement.prototype, 'getContext')
+        .mockReturnValue(mockContext as unknown as RenderingContext)
+    })
+
+    afterEach(() => {
+      contextSpy.mockRestore()
+      vi.clearAllMocks()
+    })
+
+    it('decodes image using createImageBitmap and scales appropriately', async () => {
+      const mockClose = vi.fn()
+      const fakeBitmap = {
+        width: 500,
+        height: 250,
+        close: mockClose
+      }
+      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
+      ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockResolvedValue(fakeBitmap)
+
+      try {
+        const bytes = new Uint8Array([1, 2, 3, 4]).buffer
+        const result = await decodeImageToCanvas(bytes, 'image/png')
+
+        expect(result.scale).toBe(2.0)
+        expect(result.width).toBe(1000)
+        expect(result.height).toBe(500)
+        expect(mockClose).toHaveBeenCalledTimes(1)
+        expect(mockContext).toBeDefined()
+      } finally {
+        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = originalCreateBitmap
+      }
+    })
+
+    it('throws CorruptFileError when createImageBitmap fails', async () => {
+      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
+      ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockRejectedValue(new Error('Corrupt data'))
+
+      try {
+        const bytes = new Uint8Array([1, 2, 3, 4]).buffer
+        await expect(decodeImageToCanvas(bytes, 'image/png')).rejects.toBeInstanceOf(
+          CorruptFileError
+        )
+      } finally {
+        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = originalCreateBitmap
+      }
+    })
+
+    it('throws CorruptFileError when image has zero dimensions', async () => {
+      const mockClose = vi.fn()
+      const fakeBitmap = {
+        width: 0,
+        height: 0,
+        close: mockClose
+      }
+      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
+      ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockResolvedValue(fakeBitmap)
+
+      try {
+        const bytes = new Uint8Array([1, 2, 3, 4]).buffer
+        await expect(decodeImageToCanvas(bytes, 'image/png')).rejects.toBeInstanceOf(
+          CorruptFileError
+        )
+        expect(mockClose).toHaveBeenCalledTimes(1)
+      } finally {
+        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = originalCreateBitmap
+      }
+    })
+
+    it('throws OcrFailedError when 2D canvas context cannot be acquired', async () => {
+      contextSpy.mockReturnValue(null)
+      const mockClose = vi.fn()
+      const fakeBitmap = {
+        width: 400,
+        height: 300,
+        close: mockClose
+      }
+      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
+      ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockResolvedValue(fakeBitmap)
+
+      try {
+        const bytes = new Uint8Array([1, 2, 3, 4]).buffer
+        await expect(decodeImageToCanvas(bytes, 'image/png')).rejects.toBeInstanceOf(
+          OcrFailedError
+        )
+        expect(mockClose).toHaveBeenCalledTimes(1)
+      } finally {
+        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = originalCreateBitmap
+      }
     })
   })
 })
