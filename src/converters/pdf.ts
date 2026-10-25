@@ -1,17 +1,22 @@
 import { normalizeMarkdown } from '../core/markdown'
-import { type Converter, type Warning } from '../core/types'
+import {
+  type Converter,
+  type ConvertStats,
+  type Warning
+} from '../core/types'
 import {
   CancelledError,
   CorruptFileError,
-  PasswordRequiredError,
-  ScannedPdfError
+  NoTextFoundError,
+  PasswordRequiredError
 } from '../core/errors'
 import { getPdfjs } from './pdf/worker'
-import { extractPages } from './pdf/extract'
+import { extractPages, type ExtractedPage } from './pdf/extract'
 import { layoutPages } from './pdf/layout'
+import { decideOcrPages } from './ocr/decide'
 
-/** Below this many non-whitespace chars per page the PDF is treated as scanned. */
-export const SCANNED_CHARS_PER_PAGE = 20
+/** Below this many non-whitespace chars per page the PDF is candidate for OCR if it has images. */
+export const SCANNED_CHARS_PER_PAGE = 25
 
 /** Above this many pages the user is warned that conversion may be slow. */
 export const LARGE_PDF_PAGE_THRESHOLD = 300
@@ -25,9 +30,11 @@ export const pdfConverter: Converter = {
       )
     }
 
+    if (ctx.signal?.aborted) throw new CancelledError()
+
     const pdfjs = await getPdfjs()
 
-    let pages
+    let pages: ExtractedPage[]
     try {
       pages = await extractPages(pdfjs, new Uint8Array(input.bytes), {
         signal: ctx.signal,
@@ -44,18 +51,154 @@ export const pdfConverter: Converter = {
     }
 
     const pageHeights = pages.map((page) => page.height)
-    const { markdown, charCount, removedLineCount } = layoutPages(
+    const decisions = decideOcrPages(pages, {
+      forceOcr: ctx.options.forceOcr === true
+    })
+
+    const ocrIndices = decisions
+      .map((d, index) =>
+        d.reason === 'image-only' || d.reason === 'forced' ? index : -1
+      )
+      .filter((index) => index !== -1)
+
+    // Fast-path: no pages require OCR (standard text-based PDF)
+    if (ocrIndices.length === 0) {
+      const { markdown, charCount, removedLineCount } = layoutPages(
+        pages.map((page) => page.items),
+        {
+          pageHeights,
+          pageMarkers: ctx.options.pdfPageMarkers === true
+        }
+      )
+
+      if (charCount === 0) {
+        throw new NoTextFoundError('No text found in this PDF.')
+      }
+
+      const warnings: Warning[] = []
+      if (removedLineCount > 0) {
+        warnings.push({
+          code: 'PDF_BANDS_REMOVED',
+          message: 'Repeated headers, footers and page numbers were removed.',
+          severity: 'info'
+        })
+      }
+      if (pages.length > LARGE_PDF_PAGE_THRESHOLD) {
+        warnings.push({
+          code: 'PDF_LARGE',
+          message: `Large PDF (${pages.length} pages). Conversion can take a while.`,
+          severity: 'warn'
+        })
+      }
+
+      return {
+        markdown: normalizeMarkdown(markdown),
+        warnings,
+        stats: { pages: pages.length }
+      }
+    }
+
+    // OCR-path: one or more pages require OCR (scanned or mixed PDF)
+    const { createOcrEngine } = await import('./ocr/engine')
+    const { renderPdfPageToCanvas, releaseCanvas } = await import('./ocr/render')
+
+    const layoutRes = layoutPages(
       pages.map((page) => page.items),
       {
         pageHeights,
-        pageMarkers: ctx.options.pdfPageMarkers === true
+        removeRepeated: true,
+        pageMarkers: false
       }
     )
+    const textPageMarkdowns = layoutRes.pageMarkdowns ?? []
+    const removedLineCount = layoutRes.removedLineCount
 
-    if (charCount < SCANNED_CHARS_PER_PAGE * pages.length) {
-      throw new ScannedPdfError(
-        'This PDF looks scanned (no selectable text). OCR support is not available yet.'
-      )
+    const ocrEngine = createOcrEngine({
+      lang: ctx.options.ocrLanguage || 'eng'
+    })
+    const ocrResults = new Map<number, { text: string; confidence: number }>()
+
+    const ocrTask = pdfjs.getDocument({
+      data: new Uint8Array(input.bytes).slice(0)
+    })
+
+    try {
+      const doc = await ocrTask.promise
+
+      for (const pageIndex of ocrIndices) {
+        if (ctx.signal?.aborted) throw new CancelledError()
+        const pageNumber = pageIndex + 1
+
+        ctx.onProgress({
+          phase: 'ocr',
+          current: pageNumber,
+          total: pages.length
+        })
+
+        const pageProxy = await doc.getPage(pageNumber)
+        let canvas: HTMLCanvasElement | OffscreenCanvas | null = null
+        try {
+          const rendered = await renderPdfPageToCanvas(pageProxy)
+          canvas = rendered.canvas
+          const res = await ocrEngine.recognize(canvas, {
+            signal: ctx.signal,
+            onProgress: () => {
+              ctx.onProgress({
+                phase: 'ocr',
+                current: pageNumber,
+                total: pages.length
+              })
+            }
+          })
+          ocrResults.set(pageIndex, res)
+        } finally {
+          if (canvas) {
+            releaseCanvas(canvas)
+          }
+        }
+      }
+    } finally {
+      await ocrTask.destroy().catch(() => undefined)
+      await ocrEngine.terminate().catch(() => undefined)
+    }
+
+    const pageMarkdowns: string[] = []
+    let totalChars = 0
+    let totalConfidence = 0
+    let totalOcrPages = 0
+
+    for (let index = 0; index < pages.length; index++) {
+      let pageText = ''
+      if (ocrResults.has(index)) {
+        const ocrRes = ocrResults.get(index)!
+        pageText = ocrRes.text.trim()
+        totalConfidence += ocrRes.confidence
+        totalOcrPages += 1
+      } else {
+        pageText = (textPageMarkdowns[index] ?? '').trim()
+      }
+
+      totalChars += pageText.replace(/\s/g, '').length
+
+      if (pageText !== '') {
+        if (ctx.options.pdfPageMarkers) {
+          pageMarkdowns.push(`--- Page ${index + 1} ---\n\n${pageText}`)
+        } else {
+          pageMarkdowns.push(pageText)
+        }
+      }
+    }
+
+    if (totalChars === 0) {
+      throw new NoTextFoundError('No text found in this PDF.')
+    }
+
+    const meanConfidence =
+      totalOcrPages > 0 ? Math.round(totalConfidence / totalOcrPages) : 100
+    const stats: ConvertStats = {
+      pages: pages.length,
+      ocrPages: totalOcrPages,
+      ocrConfidence: meanConfidence
     }
 
     const warnings: Warning[] = []
@@ -73,11 +216,21 @@ export const pdfConverter: Converter = {
         severity: 'warn'
       })
     }
+    if (totalOcrPages > 0 && (meanConfidence < 70 || totalChars < 10)) {
+      warnings.push({
+        code: 'OCR_LOW_CONFIDENCE',
+        message:
+          meanConfidence < 40 || totalChars < 10
+            ? `OCR output looks unreliable (mean confidence: ${meanConfidence}%).`
+            : `Low OCR confidence (mean confidence: ${meanConfidence}%).`,
+        severity: 'warn'
+      })
+    }
 
     return {
-      markdown: normalizeMarkdown(markdown),
+      markdown: normalizeMarkdown(pageMarkdowns.join('\n\n')),
       warnings,
-      stats: { pages: pages.length }
+      stats
     }
   }
 }

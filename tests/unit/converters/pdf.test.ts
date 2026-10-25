@@ -12,14 +12,32 @@ import { getPdfjs } from '../../../src/converters/pdf/worker'
 import {
   CancelledError,
   CorruptFileError,
+  NoTextFoundError,
   PasswordRequiredError,
-  ScannedPdfError,
   errorMessage
 } from '../../../src/core/errors'
 import { createConvertContext } from '../../../src/core/context'
 
+const mockRecognize = vi.fn()
+const mockTerminate = vi.fn().mockResolvedValue(undefined)
+const mockRenderPdfPageToCanvas = vi.fn()
+const mockReleaseCanvas = vi.fn()
+
 vi.mock('../../../src/converters/pdf/worker', () => ({
   getPdfjs: vi.fn()
+}))
+
+vi.mock('../../../src/converters/ocr/engine', () => ({
+  createOcrEngine: vi.fn(() => ({
+    recognize: mockRecognize,
+    terminate: mockTerminate
+  }))
+}))
+
+vi.mock('../../../src/converters/ocr/render', () => ({
+  renderPdfPageToCanvas: (...args: unknown[]) =>
+    mockRenderPdfPageToCanvas(...args),
+  releaseCanvas: (...args: unknown[]) => mockReleaseCanvas(...args)
 }))
 
 const goldenMarkdown = [
@@ -74,6 +92,39 @@ async function buildBlankPdf(): Promise<Uint8Array> {
   return doc.save()
 }
 
+const TINY_PNG = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89, 0x00, 0x00, 0x00,
+  0x0a, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49,
+  0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82
+])
+
+async function buildImagePdf(): Promise<Uint8Array> {
+  const doc = await PDFDocument.create()
+  const img = await doc.embedPng(TINY_PNG)
+  const page = doc.addPage([612, 792])
+  page.drawImage(img, { x: 50, y: 50, width: 100, height: 100 })
+  return doc.save()
+}
+
+async function buildMixedPdf(): Promise<Uint8Array> {
+  const doc = await PDFDocument.create()
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const p1 = doc.addPage([612, 792])
+  p1.drawText('Page one has selectable text for layout.', {
+    x: 72,
+    y: 700,
+    size: 12,
+    font
+  })
+  const p2 = doc.addPage([612, 792])
+  const img = await doc.embedPng(TINY_PNG)
+  p2.drawImage(img, { x: 50, y: 50, width: 100, height: 100 })
+  return doc.save()
+}
+
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   const copy = new ArrayBuffer(bytes.byteLength)
   new Uint8Array(copy).set(bytes)
@@ -91,6 +142,14 @@ function converterInput(bytes: Uint8Array) {
 describe('pdf extraction and conversion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRecognize.mockReset()
+    mockTerminate.mockReset().mockResolvedValue(undefined)
+    mockRenderPdfPageToCanvas.mockReset().mockResolvedValue({
+      canvas: {} as HTMLCanvasElement,
+      width: 100,
+      height: 100
+    })
+    mockReleaseCanvas.mockReset()
   })
 
   it('extracts a pdf-lib fixture through the node build and renders the golden markdown', async () => {
@@ -183,17 +242,133 @@ describe('pdf extraction and conversion', () => {
     expect(getPdfjs).not.toHaveBeenCalled()
   })
 
-  it('treats a blank-page PDF as scanned', async () => {
+  it('throws NoTextFoundError for a blank-page PDF (no text and no images)', async () => {
     vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
 
     const error = await pdfConverter
       .convert(converterInput(await buildBlankPdf()), createConvertContext())
       .catch((err: unknown) => err)
 
-    expect(error).toBeInstanceOf(ScannedPdfError)
+    expect(error).toBeInstanceOf(NoTextFoundError)
     expect(errorMessage(error)).toBe(
-      'This PDF looks scanned (no selectable text). OCR support is not available yet.'
+      'No text found in this PDF. Try a file with selectable text or enable OCR.'
     )
+  })
+
+  it('routes a scanned PDF page with images to OCR and returns recognized markdown', async () => {
+    vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
+    mockRecognize.mockResolvedValueOnce({
+      text: 'SCANNED INVOICE #1024\nTOTAL $500',
+      confidence: 94
+    })
+
+    const progress: { phase: string; current: number; total: number }[] = []
+    const ctx = {
+      ...createConvertContext(),
+      onProgress: (p: { phase: string; current: number; total: number }) =>
+        progress.push(p)
+    }
+
+    const result = await pdfConverter.convert(
+      converterInput(await buildImagePdf()),
+      ctx
+    )
+
+    expect(result.markdown).toContain('SCANNED INVOICE #1024')
+    expect(result.markdown).toContain('TOTAL $500')
+    expect(result.stats.pages).toBe(1)
+    expect(result.stats.ocrPages).toBe(1)
+    expect(result.stats.ocrConfidence).toBe(94)
+    expect(result.warnings).toEqual([])
+    expect(mockRenderPdfPageToCanvas).toHaveBeenCalledTimes(1)
+    expect(mockReleaseCanvas).toHaveBeenCalledTimes(1)
+    expect(mockTerminate).toHaveBeenCalledTimes(1)
+    expect(progress).toContainEqual({ phase: 'ocr', current: 1, total: 1 })
+  })
+
+  it('routes mixed PDF pages correctly, applying page markers when requested', async () => {
+    vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
+    mockRecognize.mockResolvedValueOnce({
+      text: 'SCANNED PAGE TWO CONTENT',
+      confidence: 88
+    })
+
+    const ctx = {
+      ...createConvertContext(),
+      options: { ocrLanguage: 'eng', forceOcr: false, pdfPageMarkers: true }
+    }
+
+    const result = await pdfConverter.convert(
+      converterInput(await buildMixedPdf()),
+      ctx
+    )
+
+    expect(result.markdown).toContain('--- Page 1 ---')
+    expect(result.markdown).toContain('Page one has selectable text for layout.')
+    expect(result.markdown).toContain('--- Page 2 ---')
+    expect(result.markdown).toContain('SCANNED PAGE TWO CONTENT')
+    expect(result.stats.pages).toBe(2)
+    expect(result.stats.ocrPages).toBe(1)
+    expect(result.stats.ocrConfidence).toBe(88)
+  })
+
+  it('warns when OCR confidence is low (< 70)', async () => {
+    vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
+    mockRecognize.mockResolvedValueOnce({
+      text: 'SOME UNRELIABLE SCANNED TEXT',
+      confidence: 35
+    })
+
+    const result = await pdfConverter.convert(
+      converterInput(await buildImagePdf()),
+      createConvertContext()
+    )
+
+    expect(result.warnings).toContainEqual({
+      code: 'OCR_LOW_CONFIDENCE',
+      message: 'OCR output looks unreliable (mean confidence: 35%).',
+      severity: 'warn'
+    })
+    expect(result.stats.ocrConfidence).toBe(35)
+  })
+
+  it('throws NoTextFoundError when OCR produces only whitespace', async () => {
+    vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
+    mockRecognize.mockResolvedValueOnce({
+      text: '   \n  ',
+      confidence: 10
+    })
+
+    await expect(
+      pdfConverter.convert(
+        converterInput(await buildImagePdf()),
+        createConvertContext()
+      )
+    ).rejects.toBeInstanceOf(NoTextFoundError)
+  })
+
+  it('propagates CancelledError and cleans up when aborted during OCR', async () => {
+    vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
+    const controller = new AbortController()
+    mockRecognize.mockImplementationOnce(
+      async (_canvas: unknown, options?: { signal?: AbortSignal }) => {
+        if (!options?.signal) {
+          return { text: 'COMPLETED WITHOUT SIGNAL', confidence: 90 }
+        }
+        controller.abort()
+        throw new CancelledError()
+      }
+    )
+
+    const ctx = {
+      ...createConvertContext(),
+      signal: controller.signal
+    }
+
+    await expect(
+      pdfConverter.convert(converterInput(await buildImagePdf()), ctx)
+    ).rejects.toBeInstanceOf(CancelledError)
+    expect(mockTerminate).toHaveBeenCalled()
   })
 
   it('throws CancelledError when the signal is already aborted', async () => {
@@ -266,6 +441,14 @@ describe('pdf extraction and conversion', () => {
 describe('pdf header/footer removal, large PDFs and page markers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRecognize.mockReset()
+    mockTerminate.mockReset().mockResolvedValue(undefined)
+    mockRenderPdfPageToCanvas.mockReset().mockResolvedValue({
+      canvas: {} as HTMLCanvasElement,
+      width: 100,
+      height: 100
+    })
+    mockReleaseCanvas.mockReset()
   })
 
   it('strips repeated headers and footers and emits the removal warning', async () => {

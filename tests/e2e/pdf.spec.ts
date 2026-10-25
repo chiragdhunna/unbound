@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { chromium, expect, test } from '@playwright/test'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -39,17 +39,76 @@ async function goldenPdfBytes(): Promise<Uint8Array> {
   return doc.save()
 }
 
-async function ensureFixtures() {
-  await fs.mkdir(outputDir, { recursive: true })
-  await fs.writeFile(
-    path.join(outputDir, 'm52-golden.pdf'),
-    await goldenPdfBytes()
-  )
+let fixturesPromise: Promise<void> | null = null
 
-  const blank = await PDFDocument.create()
-  blank.addPage([612, 792])
-  blank.addPage([612, 792])
-  await fs.writeFile(path.join(outputDir, 'm52-blank.pdf'), await blank.save())
+async function ensureFixtures() {
+  if (fixturesPromise) return fixturesPromise
+  fixturesPromise = (async () => {
+    await fs.mkdir(outputDir, { recursive: true })
+    await fs.writeFile(
+      path.join(outputDir, 'm52-golden.pdf'),
+      await goldenPdfBytes()
+    )
+
+    const blank = await PDFDocument.create()
+    blank.addPage([612, 792])
+    blank.addPage([612, 792])
+    await fs.writeFile(path.join(outputDir, 'm52-blank.pdf'), await blank.save())
+
+    const scannedPath = path.join(outputDir, 'm64-scanned.pdf')
+    const mixedPath = path.join(outputDir, 'm64-mixed.pdf')
+
+    try {
+      await fs.access(scannedPath)
+      await fs.access(mixedPath)
+      return
+    } catch {
+      // Create them below
+    }
+
+    const browser = await chromium.launch()
+    const page = await browser.newPage()
+    const dataUrl = await page.evaluate(() => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 640
+      canvas.height = 160
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('2d context missing')
+      ctx.fillStyle = 'white'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.fillStyle = 'black'
+      ctx.font = 'bold 56px sans-serif'
+      ctx.fillText('SCANNED INVOICE', 20, 100)
+      return canvas.toDataURL('image/png')
+    })
+    await browser.close()
+
+    const pngBytes = Buffer.from(
+      dataUrl.replace(/^data:image\/png;base64,/, ''),
+      'base64'
+    )
+
+    const scannedDoc = await PDFDocument.create()
+    const img1 = await scannedDoc.embedPng(pngBytes)
+    const scannedPage = scannedDoc.addPage([640, 160])
+    scannedPage.drawImage(img1, { x: 0, y: 0, width: 640, height: 160 })
+    await fs.writeFile(scannedPath, await scannedDoc.save())
+
+    const mixedDoc = await PDFDocument.create()
+    const font = await mixedDoc.embedFont(StandardFonts.Helvetica)
+    const p1 = mixedDoc.addPage([612, 792])
+    p1.drawText('Mixed document selectable text on page one.', {
+      x: 72,
+      y: 700,
+      size: 16,
+      font
+    })
+    const img2 = await mixedDoc.embedPng(pngBytes)
+    const p2 = mixedDoc.addPage([640, 160])
+    p2.drawImage(img2, { x: 0, y: 0, width: 640, height: 160 })
+    await fs.writeFile(mixedPath, await mixedDoc.save())
+  })()
+  return fixturesPromise
 }
 
 test('uploads a generated PDF and renders the markdown output', async ({
@@ -83,17 +142,18 @@ test('uploads a generated PDF and renders the markdown output', async ({
   expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
 })
 
-test('shows the scanned-PDF message for a blank PDF', async ({ page }) => {
+test('shows no-text-found message for a blank PDF with no images', async ({
+  page
+}) => {
   await ensureFixtures()
   await page.goto('/')
   await page
     .getByLabel('Choose file', { exact: true })
     .setInputFiles(path.join(outputDir, 'm52-blank.pdf'))
 
+  await expect(page.getByText('No text found in this PDF.')).toBeVisible()
   await expect(
-    page.getByText(
-      'This PDF looks scanned (no selectable text). OCR support is not available yet.'
-    )
+    page.getByText('Try a file with selectable text or enable OCR.')
   ).toBeVisible()
 })
 
@@ -126,4 +186,89 @@ test('omits page markers when the PDF page-markers setting is off', async ({
   await expect(output).toContainText('# Quarterly Budget Review')
   await expect(output).not.toContainText('--- Page 1 ---')
   await expect(output).not.toContainText('--- Page 2 ---')
+})
+
+test('converts a scanned PDF using self-hosted OCR with zero external requests', async ({
+  page,
+  baseURL
+}) => {
+  const pageOrigin = new URL(baseURL ?? 'http://127.0.0.1:4173').origin
+  const crossOrigin: string[] = []
+  const requested: string[] = []
+  const consoleErrors: string[] = []
+
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    requested.push(url.pathname)
+    if (
+      url.protocol !== 'blob:' &&
+      url.protocol !== 'data:' &&
+      url.origin !== pageOrigin
+    ) {
+      crossOrigin.push(request.url())
+    }
+  })
+  page.on('console', (message) => {
+    const source = new URL(message.location().url || pageOrigin).pathname
+    if (message.type() === 'error' && source !== '/favicon.ico') {
+      consoleErrors.push(`${message.text()} @ ${source}`)
+    }
+  })
+
+  await ensureFixtures()
+  await page.goto('/')
+  await page
+    .getByLabel('Choose file', { exact: true })
+    .setInputFiles(path.join(outputDir, 'm64-scanned.pdf'))
+
+  await expect(page.getByRole('status')).toContainText('Ready', {
+    timeout: 30_000
+  })
+
+  const output = page.getByRole('textbox')
+  await expect(output).toContainText('INVOICE')
+
+  expect(crossOrigin, crossOrigin.join('\n')).toEqual([])
+  expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
+  expect(requested).toContain('/ocr/worker.min.js')
+  expect(requested).toContain('/ocr/lang/eng.traineddata')
+})
+
+test('converts a mixed PDF with text and scanned pages', async ({ page }) => {
+  await ensureFixtures()
+  await page.goto('/')
+  await page
+    .getByLabel('Choose file', { exact: true })
+    .setInputFiles(path.join(outputDir, 'm64-mixed.pdf'))
+
+  await expect(page.getByRole('status')).toContainText('Ready', {
+    timeout: 30_000
+  })
+
+  const output = page.getByRole('textbox')
+  await expect(output).toContainText(
+    'Mixed document selectable text on page one.'
+  )
+  await expect(output).toContainText('INVOICE')
+})
+
+test('cancels OCR conversion in under 1 second', async ({ page }) => {
+  await ensureFixtures()
+  await page.goto('/')
+  await page
+    .getByLabel('Choose file', { exact: true })
+    .setInputFiles(path.join(outputDir, 'm64-scanned.pdf'))
+
+  const cancelButton = page.getByRole('button', { name: 'Cancel' })
+  await expect(cancelButton).toBeVisible()
+
+  const started = Date.now()
+  await cancelButton.click()
+
+  await expect(
+    page.getByText('Conversion cancelled by user.')
+  ).toBeVisible()
+  const elapsedMs = Date.now() - started
+
+  expect(elapsedMs).toBeLessThan(1000)
 })

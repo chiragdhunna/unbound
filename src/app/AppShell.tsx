@@ -10,7 +10,7 @@ import { chunkMarkdown } from '../core/chunk'
 import { countText } from '../core/tokens'
 import { createConvertContext } from '../core/context'
 import { type ConvertContext } from '../core/types'
-import { UnsupportedFormatError } from '../core/errors'
+import { errorMessage } from '../core/errors'
 import { convertFile } from '../core/pipeline'
 import { markdownToPlain } from '../core/plain'
 
@@ -67,15 +67,7 @@ function getStoredSettings(): Settings {
 }
 
 function formatError(error: unknown): string {
-  if (error instanceof UnsupportedFormatError) {
-    return error.message
-  }
-
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return 'Conversion failed for an unknown reason.'
+  return errorMessage(error)
 }
 
 function countSummary(value: string): string {
@@ -109,10 +101,14 @@ async function copyText(text: string): Promise<boolean> {
   return fallbackCopy(text)
 }
 
-function buildConvertContext(settings: Settings): ConvertContext {
+function buildConvertContext(
+  settings: Settings,
+  signal?: AbortSignal
+): ConvertContext {
   const context = createConvertContext()
   return {
     ...context,
+    signal: signal ?? context.signal,
     options: { ...context.options, pdfPageMarkers: settings.pageMarkers }
   }
 }
@@ -129,6 +125,7 @@ export function AppShell() {
   const [copyIndex, setCopyIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const folderInputRef = useRef<HTMLInputElement | null>(null)
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
 
   useEffect(() => {
     const stored = getStoredSettings()
@@ -280,8 +277,14 @@ export function AppShell() {
         )
       )
 
+      const controller = new AbortController()
+      abortControllersRef.current.set(jobId, controller)
+
       try {
-        const result = await convertFile(file!, buildConvertContext(settings))
+        const result = await convertFile(
+          file!,
+          buildConvertContext(settings, controller.signal)
+        )
         setJobs((previous) =>
           previous.map((job) =>
             job.id === jobId
@@ -323,6 +326,8 @@ export function AppShell() {
               : job
           )
         )
+      } finally {
+        abortControllersRef.current.delete(jobId)
       }
     }
   }
@@ -370,9 +375,15 @@ export function AppShell() {
       )
     )
 
+    const controller = new AbortController()
+    abortControllersRef.current.set(jobId, controller)
+
     try {
       // Convert the file
-      const result = await convertFile(file, buildConvertContext(settings))
+      const result = await convertFile(
+        file,
+        buildConvertContext(settings, controller.signal)
+      )
       setJobs((previous) =>
         previous.map((j) =>
           j.id === jobId
@@ -407,6 +418,15 @@ export function AppShell() {
             : j
         )
       )
+    } finally {
+      abortControllersRef.current.delete(jobId)
+    }
+  }
+
+  const cancelJob = (jobId: string) => {
+    const controller = abortControllersRef.current.get(jobId)
+    if (controller) {
+      controller.abort()
     }
   }
 
@@ -732,6 +752,18 @@ export function AppShell() {
                       Download file
                     </button>
                   ) : null}
+                  {job.status === 'converting' ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        cancelJob(job.id)
+                      }}
+                      className="job-action-button"
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
                   {job.status === 'error' ? (
                     <button
                       type="button"
@@ -748,6 +780,7 @@ export function AppShell() {
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation()
+                      cancelJob(job.id)
                       setJobs((previous) =>
                         previous.filter((item) => item.id !== job.id)
                       )

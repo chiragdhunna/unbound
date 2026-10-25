@@ -53,6 +53,7 @@ export type LayoutPagesResult = {
   markdown: string
   charCount: number
   removedLineCount: number
+  pageMarkdowns?: string[]
 }
 
 type WorkLine = {
@@ -367,7 +368,7 @@ export function layoutPages(
     .filter((part) => part !== '')
     .join('\n\n')
 
-  return { markdown, charCount, removedLineCount }
+  return { markdown, charCount, removedLineCount, pageMarkdowns: rendered }
 }
 
 export function layoutPagesToMarkdown(pages: TextItemLite[][]): {
