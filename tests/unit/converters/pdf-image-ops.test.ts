@@ -7,6 +7,7 @@ import {
   extractPages,
   hasImageOpsFromOperatorList,
   hasLargeImageFromOperatorList,
+  MAX_TEXT_PAGES_FOR_IMAGE_DETECTION,
   OPS_CODES,
   TRANSFORM_OPS,
   type PdfjsLike
@@ -214,5 +215,50 @@ describe('extractPages page handling', () => {
     getOperatorList.mockRejectedValueOnce(new Error('boom'))
     const pages = await extractPages(pdfjs, new Uint8Array(1))
     expect(pages[0]?.hasImageOps).toBe(true)
+  })
+
+  it('caps embedded image detection to MAX_TEXT_PAGES_FOR_IMAGE_DETECTION: page 20 detected, page 21 not', async () => {
+    expect(MAX_TEXT_PAGES_FOR_IMAGE_DETECTION).toBe(20)
+    // 25 text-rich pages
+    const textPages = Array.from({ length: 25 }, (_, i) => `Page ${i + 1} has plenty of selectable text to count as text-rich.`)
+    const { pdfjs, getOperatorList } = fakePdfjs(textPages)
+    const pages = await extractPages(pdfjs, new Uint8Array(1), {
+      detectEmbeddedImages: true
+    })
+
+    // getOperatorList must only be called for the first 20 text pages
+    expect(getOperatorList).toHaveBeenCalledTimes(20)
+
+    // Page 20 (index 19) is detected with hasLargeImage = true
+    expect(pages[19]?.hasLargeImage).toBe(true)
+
+    // Page 21 (index 20) and page 22 (index 21) are capped: hasLargeImage = false
+    expect(pages[20]?.hasLargeImage).toBe(false)
+    expect(pages[21]?.hasLargeImage).toBe(false)
+  })
+
+  it('preserves low-text page fail-open routing to OCR even after page 20', async () => {
+    // 20 text-rich pages, then a low-text page at position 21, then a text page at 22
+    const mixed = [
+      ...Array.from({ length: 20 }, (_, i) => `Page ${i + 1} has plenty of selectable text.`),
+      'scanned', // < 25 chars -> low-text page!
+      'Page 22 has plenty of selectable text.'
+    ]
+    const { pdfjs, getOperatorList } = fakePdfjs(mixed)
+    const pages = await extractPages(pdfjs, new Uint8Array(1), {
+      detectEmbeddedImages: true
+    })
+
+    // 20 text pages + 1 low-text page = 21 getOperatorList calls
+    expect(getOperatorList).toHaveBeenCalledTimes(21)
+
+    // Routing for low-text page (index 20) is unaffected and routes to OCR
+    const decisions = decideOcrPages(pages)
+    expect(decisions[20]?.reason).toBe('image-only')
+    expect(pages[20]?.hasImageOps).toBe(true)
+
+    // Page 22 (index 21) was the 21st text page so it was not checked for large images
+    expect(pages[21]?.hasLargeImage).toBe(false)
+    expect(decisions[21]?.reason).toBe('text')
   })
 })

@@ -78,6 +78,12 @@ export const TRANSFORM_OPS = {
 } as const
 
 /**
+ * Cap for checking embedded images on text-heavy pages to prevent unbounded
+ * `getOperatorList()` overhead on large PDFs (DECISIONS.md, Task 1).
+ */
+export const MAX_TEXT_PAGES_FOR_IMAGE_DETECTION = 20
+
+/**
  * pdfjs operator codes that paint an image (pdfjs-dist 6.4.299 OPS table):
  * paintImageMaskXObject, paintImageXObject, paintInlineImageXObject,
  * paintImageXObjectRepeat, paintImageMaskXObjectRepeat. A unit test pins these
@@ -187,6 +193,7 @@ export async function extractPages(
     const doc = await task.promise
     const pages: ExtractedPage[] = []
     const minChars = MIN_CHARS_PER_PAGE
+    let textPageCount = 0
 
     for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
       if (hooks?.signal?.aborted) throw new CancelledError()
@@ -217,19 +224,25 @@ export async function extractPages(
           // assume images may be present so the page routes to OCR.
           hasImageOps = true
         }
-      } else if (hooks?.detectEmbeddedImages) {
-        try {
-          const operatorList = await page.getOperatorList()
-          const width = pageWidthOf(page)
-          const height = pageHeightOf(page)
-          hasLargeImage = hasLargeImageFromOperatorList(
-            operatorList,
-            width,
-            height,
-            0.3
-          )
-        } catch {
-          hasLargeImage = false
+      } else {
+        textPageCount += 1
+        if (
+          hooks?.detectEmbeddedImages &&
+          textPageCount <= MAX_TEXT_PAGES_FOR_IMAGE_DETECTION
+        ) {
+          try {
+            const operatorList = await page.getOperatorList()
+            const width = pageWidthOf(page)
+            const height = pageHeightOf(page)
+            hasLargeImage = hasLargeImageFromOperatorList(
+              operatorList,
+              width,
+              height,
+              0.3
+            )
+          } catch {
+            hasLargeImage = false
+          }
         }
       }
 

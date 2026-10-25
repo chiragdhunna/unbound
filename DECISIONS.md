@@ -238,4 +238,22 @@
 - **Flake Verification:** Executed 20 repeated runs on both Chromium and Mobile Chromium (`--repeat-each=20 --retries=0`), passing 40/40 tests with 0 failures and 0 flaky runs.
 - **Consequences:** The UI redesign is merged to `main` and the sole flaky-by-design E2E test is resolved. In-page cancel latency is measured at ~18 ms, cleanly satisfying the < 1 s requirement across all browser engines.
 
+## 2026-10-25 — Bound Embedded-Image Detection Cost (20-Page Text Cap)
+
+- **Context:** `extractPages` in `src/converters/pdf/extract.ts` inspects operator lists via `getOperatorList()` when `detectEmbeddedImages` is enabled to surface the `EMBEDDED_IMAGES_MAY_CONTAIN_TEXT` warning. On large documents, calling `getOperatorList()` on every single text page incurs substantial overhead.
+- **Benchmark Measurement:** A 300-page test PDF benchmark was executed outside the repository comparing `pdfConverter.convert` wall time across 3 runs each with detection ON vs OFF:
+  - **300-page pure text PDF:**
+    - Detection OFF runs: [595.4, 572.0, 575.5] ms (Median: 575.5 ms)
+    - Detection ON runs: [710.8, 722.9, 692.6] ms (Median: 710.8 ms)
+    - Overhead: **+23.5%** | Ratio: **1.235×**
+  - **300-page mixed PDF (every 10th page has a large image):**
+    - Detection OFF runs: [577.9, 554.7, 536.4] ms (Median: 554.7 ms)
+    - Detection ON runs: [667.8, 654.0, 669.0] ms (Median: 667.8 ms)
+    - Overhead: **+20.4%** | Ratio: **1.204×**
+- **Decision:** Because detection added > 15% overhead in both test cases (+23.5% and +20.4%), detection is capped to the first 20 text pages via exported constant `MAX_TEXT_PAGES_FOR_IMAGE_DETECTION = 20`.
+  - For text pages beyond page 20, `getOperatorList()` is not called for embedded image detection.
+  - The low-text fail-open routing path for OCR (`nonWhitespaceCharCount < MIN_CHARS_PER_PAGE`) continues to run on every single page regardless of page count.
+- **Consequences:** Eliminates unbounded operator-list overhead on 100+ page text documents while reliably detecting presentation slides and early figures. Unit tests verify page 20 is detected and page 21 is skipped, with low-text OCR routing remaining uninhibited; mutation tests confirmed failure when the cap was removed.
+
+
 
