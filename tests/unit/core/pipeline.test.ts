@@ -35,4 +35,60 @@ describe('convertFile', () => {
       '| name | quote |\n| --- | --- |\n| Ana | say "hi" |\n'
     )
   })
+
+  it('reads file bytes via FileReader fallback when file.arrayBuffer is not available', async () => {
+    const file = new File(['hello fallback'], 'test.txt', { type: 'text/plain' })
+    // @ts-expect-error simulating browser where file.arrayBuffer is undefined
+    file.arrayBuffer = undefined
+
+    const result = await convertFile(file, createConvertContext())
+    expect(result.markdown).toBe('hello fallback\n')
+  })
+
+  it('rejects when FileReader encounters an error', async () => {
+    const file = new File(['data'], 'test.txt', { type: 'text/plain' })
+    // @ts-expect-error simulating browser where file.arrayBuffer is undefined
+    file.arrayBuffer = undefined
+
+    const origFileReader = globalThis.FileReader
+    class ErrorFileReader {
+      onerror: (() => void) | null = null
+      onload: (() => void) | null = null
+      readAsArrayBuffer() {
+        setTimeout(() => this.onerror?.(), 0)
+      }
+    }
+    // @ts-expect-error mocking FileReader
+    globalThis.FileReader = ErrorFileReader
+
+    try {
+      await expect(convertFile(file, createConvertContext())).rejects.toThrow('Failed to read file bytes.')
+    } finally {
+      globalThis.FileReader = origFileReader
+    }
+  })
+
+  it('rejects when FileReader result is not an ArrayBuffer', async () => {
+    const file = new File(['data'], 'test.txt', { type: 'text/plain' })
+    // @ts-expect-error simulating browser where file.arrayBuffer is undefined
+    file.arrayBuffer = undefined
+
+    const origFileReader = globalThis.FileReader
+    class BadResultFileReader {
+      result = 'not an array buffer'
+      onerror: (() => void) | null = null
+      onload: (() => void) | null = null
+      readAsArrayBuffer() {
+        setTimeout(() => this.onload?.(), 0)
+      }
+    }
+    // @ts-expect-error mocking FileReader
+    globalThis.FileReader = BadResultFileReader
+
+    try {
+      await expect(convertFile(file, createConvertContext())).rejects.toThrow('File bytes could not be read as an ArrayBuffer.')
+    } finally {
+      globalThis.FileReader = origFileReader
+    }
+  })
 })

@@ -11,9 +11,26 @@ describe('converter registry', () => {
       'json',
       'xml',
       'code',
-      'docx'
+      'docx',
+      'xlsx',
+      'pdf',
+      'image'
     ] as const) {
       expect((await loadConverter(kind)).kind).toBe(kind)
+    }
+  })
+
+  it('throws UnsupportedFormatError when loaded module does not export converter', async () => {
+    vi.doMock('../../../src/converters/text', () => ({
+      textConverter: undefined
+    }))
+    try {
+      const registryModule = await import('../../../src/core/registry')
+      await expect(registryModule.loadConverter('text')).rejects.toThrow(
+        "Converter for 'text' could not be loaded."
+      )
+    } finally {
+      vi.doUnmock('../../../src/converters/text')
     }
   })
 

@@ -221,4 +221,44 @@ describe('imageConverter', () => {
     expect(errorMessage(error)).toContain('WebAssembly.compile')
     expect(errorMessage(error)).toContain('update your browser')
   })
+
+  it('forwards OCR engine progress events to ctx.onProgress', async () => {
+    mockRecognize.mockImplementationOnce(async (_canvas, options) => {
+      options?.onProgress?.({ phase: 'ocr', current: 42, total: 100 })
+      return { text: 'Recognized text', confidence: 85 }
+    })
+
+    const progress: unknown[] = []
+    const ctx = {
+      ...createConvertContext(),
+      onProgress: (p: unknown) => progress.push(p)
+    }
+
+    await imageConverter.convert(imageInput(TINY_PNG), ctx)
+
+    expect(progress).toContainEqual({
+      phase: 'ocr',
+      current: 42,
+      total: 100,
+      page: 1,
+      totalPages: 1,
+      percent: 42
+    })
+  })
+
+  it('rethrows unexpected non-feature error during decodeImageToCanvas', async () => {
+    const customError = new Error('Storage failure')
+    mockDecodeImageToCanvas.mockRejectedValueOnce(customError)
+
+    const ctx = createConvertContext()
+    await expect(imageConverter.convert(imageInput(TINY_PNG), ctx)).rejects.toThrow('Storage failure')
+  })
+
+  it('rethrows unexpected non-feature error during OCR recognition', async () => {
+    const customError = new Error('Engine crash')
+    mockRecognize.mockRejectedValueOnce(customError)
+
+    const ctx = createConvertContext()
+    await expect(imageConverter.convert(imageInput(TINY_PNG), ctx)).rejects.toThrow('Engine crash')
+  })
 })
