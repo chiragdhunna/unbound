@@ -51,9 +51,9 @@ Unbound runs entirely in the browser. No file data is sent to external servers. 
   - Large PDF warning (`LARGE_PDF_PAGE_THRESHOLD = 300`) with UI-thread yielding via macrotask (`setTimeout(0)`) between pages.
 - **OCR (M6 in progress)**:
   - Architecture: self-hosted `tesseract.js` (7.0.0) with local worker and wasm cores (`lstm`, `simd-lstm`, `relaxedsimd-lstm`).
-  - Page decision logic (`src/converters/ocr/decide.ts`): categorizes pages as `text` (≥ 25 non-whitespace chars), `ocr` (< 25 chars + `hasImageOps`), or `empty`.
+  - Page decision logic (`src/converters/ocr/decide.ts`): categorizes pages as `'text'` (≥ 25 non-whitespace chars), `'image-only'` (< 25 chars + `hasImageOps`), `'forced'` (`forceOcr: true`), or `'empty'`.
   - Image operator detection (`src/converters/pdf/extract.ts`): scans pdfjs operator list only for candidate pages (< 25 chars).
-  - OCR Engine (`src/converters/ocr/engine.ts`): lazy-loads `tesseract.js` on first use, creates a single worker reused across pages, supports immediate termination on `AbortSignal` with `CancelledError` and lazy worker recreation on subsequent calls, maps recognition rejections to `CorruptFileError`, and forwards Tesseract logger events to drive `{ phase: 'ocr', current, total: 100 }` progress.
+  - OCR Engine (`src/converters/ocr/engine.ts`): dynamic-imports `tesseract.js` on first use, creates a single worker reused across pages, executes strictly sequentially (a second concurrent call rejects immediately with `OcrFailedError`), supports immediate termination on `AbortSignal` with `CancelledError` and lazy worker recreation on subsequent calls, maps worker creation/recognition rejections to `OcrFailedError`, and forwards Tesseract logger events to drive `{ phase: 'ocr', current, total: 100 }` progress.
   - End-to-end PDF OCR routing and image converter in progress.
 
 ## Job Identity, Retry, and Late-Result Rules

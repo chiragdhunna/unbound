@@ -60,7 +60,7 @@ Every major LLM chat — ChatGPT, Claude, Grok, Gemini — limits file **attachm
 | **XLSX / XLS** | `.xlsx`, `.xls`, `.xlsm` | ✅ Working | Multi-sheet `## Sheet:` sections, GFM tables, ISO dates, merged cells, hidden sheets |
 | **CSV / TSV** | `.csv`, `.tsv` | ✅ Working | Exact cell text preserved (leading zeros, quoted spacing, BOM, Windows-1252) |
 | **PDF** _(text-based)_ | `.pdf` | ✅ Working | Headings, paragraphs, lists extracted; headers/footers/page numbers auto-stripped |
-| **OCR** _(scanned PDFs + images)_ | `.pdf`, `.jpg`, `.png`, `.webp`, `.bmp`, `.gif` | 🟨 In Progress | Self-hosted Tesseract.js 7.0; engine (M6.3a), decision logic (M6.2) & spike (M6.1) verified; PDF routing in progress |
+| **OCR** _(scanned PDFs)*_ | `.pdf` | 🟨 In Progress | Self-hosted Tesseract.js 7.0; engine (M6.3a), decision logic (M6.2) & spike (M6.1) verified; PDF routing in progress (*scanned image-only PDFs; image files planned in M6.6) |
 | **PPTX** | `.pptx` | 🔜 Planned | JSZip + DOMParser, slide boundaries + speaker notes |
 | **RTF** | `.rtf` | 🔜 Planned | Custom lightweight text extractor |
 | **HTML File** | `.html`, `.htm` | 🔜 Planned | Readability + Turndown for main-content extraction |
@@ -165,9 +165,9 @@ Unbound is a **browser-only**, **zero-backend** application. Every conversion ha
 ### 🧠 How OCR Works (and why nothing leaves your browser)
 
 Most web-based OCR tools send your documents to a cloud service for recognition. **Unbound does not.**
-- All OCR processing executes locally inside a Web Worker via **Tesseract.js (v7.0.0)** compiled to WebAssembly (WASM).
+- All OCR processing is designed to execute locally inside a Web Worker via **Tesseract.js (v7.0.0)** compiled to WebAssembly (WASM). This architecture was proven in isolation in `tests/e2e/ocr-spike.spec.ts` under the real CSP and will be asserted on full application flows in M6.8.
 - The worker script, WASM engine, and language models run entirely from same-origin static assets (`/ocr/worker.min.js`, `/ocr/core/`, `/ocr/lang/`).
-- Even on scanned documents, **zero bytes of document content or image data are transmitted across the network**.
+- The design guarantees that even on scanned documents, **zero bytes of document content or image data are transmitted across the network**.
 
 ### 📦 Self-Hosted OCR Assets
 - **Automatic Asset Sync:** A `prebuild` hook (`scripts/sync-ocr-assets.mjs`) synchronizes `worker.min.js`, `tesseract.js`, and the three LSTM core variants (`lstm`, `simd-lstm`, `relaxedsimd-lstm`) directly from `node_modules` into `public/ocr/`.
@@ -195,9 +195,9 @@ Follow the established pattern in `src/converters/docx.ts`:
 
 | Layer | Count | Tool | Coverage |
 |:------|------:|:-----|:---------|
-| **Unit** | 207 | Vitest | 94.52% lines (85% gate) |
+| **Unit** | 208 | Vitest (v5.0.5) | 95.00% lines (85% gate) |
 | **E2E** | 58 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
-| **Bundle** | — | Custom gzip check | 68,120 B / 256,000 B budget |
+| **Bundle** | — | Custom gzip check | 68,572 B / 256,000 B budget |
 
 ```bash
 # Run all checks at once
@@ -249,10 +249,10 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 ### Latest Verification (2026-10-25)
 
 ```
-  Unit Tests  ··········  207 / 207 passed  (27 files)
+  Unit Tests  ··········  208 / 208 passed  (27 files)
   E2E Tests   ··········   58 / 58 passed   (chromium + mobile-chromium)
-  Coverage    ··········  94.52% lines       (85% gate)
-  Bundle Size ··········  68,120 B gzip      (256,000 B budget)
+  Coverage    ··········  95.00% lines       (85% gate)
+  Bundle Size ··········  68,572 B gzip      (256,000 B budget)
   Lazy Chunks ··········  14 chunks          (pdfjs, xlsx stay out of initial payload)
 ```
 

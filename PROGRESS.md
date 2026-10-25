@@ -88,7 +88,7 @@
 
 ## Closure evidence (refreshed 2026-10-25, at 986f21a baseline)
 
-Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit tests pass** (26 files, zero failures). **58 Chromium/mobile-Chromium E2E tests passed**, `E2E_EXIT=0`, no skips, including axe options-bar, empty, error-card, and preview-cap scans. Coverage `COV_EXIT=0`: `All files` **94.56%** lines (85% gate), `src/converters/pdf` **99.72%** lines, `src/converters/ocr` **100%** lines, `src/core` **93.23%** lines. Initial JS entry **68,120 bytes gzip** of 256,000 budget with 14 lazy chunks. pdfjs and SheetJS are proven lazy: neither enters the initial payload. OCR assets are self-hosted under `/public/ocr/` (generated on `prebuild` via `scripts/sync-ocr-assets.mjs` and verified zero-request in `tests/e2e/ocr-spike.spec.ts`).
+Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit tests pass** (26 files, zero failures, vitest 5.0.5). **58 Chromium/mobile-Chromium E2E tests passed**, `E2E_EXIT=0`, no skips, including axe options-bar, empty, error-card, and preview-cap scans. Coverage `COV_EXIT=0`: `All files` **94.95%** lines (85% gate), `src/converters/pdf` **100%** lines, `src/converters/ocr` **100%** lines, `src/core` **93.55%** lines. Initial JS entry **68,715 bytes gzip** of 256,000 budget with 14 lazy chunks. pdfjs and SheetJS are proven lazy: neither enters the initial payload. OCR assets are self-hosted under `/public/ocr/` (generated on `prebuild` via `scripts/sync-ocr-assets.mjs` and verified zero-request in `tests/e2e/ocr-spike.spec.ts`).
 
 ## Iteration Log
 
@@ -199,15 +199,15 @@ Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit t
 
 ### 2026-10-25 — M6.1/M6.2 baseline and Dependabot updates
 
-- Baseline verification after merging Dependabot updates:
-  - Unit tests: 193 of 193 passed across 26 test files (vitest 3.2.7).
+- Baseline verification after merging Dependabot updates (fresh install via `npm ci`):
+  - Unit tests: 193 of 193 passed across 26 test files (vitest 5.0.5).
   - E2E tests: 58 of 58 passed across chromium and mobile-chromium.
-  - Code coverage: All files 94.56% lines (85% threshold gate).
-  - Production build & bundle check: initial JS gzip 68,120 bytes / 256,000 bytes budget (14 lazy chunks).
+  - Code coverage: All files 94.95% lines (85% threshold gate).
+  - Production build & bundle check: initial JS gzip 68,715 bytes / 256,000 bytes budget (14 lazy chunks).
   - Absolute path and hygiene checks: 100% clean.
   - Traceability: 63 rows verified.
 - M6.1 self-hosted OCR runtime validated under CSP in `tests/e2e/ocr-spike.spec.ts` (recognizes "HELLO WORLD", zero cross-origin requests, zero CSP violations).
-- M6.2 page decision (`src/converters/ocr/decide.ts`, `decideOcrPages`, `MIN_CHARS_PER_PAGE = 25`) and PDF image-op detection (`src/converters/pdf/extract.ts`) verified with 18 unit tests.
+- M6.2 page decision (`src/converters/ocr/decide.ts`, `decideOcrPages`, `MIN_CHARS_PER_PAGE = 25`) and PDF image-op detection (`src/converters/pdf/extract.ts`) verified with 18 unit tests. Decision values: `'text' | 'image-only' | 'forced' | 'empty'`. Pinned op codes: `paintImageMaskXObject (83)`, `paintImageXObject (85)`, `paintInlineImageXObject (86)`, `paintImageXObjectRepeat (88)`, `paintImageMaskXObjectRepeat (89)`.
 - Deferred from PDF (M5.4): table heuristic, bold detection, and multi-column handling.
 - Next step: M6.3a OCR engine (`src/converters/ocr/engine.ts`) with lazy-loaded worker and typed error mappings.
 
@@ -215,14 +215,16 @@ Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit t
 
 - Implemented `src/converters/ocr/engine.ts`:
   - `createOcrEngine({ lang?: string } = {})` returning `recognize(image, { onProgress, signal })` and `terminate()`.
-  - Lazy `import('tesseract.js')` so Tesseract.js never enters the initial bundle.
+  - Lazy `import('tesseract.js')`: Tesseract.js is dynamic-imported from `engine.ts`; bundle separation will be asserted once `engine.ts` is wired into PDF/image conversion in M6.4.
+  - Sequential execution only: ONE recognition at a time. Concurrent calls to `recognize()` reject immediately with `OcrFailedError('OCR engine is busy: concurrent recognition is not supported.')` to preserve bounded memory (single canvas in flight) and unambiguous abort semantics.
   - Single worker created on first recognize and reused across sequential pages/calls.
   - Passes self-hosted, BASE_URL-prefixed options: `workerPath: ${baseUrl}ocr/worker.min.js`, `corePath: ${baseUrl}ocr/core`, `langPath: ${baseUrl}ocr/lang`, `gzip: false`, `workerBlobURL: false`.
   - Immediate worker termination on `AbortSignal` with `CancelledError` and lazy worker recreation on subsequent recognize calls.
-  - Rejection mapping from Tesseract failures to typed `CorruptFileError` with worker disposal.
+  - Typed error mapping: recognition and worker creation rejections map to `OcrFailedError` with worker disposal; `errorMessage()` maps `OcrFailedError` to accurate user guidance ("Reload the page and try again; if it keeps failing, the OCR files may not have loaded.").
+  - Typed `OcrImageSource`: narrowed to `HTMLCanvasElement | OffscreenCanvas | ImageBitmap | ImageData`.
   - Progress callback driven by Tesseract logger (`status === 'recognizing text'` mapped to `{ phase: 'ocr', current: Math.round(m.progress * 100), total: 100 }`).
   - Idempotent `terminate()`.
-- Added unit tests in `tests/unit/converters/ocr-engine.test.ts` (14 tests) covering:
+- Added unit tests in `tests/unit/converters/ocr-engine.test.ts` (15 tests) and `tests/unit/core/errors-more.test.ts` covering:
   - Lazy loading only once & module caching.
   - Worker reuse across calls.
   - Language (`fra`), OEM 1, and exact self-hosted options verification.
@@ -230,18 +232,21 @@ Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit t
   - Abort before start (`CancelledError`, worker not created).
   - Abort mid-flight (immediate `worker.terminate()`, `CancelledError`).
   - Recreate worker on subsequent call after an abort.
-  - Error mapping to `CorruptFileError` on worker or recognize failure.
-  - Non-Error rejection mapping and typed `CorruptFileError` pass-through.
+  - Error mapping to `OcrFailedError` on worker or recognize failure.
+  - Non-Error rejection mapping and typed `OcrFailedError` pass-through.
+  - Rejection of concurrent `recognize()` calls with `OcrFailedError`.
   - Idempotent `terminate()`.
   - Abort during in-flight worker creation cleanup.
+  - Accurate `OcrFailedError` user advice verification in `errors-more.test.ts`.
 - Mutation checks performed and verified failing:
   1. Break worker reuse: failed with `expected "spy" to be called 1 times, but got 2 times`.
   2. Break abort termination: failed 5 tests with `expected "spy" to be called 1 times, but got 0 times`.
   3. Break options (omit `corePath`): failed with `expected "spy" to be called with arguments: [ 'fra', 1, ObjectContaining{...} ]` (`corePath` missing).
-- Verification results:
-  - Unit tests: 207 passed across 27 files (was 193 across 26 files; +14 tests in `tests/unit/converters/ocr-engine.test.ts`).
-  - Line coverage: All files 94.52%, `src/converters/**` 93.09%, `src/converters/ocr/engine.ts` 94.07%, `src/core/**` 93.23% (85% gate).
-  - E2E tests: 58 passed across chromium and mobile-chromium (28.0s).
-  - Bundle size check: initial JS gzip 68,120 bytes / 256,000 bytes budget (14 lazy chunks).
+  4. Break concurrency rejection (allow concurrent recognize): failed concurrency test with `expected promise to reject with OcrFailedError`.
+- Verification results (vitest 5.0.5 after `npm ci`):
+  - Unit tests: 208 passed across 27 files (was 193 across 26 files; +15 tests in `tests/unit/converters/ocr-engine.test.ts`, +1 in `tests/unit/core/errors-more.test.ts`).
+  - Line coverage: All files 95.00%, `src/converters/**` 93.42%, `src/converters/ocr/engine.ts` 95.45%, `src/core/**` 93.60% (85% gate).
+  - E2E tests: 58 passed across chromium and mobile-chromium (19.4s).
+  - Bundle size check: initial JS gzip 68,572 bytes / 256,000 bytes budget (14 lazy chunks).
   - Hygiene greps & traceability: clean.
 - Next step: M6.3b page rendering helpers (`src/converters/ocr/render.ts`).
