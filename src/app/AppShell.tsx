@@ -9,7 +9,11 @@ import {
 import { chunkMarkdown } from '../core/chunk'
 import { countText } from '../core/tokens'
 import { createConvertContext } from '../core/context'
-import { type ConvertContext, type ConvertProgress } from '../core/types'
+import {
+  type ConvertContext,
+  type ConvertOptions,
+  type ConvertProgress
+} from '../core/types'
 import { errorMessage } from '../core/errors'
 import { convertFile } from '../core/pipeline'
 import { markdownToPlain } from '../core/plain'
@@ -25,6 +29,7 @@ type Job = {
   output: string
   rawMarkdown: string
   warnings: string[]
+  warningCodes?: string[]
   error: string | null
   size: number
   file: File
@@ -105,14 +110,19 @@ async function copyText(text: string): Promise<boolean> {
 function buildConvertContext(
   settings: Settings,
   signal?: AbortSignal,
-  onProgress?: (progress: ConvertProgress) => void
+  onProgress?: (progress: ConvertProgress) => void,
+  optionsOverride?: Partial<ConvertOptions>
 ): ConvertContext {
   const context = createConvertContext()
   return {
     ...context,
     signal: signal ?? context.signal,
     onProgress: onProgress ?? context.onProgress,
-    options: { ...context.options, pdfPageMarkers: settings.pageMarkers }
+    options: {
+      ...context.options,
+      pdfPageMarkers: settings.pageMarkers,
+      ...optionsOverride
+    }
   }
 }
 
@@ -258,6 +268,7 @@ export function AppShell() {
       output: '',
       rawMarkdown: '',
       warnings: [],
+      warningCodes: [],
       error: null,
       status: 'converting' as JobStatus,
       size: file.size,
@@ -308,6 +319,7 @@ export function AppShell() {
                     output: result.markdown,
                     rawMarkdown: result.markdown,
                     warnings: result.warnings.map((warning) => warning.message),
+                    warningCodes: result.warnings.map((warning) => warning.code),
                     error: null,
                     progress: undefined
                   }
@@ -333,6 +345,7 @@ export function AppShell() {
                     status: 'error',
                     error: message,
                     warnings: [],
+                    warningCodes: [],
                     rawMarkdown: '',
                     output: '',
                     progress: undefined
@@ -419,6 +432,7 @@ export function AppShell() {
                   output: result.markdown,
                   rawMarkdown: result.markdown,
                   warnings: result.warnings.map((w) => w.message),
+                  warningCodes: result.warnings.map((w) => w.code),
                   error: null,
                   progress: undefined
                 }
@@ -437,11 +451,98 @@ export function AppShell() {
                   status: 'error',
                   error: message,
                   warnings: [],
+                  warningCodes: [],
                   rawMarkdown: '',
                   output: '',
                   progress: undefined
                 }
               : j // attemptId changed, ignore this error
+            : j
+        )
+      )
+    } finally {
+      abortControllersRef.current.delete(jobId)
+    }
+  }
+
+  const runOcrOnJob = async (job: Job) => {
+    const jobId = job.id
+    const currentJob = jobs.find((j) => j.id === jobId)
+    if (!currentJob) {
+      return
+    }
+    const file = currentJob.file
+
+    const attemptId = currentJob.attemptId + 1
+    setJobs((previous) =>
+      previous.map((j) =>
+        j.id === jobId
+          ? {
+              ...j,
+              status: 'converting' as JobStatus,
+              error: null,
+              attemptId,
+              progress: undefined
+            }
+          : j
+      )
+    )
+
+    const controller = new AbortController()
+    abortControllersRef.current.set(jobId, controller)
+
+    const handleProgress = (progress: ConvertProgress) => {
+      setJobs((previous) =>
+        previous.map((j) =>
+          j.id === jobId && j.attemptId === attemptId
+            ? { ...j, progress }
+            : j
+        )
+      )
+    }
+
+    try {
+      const result = await convertFile(
+        file,
+        buildConvertContext(settings, controller.signal, handleProgress, {
+          forceOcr: true
+        })
+      )
+      setJobs((previous) =>
+        previous.map((j) =>
+          j.id === jobId
+            ? j.attemptId === attemptId
+              ? {
+                  ...j,
+                  status: 'done',
+                  output: result.markdown,
+                  rawMarkdown: result.markdown,
+                  warnings: result.warnings.map((w) => w.message),
+                  warningCodes: result.warnings.map((w) => w.code),
+                  error: null,
+                  progress: undefined
+                }
+              : j
+            : j
+        )
+      )
+    } catch (error) {
+      const message = formatError(error)
+      setJobs((previous) =>
+        previous.map((j) =>
+          j.id === jobId
+            ? j.attemptId === attemptId
+              ? {
+                  ...j,
+                  status: 'error',
+                  error: message,
+                  warnings: [],
+                  warningCodes: [],
+                  rawMarkdown: '',
+                  output: '',
+                  progress: undefined
+                }
+              : j
             : j
         )
       )
@@ -792,6 +893,19 @@ export function AppShell() {
                     </ul>
                   ) : null}
                   <div className="job-actions">
+                    {job.status === 'done' &&
+                    job.warningCodes?.includes('EMBEDDED_IMAGES_MAY_CONTAIN_TEXT') ? (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          runOcrOnJob(job)
+                        }}
+                        className="job-action-button"
+                      >
+                        Run OCR on this PDF
+                      </button>
+                    ) : null}
                     {job.status === 'done' ? (
                       <button
                         type="button"

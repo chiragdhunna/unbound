@@ -57,10 +57,12 @@ async function ensureFixtures() {
 
     const scannedPath = path.join(outputDir, 'm64-scanned.pdf')
     const mixedPath = path.join(outputDir, 'm64-mixed.pdf')
+    const embeddedPath = path.join(outputDir, 'm65-embedded.pdf')
 
     try {
       await fs.access(scannedPath)
       await fs.access(mixedPath)
+      await fs.access(embeddedPath)
       return
     } catch {
       // Create them below
@@ -107,6 +109,20 @@ async function ensureFixtures() {
     const p2 = mixedDoc.addPage([640, 160])
     p2.drawImage(img2, { x: 0, y: 0, width: 640, height: 160 })
     await fs.writeFile(mixedPath, await mixedDoc.save())
+
+    const embeddedDoc = await PDFDocument.create()
+    const embFont = await embeddedDoc.embedFont(StandardFonts.Helvetica)
+    const pEmb = embeddedDoc.addPage([640, 200])
+    pEmb.drawText('Selectable text above embedded image fixture.', {
+      x: 30,
+      y: 170,
+      size: 14,
+      font: embFont
+    })
+    const img3 = await embeddedDoc.embedPng(pngBytes)
+    // 600 x 140 image on 640 x 200 page: area = 84,000 / 128,000 = 65.6% (>= 30%)
+    pEmb.drawImage(img3, { x: 20, y: 15, width: 600, height: 140 })
+    await fs.writeFile(embeddedPath, await embeddedDoc.save())
   })()
   return fixturesPromise
 }
@@ -241,6 +257,35 @@ test('converts a mixed PDF with text and scanned pages', async ({ page }) => {
     { timeout: 30_000 }
   )
   await expect(output).toContainText('INVOICE')
+})
+
+test('warns when a text PDF contains large embedded images and provides Run OCR on this PDF action', async ({
+  page
+}) => {
+  await ensureFixtures()
+  await page.goto('/')
+  await page
+    .getByLabel('Choose file', { exact: true })
+    .setInputFiles(path.join(outputDir, 'm65-embedded.pdf'))
+
+  const output = page.getByRole('textbox')
+  await expect(output).toContainText(
+    'Selectable text above embedded image fixture.',
+    { timeout: 30_000 }
+  )
+
+  await expect(
+    page.getByText('This PDF contains embedded images that may contain text.')
+  ).toBeVisible()
+
+  const runOcrButton = page.getByRole('button', {
+    name: 'Run OCR on this PDF'
+  })
+  await expect(runOcrButton).toBeVisible()
+
+  await runOcrButton.click()
+
+  await expect(output).toContainText('INVOICE', { timeout: 30_000 })
 })
 
 test('cancels OCR conversion in under 1 second', async ({ page }) => {

@@ -6,7 +6,9 @@ import { decideOcrPages } from '../../../src/converters/ocr/decide'
 import {
   extractPages,
   hasImageOpsFromOperatorList,
+  hasLargeImageFromOperatorList,
   OPS_CODES,
+  TRANSFORM_OPS,
   type PdfjsLike
 } from '../../../src/converters/pdf/extract'
 
@@ -55,6 +57,66 @@ describe('image operator codes', () => {
   })
 })
 
+describe('hasLargeImageFromOperatorList', () => {
+  const { OPS } = legacyPdfjs
+
+  it('returns true when an image occupies >= 30% of page area', () => {
+    // 600 x 400 image on 600 x 800 page = 240,000 / 480,000 = 50% >= 30%
+    const operatorList = {
+      fnArray: [TRANSFORM_OPS.transform, OPS.paintImageXObject],
+      argsArray: [[600, 0, 0, 400, 0, 0], []]
+    }
+    expect(hasLargeImageFromOperatorList(operatorList, 600, 800, 0.3)).toBe(true)
+  })
+
+  it('returns false when an image occupies < 30% of page area', () => {
+    // 100 x 100 image on 600 x 800 page = 10,000 / 480,000 = ~2% < 30%
+    const operatorList = {
+      fnArray: [TRANSFORM_OPS.transform, OPS.paintImageXObject],
+      argsArray: [[100, 0, 0, 100, 0, 0], []]
+    }
+    expect(hasLargeImageFromOperatorList(operatorList, 600, 800, 0.3)).toBe(false)
+  })
+
+  it('tracks transformation matrix stack with save and restore', () => {
+    // Large transform is saved, then inside a restore a small transform is painted
+    const operatorList = {
+      fnArray: [
+        TRANSFORM_OPS.save,
+        TRANSFORM_OPS.transform, // large: 500x500
+        TRANSFORM_OPS.restore,   // restores to 1x1
+        TRANSFORM_OPS.transform, // small: 50x50
+        OPS.paintImageXObject
+      ],
+      argsArray: [
+        [],
+        [500, 0, 0, 500, 0, 0],
+        [],
+        [50, 0, 0, 50, 0, 0],
+        []
+      ]
+    }
+    // 50x50 on 600x800 is < 30%
+    expect(hasLargeImageFromOperatorList(operatorList, 600, 800, 0.3)).toBe(false)
+  })
+
+  it('returns false when page width or height is 0', () => {
+    const operatorList = {
+      fnArray: [TRANSFORM_OPS.transform, OPS.paintImageXObject],
+      argsArray: [[600, 0, 0, 400, 0, 0], []]
+    }
+    expect(hasLargeImageFromOperatorList(operatorList, 0, 800)).toBe(false)
+    expect(hasLargeImageFromOperatorList(operatorList, 600, 0)).toBe(false)
+  })
+
+  it('falls back to hasImageOpsFromOperatorList when argsArray is missing', () => {
+    const operatorList = {
+      fnArray: [OPS.paintImageXObject]
+    }
+    expect(hasLargeImageFromOperatorList(operatorList, 600, 800)).toBe(true)
+  })
+})
+
 describe('extractPages hasImageOps on real PDFs', () => {
   it('flags an image-only page, not a text page or a blank page', async () => {
     const pages = await extractPages(legacyPdfjs as unknown as PdfjsLike, await buildThreePagePdf())
@@ -80,6 +142,32 @@ describe('extractPages hasImageOps on real PDFs', () => {
       'forced',
       'forced'
     ])
+  })
+
+  it('detects large embedded images on text pages when detectEmbeddedImages is enabled', async () => {
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(StandardFonts.Helvetica)
+    const page = doc.addPage([600, 800])
+    page.drawText('This is plenty of selectable text to make it a text-rich page.', {
+      x: 50,
+      y: 750,
+      size: 14,
+      font
+    })
+    const img = await doc.embedPng(PNG_1X1)
+    // 500x500 on 600x800 page = 250,000 / 480,000 = 52% >= 30%
+    page.drawImage(img, { x: 50, y: 100, width: 500, height: 500 })
+    const pdfBytes = await doc.save()
+
+    const withoutOption = await extractPages(legacyPdfjs as unknown as PdfjsLike, pdfBytes, {
+      detectEmbeddedImages: false
+    })
+    expect(withoutOption[0]?.hasLargeImage).toBeFalsy()
+
+    const withOption = await extractPages(legacyPdfjs as unknown as PdfjsLike, pdfBytes, {
+      detectEmbeddedImages: true
+    })
+    expect(withOption[0]?.hasLargeImage).toBe(true)
   })
 })
 

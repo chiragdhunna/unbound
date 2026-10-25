@@ -346,3 +346,23 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - Rotated pages (deferred; standard orientation handled).
   - Tables in scanned pages (deferred; sequential text layout extracted).
   - PDF embedded-image OCR on request (deferred; scanned pages and full image files converted).
+
+
+### 2026-10-25 — Correction: Real M6.5 Completion, Embedded Images Warning, Force OCR Action, and Fail-Open Refinements
+
+- **Correction on M6.5 & M6.9 closure claims:**
+  - The previous entry claimed M6.5 was complete while embedded images in text PDFs and the force-OCR rerun mechanism specified in PLAN §7.5 remained unaddressed and marked as deferred. This has now been properly implemented and verified.
+  - Furthermore, operator list failures on low-text pages previously returned `false` for `hasImageOps`, failing closed instead of failing open to OCR. This has been corrected to set `hasImageOps = true` on `getOperatorList` failure so degraded or non-standard PDFs route to OCR.
+  - Older browser compatibility: The pdfjs runtime has been switched to `pdfjs-dist/legacy/build/pdf.mjs` and its legacy worker, ensuring browsers lacking modern JS features (e.g. `Map.prototype.getOrInsertComputed`) run smoothly. Missing-feature errors in the PDF, rendering, or OCR path now explicitly emit actionable `OcrFailedError` messages directing users to update their browser (never misattributed as `NoTextFoundError`).
+- **Real M6.5 Implementation:**
+  - **Embedded Image Detection:** `src/converters/pdf/extract.ts` introduces `hasLargeImageFromOperatorList` tracking the PDF graphics state transform matrix stack (`save`, `restore`, `transform`). An image occupying ≥ 30% of page area sets `hasLargeImage = true` on `ExtractedPage`.
+  - **Embedded Images Warning:** When `ctx.options.forceOcr !== true` and any page contains a large embedded image, `src/converters/pdf.ts` emits the `EMBEDDED_IMAGES_MAY_CONTAIN_TEXT` warning ("This PDF contains embedded images that may contain text.").
+  - **Actionable UI Action:** `src/app/AppShell.tsx` preserves `warningCodes` on `Job` records. For jobs with `EMBEDDED_IMAGES_MAY_CONTAIN_TEXT`, an action button "Run OCR on this PDF" is rendered. Clicking it initiates conversion with `forceOcr: true`, forcing all document pages through OCR without the embedded images warning.
+  - **Unreliable Quality Warning:** For OCR conversions with mean confidence < 40% or non-whitespace characters < 10, the warning text explicitly states "OCR output looks unreliable (mean confidence: X%)." (for confidence 40–69% with ≥ 10 chars, "Low OCR confidence (mean confidence: X%)." is emitted), in both `src/converters/pdf.ts` and `src/converters/image.ts`.
+- **Racy E2E Wait Fixes:**
+  - Replaced ambiguous `toContainText('Ready')` status pill assertions in `tests/e2e/pdf.spec.ts` and `tests/e2e/image.spec.ts` with explicit locators targeting the converted output textbox with a 30s timeout.
+- **Verification & Test Coverage:**
+  - Operator list image detection tests added in `tests/unit/converters/pdf-image-ops.test.ts` covering ≥ 30% area, < 30% area, transform matrix stacking, and real PDF extraction.
+  - Unit tests added in `tests/unit/converters/pdf.test.ts` verifying fail-open OCR routing on operator list error, 40–69% vs < 40% vs < 10 characters confidence messages, embedded image warning emission, and `forceOcr: true` full OCR rerun.
+  - Unit tests added in `tests/unit/app-shell.test.tsx` verifying warning display and "Run OCR on this PDF" button invoking `convertFile` with `forceOcr: true`.
+  - E2E tests added in `tests/e2e/pdf.spec.ts` testing upload of a PDF with embedded image, warning presentation, "Run OCR on this PDF" click, and subsequent OCR text extraction across Chromium and mobile-Chromium.

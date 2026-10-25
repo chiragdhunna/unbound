@@ -35,7 +35,8 @@ export const pdfConverter: Converter = {
     try {
       pages = await extractPages(pdfjs, new Uint8Array(input.bytes), {
         signal: ctx.signal,
-        onProgress: (p) => ctx.onProgress(p)
+        onProgress: (p) => ctx.onProgress(p),
+        detectEmbeddedImages: ctx.options.forceOcr !== true
       })
     } catch (error) {
       if (error instanceof CancelledError) throw error
@@ -96,6 +97,13 @@ export const pdfConverter: Converter = {
           code: 'PDF_LARGE',
           message: `Large PDF (${pages.length} pages). Conversion can take a while.`,
           severity: 'warn'
+        })
+      }
+      if (ctx.options.forceOcr !== true && pages.some((p) => p.hasLargeImage)) {
+        warnings.push({
+          code: 'EMBEDDED_IMAGES_MAY_CONTAIN_TEXT',
+          message: 'This PDF contains embedded images that may contain text.',
+          severity: 'info'
         })
       }
 
@@ -249,6 +257,13 @@ export const pdfConverter: Converter = {
             ? `OCR output looks unreliable (mean confidence: ${meanConfidence}%).`
             : `Low OCR confidence (mean confidence: ${meanConfidence}%).`,
         severity: 'warn'
+      })
+    }
+    if (ctx.options.forceOcr !== true && pages.some((p) => p.hasLargeImage)) {
+      warnings.push({
+        code: 'EMBEDDED_IMAGES_MAY_CONTAIN_TEXT',
+        message: 'This PDF contains embedded images that may contain text.',
+        severity: 'info'
       })
     }
 
