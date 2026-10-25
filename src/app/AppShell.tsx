@@ -550,6 +550,9 @@ export function AppShell() {
             Supported formats: txt, md, json, xml, code files, pdf, docx, xlsx,
             xls, xlsm, csv, tsv, png, jpg, webp, bmp, gif.
           </p>
+          <p className="ocr-note">
+            English-first in v1; other languages are not supported yet.
+          </p>
           <div className="actions-row">
             <button type="button" onClick={() => fileInputRef.current?.click()}>
               Choose files

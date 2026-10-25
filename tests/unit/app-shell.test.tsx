@@ -9,6 +9,16 @@ describe('App shell', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'unbound_' })).toBeInTheDocument()
   })
 
+  it('displays the English-only OCR language notice in the UI', () => {
+    render(<App />)
+
+    expect(
+      screen.getByText(
+        'English-first in v1; other languages are not supported yet.'
+      )
+    ).toBeInTheDocument()
+  })
+
   it('converts a text file and displays output', async () => {
     const user = userEvent.setup()
     render(<App />)

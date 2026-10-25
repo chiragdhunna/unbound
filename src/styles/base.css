@@ -75,6 +75,12 @@ h1 {
   border-style: solid;
 }
 
+.ocr-note {
+  margin: 0.25rem 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .actions-row,
 .options-row,
 .toolbar-actions,
