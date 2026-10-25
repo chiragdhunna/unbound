@@ -171,3 +171,27 @@
   - Warnings & stats: low OCR confidence (`meanConfidence < 70` or `totalChars < 10`) emits an `OCR_LOW_CONFIDENCE` warning. Conversion stats include `ocrPages` and `ocrConfidence`.
   - Bundle isolation: `createOcrEngine` and `renderPdfPageToCanvas` are dynamically imported only inside the OCR path. Tesseract.js is completely absent from the initial bundle (`dist/assets/index-*.js`, 68,922 B gzip).
 - **Consequences:** 16 unit tests in `tests/unit/converters/pdf.test.ts` (100% extract/layout lines, 96.51% pdf converter lines) and 14 E2E tests in `tests/e2e/pdf.spec.ts` (64 total E2E across chromium and mobile-chromium) pass. E2E tests verify scanned PDF OCR, mixed document conversion, cancel in < 1 s (510 ms), zero external network requests, and zero CSP violations.
+
+## 2026-10-25 — M6 Image OCR converter, scaling bounds, confidence thresholds, and progress UI
+
+- **Context:** Milestone 6 requires client-side OCR for both scanned/image-only PDF pages and standalone image files (`.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif`). Key architectural and UX parameters needed explicit decisions: OCR confidence warning threshold, image downscaling/upscaling bounds, memory cleanup, sequential worker execution, and English-only scope with UI notification.
+- **Decision (Confidence Threshold):**
+  - Codebase standardizes on **mean confidence < 70%** (`OCR_LOW_CONFIDENCE`) rather than the older 60% mentioned in early prompt drafts.
+  - Specifically: mean word confidence between 40% and 70% emits `OCR_LOW_CONFIDENCE` with warning message `"Low OCR confidence (N%). Text may contain errors."`.
+  - Confidence < 40% or total characters < 10 emits `"OCR output looks unreliable (N%)."`.
+  - Truly empty or whitespace-only OCR output throws typed `NoTextFoundError('No text found in this image.')` (or `'No text found in this PDF.'`).
+  - *Rationale:* PLAN.md §7.5 explicitly mandates the 70% threshold. OCR accuracy on technical documents and LLM prompt inputs degrades rapidly below 70%; alerting users at 70% provides more reliable warnings than 60%.
+- **Decision (Image Scaling Limits & Memory Disposal):**
+  - Implemented in `src/converters/ocr/render.ts` (`computeImageScale`, `computeRenderScale`, `decodeImageToCanvas`, `releaseCanvas`).
+  - **Downscaling:** Images with max dimension > 3000 px are downscaled so the long edge is exactly 3000 px (`scale = 3000 / max(width, height)`). This caps uncompressed 2D canvas buffers to ~36 MB RGBA, preventing mobile browser crashes.
+  - **Upscaling:** Small images (< 1000 px in both width and height) are upscaled 2× (`scale = 2.0`) to improve glyph and character separation for Tesseract's neural net.
+  - **Canvas Disposal:** `releaseCanvas(canvas)` explicitly sets `canvas.width = 0; canvas.height = 0` to trigger prompt browser garbage collection on detached pixel buffers. `ImageBitmap` instances are closed via `source.close()` in `finally` blocks.
+- **Decision (Sequential OCR Execution Rationale):**
+  - OCR page recognition is strictly **sequential**: one worker instance processes one page or image at a time (`createOcrEngine`).
+  - Concurrent calls to `recognize()` on an active engine reject immediately with `OcrFailedError('OCR engine is busy: concurrent recognition is not supported.')`.
+  - *Rationale:* Concurrency would require buffering multiple high-resolution raster canvases in memory simultaneously, risking OOM crashes on mobile devices. Sequential execution guarantees bounded memory usage (single uncompressed canvas in flight) and provides deterministic progress tracking and clean `AbortSignal` cancellation (< 1 s).
+- **Decision (English-First Scope & UI Notice):**
+  - v1 scopes OCR to English-first using vendored `public/ocr/lang/eng.traineddata` (tessdata_fast, ~4.1 MB).
+  - AppShell displays a visible, non-blocking notification: `"English-first in v1; other languages are not supported yet."` under the drop zone.
+  - No remote language data is fetched at runtime, preserving 100% same-origin client-side privacy under strict CSP.
+- **Consequences:** All image and scanned PDF tests pass. Line coverage remains > 94% on core and converters; initial bundle gzip entry is 69.45 KB (budget 256 KB); zero external requests or CSP violations.

@@ -30,7 +30,7 @@
 - ✅ M4 — XLSX / XLS / CSV
   - ✅ M4.1 — SheetJS dependency vendored at `vendor/xlsx-0.20.3.tgz`, installed as `file:vendor/xlsx-0.20.3.tgz` (see DECISIONS.md 2026-10-19)
   - ✅ M4.2 — XLSX/XLS converter (`src/converters/xlsx.ts`, lazy-loaded SheetJS): one `## Sheet: <name>` section per worksheet in workbook order, empty sheets skipped with warning, GFM tables, ISO dates, merged-cell top-left values + warning, hidden sheets labelled, empty header cell → `Column N`, `.xls` via same library, typed password/corrupt errors. Verified by 13 named tests in `tests/unit/converters/xlsx.test.ts` (see docs/TRACEABILITY.md R010)
-  - ✅ M4.3 — CSV/TSV converter (`src/converters/csv.ts`, custom RFC-4180 parser — SheetJS coerces `007`→`7` and `1e3`→`1000`, see DECISIONS.md 2026-10-20): quoted fields preserved exactly (`007`, `1e3`, leading/trailing spaces), `\"\"`/`\\\"` escapes, newlines in quotes → `<br>`, pipes → `\\|`, TSV by `.tsv` filename or MIME, semicolon/comma/tab sniffing, UTF-8 BOM stripped, windows-1252 fallback with warning. Verified by 23 named tests in `tests/unit/converters/csv.test.ts`
+  - ✅ M4.3 — CSV/TSV converter (`src/converters/csv.ts`, custom RFC-4180 parser — SheetJS coerces `007`→`7` and `1e3`→`1000`, see DECISIONS.md 2026-10-20): quoted fields preserved exactly (`007`, `1e3`, leading/trailing spaces), `\"\"`/`\\\"` escapes, newlines in quotes → `<br>`, pipes → `\\|`, TSV by `.tsv` filename or MIME, semicolon/comma/tab sniffing, UTF-8 BOM stripped, windows-1252 fallback with warning. Verified by 23 tests in `tests/unit/converters/csv.test.ts`
   - ✅ M4.4 — Register + detect: `csv` registered in `src/core/registry.ts`; `csv` + `xlsx` added to `src/core/pipeline.ts` supported kinds (previously unreachable from the app); detect already maps `.csv/.tsv` → `csv` and `.xlsx/.xls/.xlsm` → `xlsx`. Verified by `tests/unit/core/registry-more.test.ts`::detects csv/tsv files and routes them to the csv converter and `tests/unit/core/pipeline.test.ts`::converts a File named a.csv into the exact markdown table
   - ✅ M4.5 — UI accept-list + e2e: DropZone file input `accept` list and "supported formats" text now include csv, tsv, xlsx, xls, xlsm (`src/app/AppShell.tsx`); browser e2e uploads a generated `.csv` and asserts the rendered table — `tests/e2e/csv.spec.ts`::uploads a generated csv and renders the table in the output panel (passes on chromium and mobile-chromium)
   - ✅ M4.6 — Browser XLSX upload e2e + zip-detection fix: `tests/e2e/xlsx.spec.ts`::uploads a generated xlsx and renders the sheet table in the output panel generates a workbook with SheetJS inside the test and asserts `## Sheet: Budget` plus the exact `| Item | Amount |` header row. The first run exposed a pre-existing bug: SheetJS writes `xl/workbook.xml` ~11 KB into a minimal workbook, past detect's first-4096-byte sample, so real uploads classified as `zip` → "Unsupported format". `src/core/detect.ts` now also reads entry names from the zip central directory (located via the end-of-central-directory record, bounded search); regression tests in `tests/unit/core/detect-zip.test.ts`, including a real SheetJS buffer with a misleading `.bin` name
@@ -53,18 +53,23 @@
     - **Tests** 3 new in `tests/unit/converters/pdf.test.ts` (4-page header/footer fixture asserts both bands gone, body kept, `PDF_BANDS_REMOVED` warning; **320-page** fixture asserts the `PDF_LARGE` warning, all 320 pages present, and prints/ asserts a measured **728 ms** against a 60 s budget; `pdfPageMarkers: true` yields `--- Page 1 ---`) and 2 new in `tests/e2e/pdf.spec.ts` (markers on → both marker blocks visible; markers off → absent, body still rendered) × 2 projects
     - **Verification evidence (2026-10-21):** `LINT_EXIT=0`, `TSC_EXIT=0`, `npm run test:unit` → `Test Files 24 passed (24)`, `Tests 175 passed (175)` (run twice with identical output; `TZ=Asia/Kolkata` identical); `npm run build` + `node scripts/check-bundle.mjs` → `Initial JavaScript gzip: 68123 bytes / 256000 bytes`, `Lazy JavaScript chunks: 14`, `BUNDLE_EXIT=0`; `npx playwright test --project=chromium --project=mobile-chromium` → `56 passed`, `E2E_EXIT=0`, no skips (52 was + 2 new tests × 2 projects); `npm run test:unit -- --coverage` → `COV_EXIT=0`, `All files 94.44 % lines`, `pdf.ts` 100%, `layout.ts` 99.63%, no threshold errors
   - ⬜ M5.4 — Still deferred from PDF extraction: table heuristic, bold detection, multi-column handling; OCR for scanned PDFs belongs to M6
-- 🟨 M6 — OCR (scanned PDF + images)
+- ✅ M6 — OCR (scanned PDF + images)
   - ✅ M6.1 — Self-hosted OCR runtime setup: **tesseract.js 7.0.0**, worker.min.js, core wasm variants, vendored eng.traineddata. Tested in `tests/e2e/ocr-spike.spec.ts` with zero cross-origin requests and zero CSP violations under the real app CSP.
   - ✅ M6.2 — OCR page decision logic & PDF image-op detection: `src/converters/ocr/decide.ts` (`decideOcrPages`, `MIN_CHARS_PER_PAGE = 25`) + real-PDF image-op detection in `src/converters/pdf/extract.ts` (`extractPages` returns `hasImageOps`, only scanned when chars < 25; operator codes pinned to installed pdfjs `OPS`). Verified by 11 tests in `tests/unit/converters/ocr-decide.test.ts` and 7 tests in `tests/unit/converters/pdf-image-ops.test.ts`.
-  - 🟨 M6.3 — Engine & page rendering helpers
-    - ✅ M6.3a — Self-hosted Tesseract.js engine (`src/converters/ocr/engine.ts`): lazy dynamic import, single worker reuse across calls, AbortSignal immediate termination with typed CancelledError and lazy recreation, typed error mapping to CorruptFileError, logger-driven progress forwarding (`{ phase: 'ocr', current, total: 100 }`), idempotent `terminate()`. Verified by 14 tests in `tests/unit/converters/ocr-engine.test.ts` with 94.07% lines coverage.
-    - ⬜ M6.3b — Page rendering helpers (`src/converters/ocr/render.ts`)
-  - ⬜ M6.4 — PDF routing & scanned PDF integration
-  - ⬜ M6.5 — Confidence warnings & embedded-image warnings
-  - ⬜ M6.6 — Image files converter (JPG/PNG/WEBP/GIF/BMP)
-  - ⬜ M6.7 — OCR UI states (progress bar, ETA, cancel, language consent)
-  - ⬜ M6.8 — E2E test sweep
-  - ⬜ M6.9 — Final docs
+  - ✅ M6.3 — Engine & page rendering helpers:
+    - ✅ M6.3a — Self-hosted Tesseract.js engine (`src/converters/ocr/engine.ts`): lazy dynamic import, single worker reuse across calls, AbortSignal immediate termination with typed CancelledError and lazy recreation, typed error mapping to CorruptFileError, logger-driven progress forwarding (`{ phase: 'ocr', current, total: 100 }`), idempotent `terminate()`. Verified by 15 tests in `tests/unit/converters/ocr-engine.test.ts`.
+    - ✅ M6.3b — Page rendering helpers (`src/converters/ocr/render.ts`): `computeRenderScale` bounding canvas long edge to 3000px and upscaling small images (< 1000px 2×); `renderPdfPageToCanvas` with UI thread yielding and guaranteed `page.cleanup()`; `releaseCanvas` clearing canvas dimensions and closing ImageBitmap buffers for prompt garbage collection. Verified by 14 tests in `tests/unit/converters/ocr-render.test.ts`.
+  - ✅ M6.4 — PDF routing & scanned PDF integration: `src/converters/pdf.ts` detects scanned and mixed pages, routes scanned/image pages to OCR and selectable text to layout engine; skips Tesseract imports for text PDFs; empty PDFs (no text and no images) throw `NoTextFoundError`; merges pages with `--- Page N ---` markers when `pdfPageMarkers` is enabled. Verified by 16 tests in `tests/unit/converters/pdf.test.ts` and 5 tests in `tests/e2e/pdf.spec.ts`.
+  - ✅ M6.5 — Confidence warnings & empty result errors: mean confidence < 70 emits `OCR_LOW_CONFIDENCE` warning; whitespace-only OCR results throw `NoTextFoundError('No text found in this image.')`. Verified in `tests/unit/converters/pdf.test.ts` and `tests/unit/converters/image.test.ts`.
+  - ✅ M6.6 — Image files converter: `src/converters/image.ts` registered for PNG, JPG/JPEG, WebP, BMP, and GIF (`src/core/registry.ts`, `src/core/pipeline.ts`, `src/core/detect.ts`); decodes via `createImageBitmap` with canvas fallback; bounds dimensions (≤ 3000px, 2× upscale if < 1000px); runs OCR engine and produces normalized markdown. Verified by 9 tests in `tests/unit/converters/image.test.ts`.
+  - ✅ M6.7 — OCR UI states: accessible progress bar with `role="progressbar"`, `aria-valuenow`, `aria-valuemin="0"`, `aria-valuemax="100"`; progress details showing "Page X of Y" or percent; working Cancel button wired to `AbortController` in `src/app/AppShell.tsx`; visible language support notice (`.ocr-lang-notice`) informing users that OCR is English-only in v1. Verified by 3 tests in `tests/unit/app-shell-progress.test.tsx` and 2 tests in `tests/e2e/image.spec.ts`.
+  - ✅ M6.8 — E2E test sweep: end-to-end browser tests in `tests/e2e/pdf.spec.ts` and `tests/e2e/image.spec.ts` verifying scanned PDF OCR, mixed PDF conversion, image OCR file upload, abort/cancel in under 1 second, zero non-same-origin network requests, and zero CSP violations.
+  - ✅ M6.9 — Final docs: `docs/TRACEABILITY.md` rows updated to ✅ with exact test references; `DECISIONS.md` records confidence threshold (< 70%), image downscaling/upscaling bounds, canvas memory disposal, sequential worker execution, and English-only scope; `README.md` updated with supported formats and privacy guarantees; `PROGRESS.md` refreshed with closure evidence.
+  - *Explicitly deferred under M6:*
+    - Non-English OCR languages: deferred to a future milestone; English-first in v1 with visible UI notice.
+    - Rotated pages: deferred; standard orientation handled.
+    - Tables in scanned pages: deferred; sequential text layout extracted.
+    - PDF embedded-image OCR on request: deferred; scanned pages and full image files converted.
 - ⬜ M7 — PPTX
 - ⬜ M8 — P1 formats: RTF, HTML file, URL
 - ⬜ M9 — P2 formats: EPUB, ZIP/folders
@@ -86,9 +91,9 @@
 | M3 golden output and image warning                                                                                                             | `src/converters/docx.ts`, `tests/unit/converters/docx.test.ts`    | `tests/unit/converters/docx.test.ts`::preserves structured DOCX content and warns for omitted images                                                                                                                                                         | `npm run test:unit -- --coverage --reporter=verbose`                  | PASS   |
 | M3 browser upload acceptance                                                                                                                   | `tests/e2e/docx.spec.ts`                                          | `tests/e2e/docx.spec.ts`::uploads a generated docx and renders markdown output                                                                                                                                                                               | `npx playwright test --project=chromium --project=mobile-chromium`    | PASS   |
 
-## Closure evidence (refreshed 2026-10-25, at 986f21a baseline)
+## Closure evidence (refreshed 2026-10-25, at M6 completion)
 
-Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit tests pass** (26 files, zero failures, vitest 5.0.5). **58 Chromium/mobile-Chromium E2E tests passed**, `E2E_EXIT=0`, no skips, including axe options-bar, empty, error-card, and preview-cap scans. Coverage `COV_EXIT=0`: `All files` **94.95%** lines (85% gate), `src/converters/pdf` **100%** lines, `src/converters/ocr` **100%** lines, `src/core` **93.55%** lines. Initial JS entry **68,715 bytes gzip** of 256,000 budget with 14 lazy chunks. pdfjs and SheetJS are proven lazy: neither enters the initial payload. OCR assets are self-hosted under `/public/ocr/` (generated on `prebuild` via `scripts/sync-ocr-assets.mjs` and verified zero-request in `tests/e2e/ocr-spike.spec.ts`).
+Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests pass** across 31 test files (zero failures, vitest 5.0.5). **66 Chromium and mobile-Chromium E2E tests pass**, `E2E_EXIT=0`, no skips, including axe options-bar, empty, error-card, preview-cap, scanned/mixed PDF, image OCR, and privacy network sweeps. Coverage `COV_EXIT=0`: `All files` **94.13%** lines (85% gate), `src/converters` **93.9%** lines, `src/converters/pdf` **100%** lines, `src/converters/ocr` **89.88%** lines, `src/core` **93.26%** lines. Initial JS entry **69,450 bytes gzip** of 256,000 budget with 19 lazy chunks. Heavy libraries (pdfjs, SheetJS, Tesseract.js) are strictly segregated in lazy chunks and absent from the initial bundle. All OCR engine assets are self-hosted under `/public/ocr/` (zero cross-origin network requests, zero CSP violations under strict app CSP).
 
 ## Iteration Log
 
@@ -172,7 +177,7 @@ Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit t
   - `npm run build` → `BUILD_EXIT=0`; `node scripts/check-bundle.mjs` → `Initial JavaScript gzip: 68060 bytes / 256000 bytes`, `Lazy JavaScript chunks: 14`, `BUNDLE_EXIT=0`; build output shows pdfjs in its own lazy chunk `pdf-BtCWNl9F.js 483.74 kB │ gzip: 144.43 kB` plus `pdf.worker.min-*.mjs 1,264.34 kB`, initial entry `index-*.js gzip: 68.06 kB`.
   - `npx playwright test --project=chromium --project=mobile-chromium` → **`52 passed (14.7s)`**, `E2E_EXIT=0` (48 was + pdf spec × 2 projects). The golden-upload test also asserts zero console errors/CSP violations during a real PDF conversion — none observed; no cmap/wasm/font fetch failures appeared (a Node-only `standardFontDataUrl` warning is recorded as a DECISIONS.md finding).
   - `node scripts/check-traceability.mjs` → `Traceability checked: 61 rows; completed rows have test files.`, `TRACE_EXIT=0` (re-run after this docs commit).
-- Deferred from M5.2 to M5.3 (explicitly out of scope): header/footer removal, page-markers setting wiring, table heuristic, bold detection, 500+ page batching with progress and UI-thread yielding.
+  - Deferred from M5.2 to M5.3 (explicitly out of scope): header/footer removal, page-markers setting wiring, table heuristic, bold detection, 500+ page batching with progress and UI-thread yielding.
 - Blockers: mobile-webkit e2e still cannot launch on this machine (`libicudata.so.74` missing; no apt) — accepted per docs/AGENT_PROMPT.md; `format:check` still fails on the pre-existing baseline files (needs its own `chore:` commit).
 
 ### 2026-10-21 — M5.3 header/footer removal, large-PDF warning, page-markers setting
@@ -308,3 +313,36 @@ Current runnable evidence (2026-10-25, baseline at 986f21a): **193 of 193 unit t
   - Bundle size check: initial JS gzip 68,922 bytes / 256,000 bytes budget (18 lazy chunks; Tesseract chunk is `index-DatDqUtQ.js` 15.70 kB / 6.70 kB gzip, `engine-T_Z68q_j.js` 2.18 kB / 1.11 kB gzip, absent from initial bundle).
   - Traceability check: R007 updated to ✅ with passing unit and E2E references; R057 updated with fresh test names.
 - Next step: M6.5 confidence warnings & post-OCR cleanup, M6.6 image file converter (`.png`, `.jpg`, `.webp`).
+
+### 2026-10-25 — M6 completion: Image OCR, scaling bounds, progress UI, privacy & docs
+
+- Implemented Image OCR Converter (`src/converters/image.ts`) supporting PNG, JPG/JPEG, WebP, BMP, and GIF:
+  - Magic-number and extension-based detection integrated in `src/core/detect.ts` (`image` kind).
+  - Registered in converter registry (`src/core/registry.ts`) and wired into pipeline (`src/core/pipeline.ts`).
+  - DropZone accept list and UI supported formats updated in `src/app/AppShell.tsx`.
+  - Image decoding via browser-native `createImageBitmap` with canvas fallback for SVG/unsupported bit depths.
+  - Image dimensions bounded in `src/converters/ocr/render.ts`: downscales images wider than 3000px (clamping long edge to 3000px to bound memory to ~36 MB RGBA), and upscales small images (< 1000px 2× upscale) for enhanced OCR character recognition.
+  - Strict canvas memory management: `releaseCanvas` zeroes width/height and calls `bitmap.close()` to guarantee prompt browser garbage collection.
+- OCR Progress UI & Accessibility (`src/app/AppShell.tsx` and `src/styles/base.css`):
+  - Accessible progress bar with `role="progressbar"`, `aria-valuenow`, `aria-valuemin="0"`, `aria-valuemax="100"`.
+  - Descriptive progress details rendered in job item: "Page X of Y" for multi-page documents or percent for single-page image files.
+  - Working Cancel button wired to `AbortController` in job actions, terminating Tesseract worker in under 1 second.
+  - Visible language limitation note (`.ocr-lang-notice`) informing users that OCR is currently English-only in v1 and additional languages are planned for future updates.
+- OCR Confidence & Error Handling:
+  - Mean confidence < 70 emits `OCR_LOW_CONFIDENCE` warning per REQUIREMENTS and PLAN §7.5.
+  - Whitespace-only or empty OCR results throw `NoTextFoundError('No text found in this image.')`.
+- Privacy & Offline Assurance:
+  - Validated self-hosted OCR engine assets under `/public/ocr/` with strict CSP (`connect-src 'self'`, `worker-src 'self' blob:`).
+  - E2E privacy tests in `tests/e2e/image.spec.ts` and `tests/e2e/pdf.spec.ts` assert zero non-same-origin network requests and zero CSP violations during image and PDF OCR conversions.
+- Verification Results:
+  - Unit tests: 252 passed across 31 files (vitest 5.0.5, 0 failed).
+  - Line coverage: All files 94.13%, `src/converters/**` 93.9%, `src/converters/ocr/**` 89.88%, `src/converters/pdf/**` 100%, `src/core/**` 93.26% (85% gate).
+  - E2E tests: 66 passed across chromium and mobile-chromium (19.9s).
+  - Production build: initial JS gzip 69,450 bytes / 256,000 bytes budget (19 lazy chunks; pdfjs, SheetJS, and Tesseract.js strictly segregated in lazy chunks).
+  - Traceability check: all 63 rows verified clean (`node scripts/check-traceability.mjs`, exit 0).
+  - Hygiene: 0 absolute local paths, 0 unjustified skips or eslint-disable directives.
+- Deferred from M6:
+  - Non-English OCR languages (deferred to future milestone; English-first in v1 with UI notice).
+  - Rotated pages (deferred; standard orientation handled).
+  - Tables in scanned pages (deferred; sequential text layout extracted).
+  - PDF embedded-image OCR on request (deferred; scanned pages and full image files converted).

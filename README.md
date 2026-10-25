@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <em>Drop a PDF, DOCX, spreadsheet, or code file → get structured markdown → copy → paste into ChatGPT, Claude, Gemini, or Grok. <br/>
+  <em>Drop a PDF, DOCX, spreadsheet, image, or code file → get structured markdown → copy → paste into ChatGPT, Claude, Gemini, or Grok. <br/>
   Everything runs in your browser. No uploads. No backend. No accounts.</em>
 </p>
 
@@ -32,7 +32,7 @@ Every major LLM chat — ChatGPT, Claude, Grok, Gemini — limits file **attachm
   ┌──────────┐     ┌──────────────┐     ┌─────────────┐     ┌───────────────┐
   │ Drop file │ ──▶ │  Auto-detect  │ ──▶ │  Convert to  │ ──▶ │  Copy & Paste  │
   │ (.pdf,    │     │  type by magic │     │  Markdown    │     │  into any LLM  │
-  │  .docx…)  │     │  bytes + ext   │     │  or Plain    │     │  chat box      │
+  │  .png…)   │     │  bytes + ext   │     │  or Plain    │     │  chat box      │
   └──────────┘     └──────────────┘     └─────────────┘     └───────────────┘
 ```
 
@@ -60,7 +60,8 @@ Every major LLM chat — ChatGPT, Claude, Grok, Gemini — limits file **attachm
 | **XLSX / XLS** | `.xlsx`, `.xls`, `.xlsm` | ✅ Working | Multi-sheet `## Sheet:` sections, GFM tables, ISO dates, merged cells, hidden sheets |
 | **CSV / TSV** | `.csv`, `.tsv` | ✅ Working | Exact cell text preserved (leading zeros, quoted spacing, BOM, Windows-1252) |
 | **PDF** _(text-based)_ | `.pdf` | ✅ Working | Headings, paragraphs, lists extracted; headers/footers/page numbers auto-stripped |
-| **OCR** _(scanned PDFs)*_ | `.pdf` | ✅ Working | Self-hosted Tesseract.js 7.0; scanned & mixed PDF page routing with cancellation and empty document detection verified (*image files planned in M6.6) |
+| **PDF** _(scanned / mixed)_ | `.pdf` | ✅ Working | Self-hosted Tesseract.js 7.0; scanned & mixed PDF page routing, page markers, cancel < 1s, empty document detection (English-first in v1) |
+| **Images** | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif` | ✅ Working | OCR via self-hosted Tesseract.js 7.0; downscaled > 3000px, upscaled 2× < 1000px, English-first in v1 |
 | **PPTX** | `.pptx` | 🔜 Planned | JSZip + DOMParser, slide boundaries + speaker notes |
 | **RTF** | `.rtf` | 🔜 Planned | Custom lightweight text extractor |
 | **HTML File** | `.html`, `.htm` | 🔜 Planned | Readability + Turndown for main-content extraction |
@@ -146,7 +147,7 @@ Unbound is a **browser-only**, **zero-backend** application. Every conversion ha
 | **Errors** | `src/core/errors.ts` | Typed error hierarchy (`PasswordRequired`, `CorruptFile`, etc.) |
 | **Chunker** | `src/core/chunk.ts` | Structure-aware splitting with table-header repetition |
 | **Encoding** | `src/core/encoding.ts` | UTF-8/16/Windows-1252 detection and decoding |
-| **Converters** | `src/converters/*.ts` | One module per format (DOCX, XLSX, CSV, PDF, etc.) |
+| **Converters** | `src/converters/*.ts` | One module per format (DOCX, XLSX, CSV, PDF, Image, etc.) |
 | **App Shell** | `src/app/AppShell.tsx` | React UI: DropZone, JobList, OutputPanel, settings |
 
 ---
@@ -160,14 +161,14 @@ Unbound is a **browser-only**, **zero-backend** application. Every conversion ha
   - `default-src 'self'` · `worker-src 'self' blob:` · No CDN scripts, fonts, workers, or WASM
 - The **pdf.js worker** is the Vite-emitted copy from `node_modules` (same-origin), never a CDN
 - Only **UI settings** (never file content or names) are stored in `localStorage`
-- Heavy libraries (pdfjs, SheetJS, tesseract) are **lazy-loaded** only when needed — the initial bundle stays under 69 KB gzip
+- Heavy libraries (pdfjs, SheetJS, tesseract) are **lazy-loaded** only when needed — the initial bundle stays under 70 KB gzip
 
 ### 🧠 How OCR Works (and why nothing leaves your browser)
 
 Most web-based OCR tools send your documents to a cloud service for recognition. **Unbound does not.**
-- All OCR processing is designed to execute locally inside a Web Worker via **Tesseract.js (v7.0.0)** compiled to WebAssembly (WASM). This architecture was proven in isolation in `tests/e2e/ocr-spike.spec.ts` under the real CSP and will be asserted on full application flows in M6.8.
+- All OCR processing executes locally inside a Web Worker via **Tesseract.js (v7.0.0)** compiled to WebAssembly (WASM). Verified end-to-end in unit and Playwright E2E suites with zero external requests and zero CSP violations.
 - The worker script, WASM engine, and language models run entirely from same-origin static assets (`/ocr/worker.min.js`, `/ocr/core/`, `/ocr/lang/`).
-- The design guarantees that even on scanned documents, **zero bytes of document content or image data are transmitted across the network**.
+- The design guarantees that even on scanned documents and image files, **zero bytes of document content or image data are transmitted across the network**.
 
 ### 📦 Self-Hosted OCR Assets
 - **Automatic Asset Sync:** A `prebuild` hook (`scripts/sync-ocr-assets.mjs`) synchronizes `worker.min.js`, `tesseract.js`, and the three LSTM core variants (`lstm`, `simd-lstm`, `relaxedsimd-lstm`) directly from `node_modules` into `public/ocr/`.
@@ -195,9 +196,9 @@ Follow the established pattern in `src/converters/docx.ts`:
 
 | Layer | Count | Tool | Coverage |
 |:------|------:|:-----|:---------|
-| **Unit** | 222 | Vitest (v5.0.5) | 94.91% lines (85% gate) |
-| **E2E** | 58 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
-| **Bundle** | — | Custom gzip check | 68,572 B / 256,000 B budget |
+| **Unit** | 252 | Vitest (v5.0.5) | 94.13% lines (85% gate) |
+| **E2E** | 66 | Playwright (Chromium + Mobile) | Axe accessibility scans included |
+| **Bundle** | — | Custom gzip check | 69,450 B / 256,000 B budget |
 
 ```bash
 # Run all checks at once
@@ -238,7 +239,7 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 | M3 | DOCX via Mammoth | ✅ Done |
 | M4 | XLSX / XLS / CSV / TSV | ✅ Done |
 | M5 | PDF text extraction (pdfjs-dist) | ✅ Done |
-| M6 | OCR (scanned PDF + images) | 🟨 In Progress |
+| M6 | OCR (scanned PDF + images) | ✅ Done |
 | M7 | PPTX | ⬜ Planned |
 | M8 | RTF, HTML file, URL | ⬜ Planned |
 | M9 | EPUB, ZIP, folders | ⬜ Planned |
@@ -249,11 +250,11 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 ### Latest Verification (2026-10-25)
 
 ```
-  Unit Tests  ··········  222 / 222 passed  (28 files)
-  E2E Tests   ··········   58 / 58 passed   (chromium + mobile-chromium)
-  Coverage    ··········  94.91% lines       (85% gate)
-  Bundle Size ··········  68,572 B gzip      (256,000 B budget)
-  Lazy Chunks ··········  14 chunks          (pdfjs, xlsx stay out of initial payload)
+  Unit Tests  ··········  252 / 252 passed  (31 files)
+  E2E Tests   ··········   66 / 66 passed   (chromium + mobile-chromium)
+  Coverage    ··········  94.13% lines       (85% gate)
+  Bundle Size ··········  69,450 B gzip      (256,000 B budget)
+  Lazy Chunks ··········  19 chunks          (tesseract, pdfjs, xlsx stay out of initial payload)
 ```
 
 ---
@@ -262,7 +263,8 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 
 | Area | Limitation | Planned Resolution |
 |:-----|:-----------|:-------------------|
-| **Scanned PDFs** | Detected but not yet converted — shows clear "OCR coming" message | M6 (tesseract.js) |
+| **Scanned PDFs** | Converted via self-hosted OCR (English-first in v1); tables in scanned pages & rotated pages deferred | Working as intended |
+| **Image OCR** | Supported for PNG, JPG, WebP, BMP, GIF; downscaled > 3000px, upscaled 2× < 1000px; English-first in v1 | Working as intended |
 | **PDF Tables** | Complex tables & multi-column layouts not reconstructed | M5.4 (table heuristic) |
 | **PDF Headers/Footers** | Auto-removed when on ≥60% of pages (≥3 pages); minority-page headers kept | By design |
 | **PDF Page Markers** | Off by default; toggle "Add page markers (PDF)" in settings | Available now |
@@ -270,7 +272,7 @@ Both fonts are **self-hosted** via `@fontsource` — no external font requests.
 | **DOCX Images** | Counted and warned about, not extracted as text | By design |
 | **XLSX Formulas** | Never evaluated — values emitted as reported by the library | Security decision |
 | **CSV Values** | Exact source text preserved (SheetJS coerces, so custom parser is used) | By design |
-| **OCR Languages** | English-first in v1 | Future enhancement |
+| **OCR Languages** | English-first in v1 with self-hosted eng.traineddata; other languages not supported yet (visible note in UI) | Future enhancement |
 | **WebKit E2E** | Cannot run locally without system libs; CI covers it | CI-only |
 
 ---
