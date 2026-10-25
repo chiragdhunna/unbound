@@ -1,14 +1,242 @@
+/**
+ * Unbound Design System Tokens
+ *
+ * Provides colors, typography, spacing, border radii, shadows,
+ * transitions, and light/dark theme modes meeting WCAG AA contrast.
+ */
+
 :root {
+  /* ==========================================================================
+     Typography
+     ========================================================================== */
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --text-2xs: 0.6875rem; /* 11px */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 2rem;      /* 32px */
+  --text-4xl: 2.5rem;    /* 40px */
+
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ==========================================================================
+     Spacing
+     ========================================================================== */
+  --space-0-5: 0.125rem; /* 2px */
+  --space-1: 0.25rem;    /* 4px */
+  --space-1-5: 0.375rem; /* 6px */
+  --space-2: 0.5rem;     /* 8px */
+  --space-2-5: 0.625rem; /* 10px */
+  --space-3: 0.75rem;    /* 12px */
+  --space-4: 1rem;       /* 16px */
+  --space-5: 1.25rem;    /* 20px */
+  --space-6: 1.5rem;     /* 24px */
+  --space-8: 2rem;       /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+
+  /* ==========================================================================
+     Border Radius
+     ========================================================================== */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+  --radius: 8px; /* backward compatibility */
+
+  /* ==========================================================================
+     Transitions
+     ========================================================================== */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ==========================================================================
+     Dark Theme (Default)
+     Terminal-inspired warm amber dark palette meeting WCAG AA
+     ========================================================================== */
   --bg: #0b0b0a;
   --surface: #141412;
   --surface-2: #1b1b18;
-  --border: #2b2a25;
-  --text: #e9e5d8;
-  --muted: #8f8a7b;
-  --amber: #ffb000;
-  --amber-dim: #b37a00;
-  --ok: #7fd962;
-  --warn: #ffcf4d;
-  --danger: #ff6b6b;
-  --radius: 8px;
+  --surface-3: #22221e;
+  --border: #2e2d27;
+  --border-strong: #454238;
+  --text: #ede9dc;
+  --muted: #a39e90;
+  --amber: #ffb41f;
+  --amber-dim: #cca02c;
+  --amber-glow: rgba(255, 180, 31, 0.15);
+  --amber-subtle: rgba(255, 180, 31, 0.06);
+
+  --btn-amber-text: #0b0b0a;
+  --copy-btn-bg: #ffb41f;
+  --copy-btn-text: #0b0b0a;
+
+  --ok: #7ee065;
+  --ok-bg: rgba(126, 224, 101, 0.12);
+  --ok-border: rgba(126, 224, 101, 0.35);
+
+  --warn: #ffd15c;
+  --warn-bg: rgba(255, 209, 92, 0.1);
+  --warn-border: rgba(255, 209, 92, 0.35);
+
+  --danger: #ff7878;
+  --danger-bg: rgba(255, 120, 120, 0.12);
+  --danger-border: rgba(255, 120, 120, 0.35);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 0 1px rgba(255, 180, 31, 0.25), 0 8px 28px rgba(255, 180, 31, 0.08);
+
+  --dropzone-hero-bg: rgba(255, 180, 31, 0.03);
+  --dropzone-hero-border: rgba(255, 180, 31, 0.35);
+  --dropzone-drag-bg: rgba(255, 180, 31, 0.08);
+  --dropzone-drag-border: #ffb41f;
+}
+
+/* ==========================================================================
+   Light Theme (via media query or data-theme="light")
+   High contrast warm paper palette meeting WCAG AA (>= 4.5:1 text, >= 3:1 UI)
+   ========================================================================== */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --bg: #f8f6f0;
+    --surface: #ffffff;
+    --surface-2: #f1ede2;
+    --surface-3: #e8e2d4;
+    --border: #d4cebe;
+    --border-strong: #b8b09d;
+    --text: #191816;
+    --muted: #575246;
+    --amber: #8a4800;
+    --amber-dim: #6b3800;
+    --amber-glow: rgba(138, 72, 0, 0.12);
+    --amber-subtle: rgba(138, 72, 0, 0.05);
+
+    --btn-amber-text: #ffffff;
+    --copy-btn-bg: #8a4800;
+    --copy-btn-text: #ffffff;
+
+    --ok: #1c6b29;
+    --ok-bg: rgba(28, 107, 41, 0.1);
+    --ok-border: rgba(28, 107, 41, 0.35);
+
+    --warn: #7a4b00;
+    --warn-bg: rgba(122, 75, 0, 0.08);
+    --warn-border: rgba(122, 75, 0, 0.3);
+
+    --danger: #ad1826;
+    --danger-bg: rgba(173, 24, 38, 0.08);
+    --danger-border: rgba(173, 24, 38, 0.3);
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 0 0 1px rgba(138, 72, 0, 0.25), 0 8px 28px rgba(138, 72, 0, 0.06);
+
+    --dropzone-hero-bg: rgba(138, 72, 0, 0.02);
+    --dropzone-hero-border: rgba(138, 72, 0, 0.3);
+    --dropzone-drag-bg: rgba(138, 72, 0, 0.06);
+    --dropzone-drag-border: #8a4800;
+  }
+}
+
+[data-theme='light'] {
+  --bg: #f8f6f0;
+  --surface: #ffffff;
+  --surface-2: #f1ede2;
+  --surface-3: #e8e2d4;
+  --border: #d4cebe;
+  --border-strong: #b8b09d;
+  --text: #191816;
+  --muted: #575246;
+  --amber: #8a4800;
+  --amber-dim: #6b3800;
+  --amber-glow: rgba(138, 72, 0, 0.12);
+  --amber-subtle: rgba(138, 72, 0, 0.05);
+
+  --btn-amber-text: #ffffff;
+  --copy-btn-bg: #8a4800;
+  --copy-btn-text: #ffffff;
+
+  --ok: #1c6b29;
+  --ok-bg: rgba(28, 107, 41, 0.1);
+  --ok-border: rgba(28, 107, 41, 0.35);
+
+  --warn: #7a4b00;
+  --warn-bg: rgba(122, 75, 0, 0.08);
+  --warn-border: rgba(122, 75, 0, 0.3);
+
+  --danger: #ad1826;
+  --danger-bg: rgba(173, 24, 38, 0.08);
+  --danger-border: rgba(173, 24, 38, 0.3);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 0 1px rgba(138, 72, 0, 0.25), 0 8px 28px rgba(138, 72, 0, 0.06);
+
+  --dropzone-hero-bg: rgba(138, 72, 0, 0.02);
+  --dropzone-hero-border: rgba(138, 72, 0, 0.3);
+  --dropzone-drag-bg: rgba(138, 72, 0, 0.06);
+  --dropzone-drag-border: #8a4800;
+}
+
+[data-theme='dark'] {
+  --bg: #0b0b0a;
+  --surface: #141412;
+  --surface-2: #1b1b18;
+  --surface-3: #22221e;
+  --border: #2e2d27;
+  --border-strong: #454238;
+  --text: #ede9dc;
+  --muted: #a39e90;
+  --amber: #ffb41f;
+  --amber-dim: #cca02c;
+  --amber-glow: rgba(255, 180, 31, 0.15);
+  --amber-subtle: rgba(255, 180, 31, 0.06);
+
+  --btn-amber-text: #0b0b0a;
+  --copy-btn-bg: #ffb41f;
+  --copy-btn-text: #0b0b0a;
+
+  --ok: #7ee065;
+  --ok-bg: rgba(126, 224, 101, 0.12);
+  --ok-border: rgba(126, 224, 101, 0.35);
+
+  --warn: #ffd15c;
+  --warn-bg: rgba(255, 209, 92, 0.1);
+  --warn-border: rgba(255, 209, 92, 0.35);
+
+  --danger: #ff7878;
+  --danger-bg: rgba(255, 120, 120, 0.12);
+  --danger-border: rgba(255, 120, 120, 0.35);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 0 1px rgba(255, 180, 31, 0.25), 0 8px 28px rgba(255, 180, 31, 0.08);
+
+  --dropzone-hero-bg: rgba(255, 180, 31, 0.03);
+  --dropzone-hero-border: rgba(255, 180, 31, 0.35);
+  --dropzone-drag-bg: rgba(255, 180, 31, 0.08);
+  --dropzone-drag-border: #ffb41f;
 }

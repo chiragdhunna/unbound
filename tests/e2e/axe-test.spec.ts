@@ -81,3 +81,59 @@ test('axe: preview-cap notice state should have no serious or critical violation
   );
   expect(seriousOrCritical).toEqual([]);
 });
+
+test('axe: light theme mode should have no serious or critical violations', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/');
+  await page.waitForSelector('h1');
+  const results = await new AxeBuilder({ page }).analyze();
+  const seriousOrCritical = results.violations.filter(
+    (v: Result) => v.impact === 'serious' || v.impact === 'critical'
+  );
+  expect(seriousOrCritical).toEqual([]);
+});
+
+test('ui-redesign: status chips render both an SVG icon and status text, not color alone', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('doc.txt', 'Test content'));
+  await page.getByRole('textbox', { name: 'Converted output' }).waitFor();
+  const chip = page.locator('.job-status.done');
+  await expect(chip).toBeVisible();
+  const svg = chip.locator('svg.status-icon');
+  await expect(svg).toBeVisible();
+  await expect(chip).toHaveText(/done/i);
+});
+
+test('ui-redesign: hero dropzone has hero styling, icon, and actions', async ({ page }) => {
+  await page.goto('/');
+  const heroDropzone = page.locator('.dropzone');
+  await expect(heroDropzone).toBeVisible();
+  await expect(heroDropzone.locator('.dropzone-hero-icon')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Choose files' })).toHaveClass(/btn-primary/);
+  await expect(page.getByRole('button', { name: 'Choose folder' })).toHaveClass(/btn-secondary/);
+});
+
+test('ui-redesign: prefers-reduced-motion guard is applied', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const isReduced = await page.evaluate(() => {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  });
+  expect(isReduced).toBe(true);
+  const transitionDuration = await page.evaluate(() => {
+    const el = document.querySelector('.dropzone');
+    return el ? window.getComputedStyle(el).transitionDuration : '';
+  });
+  expect(parseFloat(transitionDuration)).toBeLessThanOrEqual(0.01);
+});
+
+test('ui-redesign: copy button is sticky on mobile viewports', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto('/');
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(textFile('large.txt', 'line\n'.repeat(500)));
+  await page.getByRole('textbox', { name: 'Converted output' }).waitFor();
+  const copyBtn = page.getByRole('article', { name: 'Conversion output' }).getByRole('button', { name: 'Copy', exact: true });
+  await expect(copyBtn).toBeVisible();
+  const position = await copyBtn.evaluate((el) => window.getComputedStyle(el).position);
+  expect(position).toBe('sticky');
+});

@@ -126,6 +126,100 @@ function buildConvertContext(
   }
 }
 
+function StatusIcon({ status }: { status: JobStatus }) {
+  if (status === 'done') {
+    return (
+      <svg
+        className="status-icon"
+        width="14"
+        height="14"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <polyline points="3 8.5 6.5 12 13 4" />
+      </svg>
+    )
+  }
+  if (status === 'converting') {
+    return (
+      <svg
+        className="status-icon status-spin"
+        width="14"
+        height="14"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        aria-hidden="true"
+      >
+        <circle cx="8" cy="8" r="6" strokeOpacity="0.3" />
+        <path d="M14 8a6 6 0 0 0-6-6" />
+      </svg>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <svg
+        className="status-icon"
+        width="14"
+        height="14"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="8" cy="8" r="6" />
+        <line x1="8" y1="5" x2="8" y2="8.5" />
+        <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+      </svg>
+    )
+  }
+  return (
+    <svg
+      className="status-icon"
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <circle cx="8" cy="8" r="6" />
+      <polyline points="8 4.5 8 8 10.5 9.5" />
+    </svg>
+  )
+}
+
+function WarningIcon() {
+  return (
+    <svg
+      className="warning-icon"
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M8 2.5L1.5 13.5h13L8 2.5z" />
+      <line x1="8" y1="6.5" x2="8" y2="9.5" />
+      <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+    </svg>
+  )
+}
+
 export function AppShell() {
   const [settings, setSettings] = useState<Settings>(defaultSettings)
   const [jobs, setJobs] = useState<Job[]>([])
@@ -646,7 +740,23 @@ export function AppShell() {
           onDrop={onDrop}
           onPaste={onPaste}
         >
-          <p>Drop a file, folder, or paste a local file here.</p>
+          <div className="dropzone-hero-icon" aria-hidden="true">
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+          </div>
+          <p className="dropzone-title">Drop a file, folder, or paste a local file here.</p>
           <p className="supported-formats">
             Supported formats: txt, md, json, xml, code files, pdf, docx, xlsx,
             xls, xlsm, csv, tsv, png, jpg, webp, bmp, gif.
@@ -654,12 +764,17 @@ export function AppShell() {
           <p className="ocr-note">
             English-first in v1; other languages are not supported yet.
           </p>
-          <div className="actions-row">
-            <button type="button" onClick={() => fileInputRef.current?.click()}>
+          <div className="actions-row dropzone-actions">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => fileInputRef.current?.click()}
+            >
               Choose files
             </button>
             <button
               type="button"
+              className="btn-secondary"
               onClick={() => folderInputRef.current?.click()}
             >
               Choose folder
@@ -864,6 +979,7 @@ export function AppShell() {
                     <div className="job-header">
                       <strong>{job.name}</strong>
                       <span className={`job-status ${job.status}`}>
+                        <StatusIcon status={job.status} />
                         {job.status}
                       </span>
                     </div>
@@ -888,7 +1004,10 @@ export function AppShell() {
                   {job.warnings.length > 0 ? (
                     <ul className="warning-list">
                       {job.warnings.map((warning) => (
-                        <li key={warning}>{warning}</li>
+                        <li key={warning} className="warning-item">
+                          <WarningIcon />
+                          <span>{warning}</span>
+                        </li>
                       ))}
                     </ul>
                   ) : null}
@@ -901,8 +1020,23 @@ export function AppShell() {
                           event.stopPropagation()
                           runOcrOnJob(job)
                         }}
-                        className="job-action-button"
+                        className="job-action-button action-run-ocr"
                       >
+                        <svg
+                          className="status-icon"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <circle cx="8" cy="8" r="6" />
+                          <path d="M8 5v3l2 2" />
+                        </svg>
                         Run OCR on this PDF
                       </button>
                     ) : null}
@@ -913,7 +1047,7 @@ export function AppShell() {
                           event.stopPropagation()
                           const textToCopy =
                             settings.outputMode === 'markdown'
-                              ? job.rawMarkdown
+                                ? job.rawMarkdown
                               : markdownToPlain(job.rawMarkdown)
                           const success = await copyText(textToCopy)
                           setToast(success ? 'File copied' : 'File copy failed')
@@ -942,7 +1076,7 @@ export function AppShell() {
                           event.stopPropagation()
                           cancelJob(job.id)
                         }}
-                        className="job-action-button"
+                        className="job-action-button action-cancel"
                       >
                         Cancel
                       </button>
@@ -989,7 +1123,11 @@ export function AppShell() {
                 >
                   {editMode ? 'Read-only' : 'Edit'}
                 </button>
-                <button type="button" onClick={handleCopy}>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className={`copy-button-main ${copied ? 'copied' : ''}`}
+                >
                   {copied ? 'Copied ✓' : 'Copy'}
                 </button>
                 <button type="button" onClick={handleDownload}>
