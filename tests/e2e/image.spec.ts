@@ -46,16 +46,34 @@ async function ensureImageFixture() {
   return imageFixturePromise
 }
 
-test('uploads a generated image and renders recognized OCR text in the output panel', async ({
-  page
+test('uploads a generated image and renders recognized OCR text in the output panel with zero external requests', async ({
+  page,
+  baseURL
 }) => {
+  const pageOrigin = new URL(baseURL ?? 'http://127.0.0.1:4173').origin
+  const crossOrigin: string[] = []
+  const requested: string[] = []
   const consoleErrors: string[] = []
-  page.on('console', (message) => {
+
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    requested.push(url.pathname)
     if (
-      message.type() === 'error' ||
+      url.protocol !== 'blob:' &&
+      url.protocol !== 'data:' &&
+      url.origin !== pageOrigin
+    ) {
+      crossOrigin.push(request.url())
+    }
+  })
+
+  page.on('console', (message) => {
+    const source = new URL(message.location().url || pageOrigin).pathname
+    if (
+      (message.type() === 'error' && source !== '/favicon.ico') ||
       message.text().includes('Content-Security-Policy')
     ) {
-      consoleErrors.push(`${message.type()}: ${message.text()}`)
+      consoleErrors.push(`${message.text()} @ ${source}`)
     }
   })
 
@@ -74,5 +92,8 @@ test('uploads a generated image and renders recognized OCR text in the output pa
   const output = page.getByRole('textbox')
   await expect(output).toContainText('HELLO')
 
+  expect(crossOrigin, crossOrigin.join('\n')).toEqual([])
   expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
+  expect(requested).toContain('/ocr/worker.min.js')
+  expect(requested).toContain('/ocr/lang/eng.traineddata')
 })
