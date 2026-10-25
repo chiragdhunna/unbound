@@ -4,7 +4,9 @@ import { imageConverter } from '../../../src/converters/image'
 import {
   CancelledError,
   CorruptFileError,
-  NoTextFoundError
+  NoTextFoundError,
+  OcrFailedError,
+  errorMessage
 } from '../../../src/core/errors'
 import { createConvertContext } from '../../../src/core/context'
 
@@ -184,5 +186,39 @@ describe('imageConverter', () => {
     ).rejects.toBeInstanceOf(CancelledError)
 
     expect(mockDecodeImageToCanvas).not.toHaveBeenCalled()
+  })
+
+  it('throws OcrFailedError with an actionable message when decoding encounters a missing browser feature (never NoTextFoundError)', async () => {
+    mockDecodeImageToCanvas.mockRejectedValueOnce(
+      new TypeError('createImageBitmap is not a function')
+    )
+
+    const ctx = createConvertContext()
+    const error = await imageConverter
+      .convert(imageInput(TINY_PNG), ctx)
+      .catch((err: unknown) => err)
+
+    expect(error).toBeInstanceOf(OcrFailedError)
+    expect(error).not.toBeInstanceOf(NoTextFoundError)
+    expect(errorMessage(error)).toContain('missing a feature')
+    expect(errorMessage(error)).toContain('createImageBitmap')
+    expect(errorMessage(error)).toContain('update your browser')
+  })
+
+  it('throws OcrFailedError with an actionable message when OCR recognition encounters a missing browser feature (never NoTextFoundError)', async () => {
+    mockRecognize.mockRejectedValueOnce(
+      new TypeError('WebAssembly.compile is not a function')
+    )
+
+    const ctx = createConvertContext()
+    const error = await imageConverter
+      .convert(imageInput(TINY_PNG), ctx)
+      .catch((err: unknown) => err)
+
+    expect(error).toBeInstanceOf(OcrFailedError)
+    expect(error).not.toBeInstanceOf(NoTextFoundError)
+    expect(errorMessage(error)).toContain('missing a feature')
+    expect(errorMessage(error)).toContain('WebAssembly.compile')
+    expect(errorMessage(error)).toContain('update your browser')
   })
 })

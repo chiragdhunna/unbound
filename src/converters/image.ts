@@ -7,8 +7,10 @@ import {
 import {
   CancelledError,
   CorruptFileError,
-  NoTextFoundError
+  NoTextFoundError,
+  OcrFailedError
 } from '../core/errors'
+import { type RenderedPageCanvas } from './ocr/render'
 
 export const imageConverter: Converter = {
   kind: 'image',
@@ -36,24 +38,64 @@ export const imageConverter: Converter = {
         total: 100
       })
 
-      const decoded = await decodeImageToCanvas(input.bytes, input.mime)
+      let decoded: RenderedPageCanvas
+      try {
+        decoded = await decodeImageToCanvas(input.bytes, input.mime)
+      } catch (error) {
+        if (
+          error instanceof CancelledError ||
+          error instanceof CorruptFileError ||
+          error instanceof OcrFailedError
+        ) {
+          throw error
+        }
+        if (
+          error instanceof TypeError ||
+          error instanceof ReferenceError ||
+          (error instanceof Error &&
+            /not a function|not defined|is not supported|missing feature/i.test(error.message))
+        ) {
+          throw new OcrFailedError(
+            `Your browser is missing a feature required to process this image (${error instanceof Error ? error.message : String(error)}). Please update your browser.`
+          )
+        }
+        throw error
+      }
       renderedCanvas = decoded.canvas
 
       if (ctx.signal?.aborted) throw new CancelledError()
 
-      const result = await ocrEngine.recognize(renderedCanvas, {
-        signal: ctx.signal,
-        onProgress: (progress) => {
-          ctx.onProgress({
-            phase: 'ocr',
-            current: progress.current,
-            total: 100,
-            page: 1,
-            totalPages: 1,
-            percent: progress.current
-          })
+      let result: { text: string; confidence: number }
+      try {
+        result = await ocrEngine.recognize(renderedCanvas, {
+          signal: ctx.signal,
+          onProgress: (progress) => {
+            ctx.onProgress({
+              phase: 'ocr',
+              current: progress.current,
+              total: 100,
+              page: 1,
+              totalPages: 1,
+              percent: progress.current
+            })
+          }
+        })
+      } catch (error) {
+        if (error instanceof CancelledError || error instanceof OcrFailedError) {
+          throw error
         }
-      })
+        if (
+          error instanceof TypeError ||
+          error instanceof ReferenceError ||
+          (error instanceof Error &&
+            /not a function|not defined|is not supported|missing feature/i.test(error.message))
+        ) {
+          throw new OcrFailedError(
+            `Your browser is missing a feature required to OCR this image (${error instanceof Error ? error.message : String(error)}). Please update your browser.`
+          )
+        }
+        throw error
+      }
 
       const trimmedText = result.text.trim()
       const nonWhitespaceChars = trimmedText.replace(/\s/g, '').length
@@ -72,7 +114,7 @@ export const imageConverter: Converter = {
             confidence < 40 || nonWhitespaceChars < 10
               ? `OCR output looks unreliable (mean confidence: ${confidence}%).`
               : `Low OCR confidence (mean confidence: ${confidence}%).`,
-        severity: 'warn'
+          severity: 'warn'
         })
       }
 

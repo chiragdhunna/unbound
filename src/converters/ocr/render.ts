@@ -96,7 +96,9 @@ export function createCanvas(
   if (typeof OffscreenCanvas !== 'undefined') {
     return new OffscreenCanvas(width, height)
   }
-  throw new OcrFailedError('Canvas is not supported in the current environment.')
+  throw new OcrFailedError(
+    'Your browser does not support HTMLCanvasElement or OffscreenCanvas. Please update your browser to use OCR.'
+  )
 }
 
 /**
@@ -183,8 +185,8 @@ export async function decodeImageToCanvas(
         img.src = objectUrl!
       })
     } else {
-      throw new CorruptFileError(
-        'This image could not be read; it may be corrupted.'
+      throw new OcrFailedError(
+        'Your browser does not support image decoding APIs (createImageBitmap or Image). Please update your browser.'
       )
     }
 

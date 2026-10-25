@@ -1,6 +1,6 @@
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
 
-type PdfjsModule = typeof import('pdfjs-dist')
+type PdfjsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs')
 
 let pdfjsPromise: Promise<PdfjsModule> | null = null
 
@@ -13,7 +13,7 @@ let pdfjsPromise: Promise<PdfjsModule> | null = null
  */
 export function getPdfjs(): Promise<PdfjsModule> {
   if (!pdfjsPromise) {
-    pdfjsPromise = import('pdfjs-dist').then((pdfjs) => {
+    pdfjsPromise = import('pdfjs-dist/legacy/build/pdf.mjs').then((pdfjs) => {
       pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
       return pdfjs
     })

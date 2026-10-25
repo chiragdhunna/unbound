@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
 import { getPdfjs } from '../../../src/converters/pdf/worker'
 
 describe('pdf worker setup', () => {

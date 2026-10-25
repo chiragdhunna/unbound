@@ -13,6 +13,7 @@ import {
   CancelledError,
   CorruptFileError,
   NoTextFoundError,
+  OcrFailedError,
   PasswordRequiredError,
   errorMessage
 } from '../../../src/core/errors'
@@ -481,6 +482,44 @@ describe('pdf extraction and conversion', () => {
       { phase: 'pdf', current: 1, total: 2 },
       { phase: 'pdf', current: 2, total: 2 }
     ])
+  })
+
+  it('throws OcrFailedError with an actionable message when extraction encounters a missing browser feature (never NoTextFoundError)', async () => {
+    vi.mocked(getPdfjs).mockResolvedValueOnce({
+      getDocument: () => ({
+        promise: Promise.reject(
+          new TypeError('Map.prototype.getOrInsertComputed is not a function')
+        ),
+        destroy: () => Promise.resolve()
+      })
+    } as unknown as Awaited<ReturnType<typeof getPdfjs>>)
+
+    const error = await pdfConverter
+      .convert(converterInput(await buildGoldenPdf()), createConvertContext())
+      .catch((err: unknown) => err)
+
+    expect(error).toBeInstanceOf(OcrFailedError)
+    expect(error).not.toBeInstanceOf(NoTextFoundError)
+    expect(errorMessage(error)).toContain('missing a feature')
+    expect(errorMessage(error)).toContain('Map.prototype.getOrInsertComputed')
+    expect(errorMessage(error)).toContain('update your browser')
+  })
+
+  it('throws OcrFailedError with an actionable message when page OCR encounters a missing browser feature (never NoTextFoundError)', async () => {
+    vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
+    mockRecognize.mockRejectedValueOnce(
+      new TypeError('WebAssembly.instantiateStreaming is not a function')
+    )
+
+    const error = await pdfConverter
+      .convert(converterInput(await buildImagePdf()), createConvertContext())
+      .catch((err: unknown) => err)
+
+    expect(error).toBeInstanceOf(OcrFailedError)
+    expect(error).not.toBeInstanceOf(NoTextFoundError)
+    expect(errorMessage(error)).toContain('missing a feature')
+    expect(errorMessage(error)).toContain('WebAssembly.instantiateStreaming')
+    expect(errorMessage(error)).toContain('update your browser')
   })
 })
 

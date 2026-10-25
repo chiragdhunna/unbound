@@ -8,6 +8,7 @@ import {
   CancelledError,
   CorruptFileError,
   NoTextFoundError,
+  OcrFailedError,
   PasswordRequiredError
 } from '../core/errors'
 import { getPdfjs } from './pdf/worker'
@@ -15,11 +16,7 @@ import { extractPages, type ExtractedPage } from './pdf/extract'
 import { layoutPages } from './pdf/layout'
 import { decideOcrPages } from './ocr/decide'
 
-/** Below this many non-whitespace chars per page the PDF is candidate for OCR if it has images. */
-export const SCANNED_CHARS_PER_PAGE = 25
-
-/** Above this many pages the user is warned that conversion may be slow. */
-export const LARGE_PDF_PAGE_THRESHOLD = 300
+const LARGE_PDF_PAGE_THRESHOLD = 300
 
 export const pdfConverter: Converter = {
   kind: 'pdf',
@@ -42,8 +39,19 @@ export const pdfConverter: Converter = {
       })
     } catch (error) {
       if (error instanceof CancelledError) throw error
+      if (error instanceof OcrFailedError) throw error
       if ((error as { name?: string } | null)?.name === 'PasswordException') {
         throw new PasswordRequiredError('This PDF is password protected.')
+      }
+      if (
+        error instanceof TypeError ||
+        error instanceof ReferenceError ||
+        (error instanceof Error &&
+          /not a function|not defined|is not supported|missing feature/i.test(error.message))
+      ) {
+        throw new OcrFailedError(
+          `Your browser is missing a feature required to process this PDF (${error instanceof Error ? error.message : String(error)}). Please update your browser.`
+        )
       }
       throw new CorruptFileError(
         'This PDF could not be read; it may be corrupted.'
@@ -154,6 +162,20 @@ export const pdfConverter: Converter = {
             }
           })
           ocrResults.set(pageIndex, res)
+        } catch (error) {
+          if (error instanceof CancelledError) throw error
+          if (error instanceof OcrFailedError) throw error
+          if (
+            error instanceof TypeError ||
+            error instanceof ReferenceError ||
+            (error instanceof Error &&
+              /not a function|not defined|is not supported|missing feature/i.test(error.message))
+          ) {
+            throw new OcrFailedError(
+              `Your browser is missing a feature required to render or OCR page ${pageNumber} (${error instanceof Error ? error.message : String(error)}). Please update your browser.`
+            )
+          }
+          throw error
         } finally {
           if (canvas) {
             releaseCanvas(canvas)
@@ -219,7 +241,7 @@ export const pdfConverter: Converter = {
         severity: 'warn'
       })
     }
-    if (totalOcrPages > 0 && (meanConfidence < 70 || totalChars < 10)) {
+    if (meanConfidence < 70 || totalChars < 10) {
       warnings.push({
         code: 'OCR_LOW_CONFIDENCE',
         message:
