@@ -489,3 +489,12 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
 - **CI Runner Dispatch Note (2026-10-26):**
   - Initial CI run `40318990007` on commit `9dfdd74` encountered a GitHub Actions runner host stall during `npx playwright install-deps chromium webkit` (apt socket timeout).
   - Pushed verification commit to trigger fresh runner VM for main.
+
+### 2026-10-26 — Phase B Close-Out: C0.1 CI Truth Check
+- **CI Run Status Audit:**
+  - `6be15fe` (`feat(pptx)`): No dedicated workflow run generated; pushed as part of multi-commit batch `18f0e34..9dfdd74`.
+  - `0c3e06f` (`test(pptx)`): No dedicated workflow run generated; pushed as part of multi-commit batch `18f0e34..9dfdd74`.
+  - `9dfdd74` (`docs(pptx)`): Tip of multi-commit push. Workflow run `40318990007` (job `verify`). Started at 11:58:20Z. Step 8 (`Install Playwright system dependencies`) stalled on apt mirror socket until 12:55:19Z, then successfully resumed and completed `Run verification gate` from 12:55:19Z to 12:57:01Z with `conclusion: success` (final run status: `completed`, conclusion: `success`).
+  - `90ceab2` (`docs(progress)`): Dedicated run `40321628492` (job `verify`). Started at 12:19:17Z, completed at 12:28:18Z with `conclusion: success`. Tree is functionally identical to `9dfdd74` (differs only in `PROGRESS.md`).
+- **Job Inventory:** `.github/workflows/ci.yml` defines exactly one job: `verify` (runs on `ubuntu-24.04` executing `bash scripts/verify.sh` covering lint, typecheck, unit tests with coverage, build, bundle check, E2E tests for Chromium, Mobile Chromium, and Mobile WebKit, and traceability check).
+- **Execution Observation:** The `verify` job ran and completed with `success` in all observed runs (`40318990007`, `40321628492`, as well as Dependabot PR runs `40319286433` and `40319283963`). No defined jobs were skipped.
