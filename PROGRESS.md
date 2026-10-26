@@ -498,3 +498,9 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - `90ceab2` (`docs(progress)`): Dedicated run `40321628492` (job `verify`). Started at 12:19:17Z, completed at 12:28:18Z with `conclusion: success`. Tree is functionally identical to `9dfdd74` (differs only in `PROGRESS.md`).
 - **Job Inventory:** `.github/workflows/ci.yml` defines exactly one job: `verify` (runs on `ubuntu-24.04` executing `bash scripts/verify.sh` covering lint, typecheck, unit tests with coverage, build, bundle check, E2E tests for Chromium, Mobile Chromium, and Mobile WebKit, and traceability check).
 - **Execution Observation:** The `verify` job ran and completed with `success` in all observed runs (`40318990007`, `40321628492`, as well as Dependabot PR runs `40319286433` and `40319283963`). No defined jobs were skipped.
+
+### 2026-10-26 — Phase B Close-Out: C0.2 Dependency Hygiene
+- Verified `package.json`:
+  - `jszip` (`3.10.2`) and `fast-xml-parser` (`5.11.2`) are correctly in `dependencies` (runtime converter engine).
+  - `pptxgenjs` (`4.0.1`) is correctly in `devDependencies` (test-fixture generator only).
+  - `grep -rn "pptxgenjs" src/` returned 0 matches, confirming zero runtime leakage into production chunks.
