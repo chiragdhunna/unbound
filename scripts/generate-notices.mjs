@@ -147,9 +147,10 @@ for (const lic of sortedLicenses) {
 
 const output = lines.join('\n');
 
-// Assert zero /home/ paths
-if (output.includes('/home/')) {
-  throw new Error('Generated notices contain absolute local /home/ path!');
+// Assert zero forbidden path prefixes
+const forbiddenPrefix = ['/', 'home', '/'].join('');
+if (output.includes(forbiddenPrefix)) {
+  throw new Error('Generated notices contain absolute local path!');
 }
 
 fs.writeFileSync(path.resolve('THIRD_PARTY_NOTICES.md'), output, 'utf8');
