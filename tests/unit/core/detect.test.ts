@@ -56,4 +56,48 @@ describe('detectFileKind', () => {
       'unknown'
     )
   })
+
+  it('detects real pptx zip as pptx', async () => {
+    const JSZip = (await import('jszip')).default
+    const zip = new JSZip()
+    zip.file('ppt/presentation.xml', '<p:presentation/>')
+    const bytes = await zip.generateAsync({ type: 'arraybuffer' })
+    expect(
+      detectFileKind({
+        name: 'presentation.pptx',
+        mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        bytes
+      })
+    ).toBe('pptx')
+  })
+
+  it('handles .pptx with garbage bytes safely as unknown', () => {
+    expect(
+      detectFileKind({
+        name: 'corrupt.pptx',
+        mime: 'application/octet-stream',
+        bytes: makeBuffer([0x00, 0xff, 0xfe, 0x00])
+      })
+    ).toBe('unknown')
+  })
+
+  it('detects OLE2 bytes with .pptx extension as encrypted-office', () => {
+    expect(
+      detectFileKind({
+        name: 'encrypted.pptx',
+        mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        bytes: makeBuffer([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb2])
+      })
+    ).toBe('encrypted-office')
+  })
+
+  it('detects OLE2 bytes with .ppt extension as legacy-office', () => {
+    expect(
+      detectFileKind({
+        name: 'legacy.ppt',
+        mime: 'application/vnd.ms-powerpoint',
+        bytes: makeBuffer([0xd0, 0xcf, 0x11, 0xe0, 0x00, 0x00])
+      })
+    ).toBe('legacy-office')
+  })
 })

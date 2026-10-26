@@ -172,7 +172,7 @@ export function detectFileKindWithWarnings(input: {
 
   if (startsWith(sample, [0x25, 0x50, 0x44, 0x46, 0x2d])) kind = 'pdf'
   else if (startsWith(sample, [0xd0, 0xcf, 0x11, 0xe0])) {
-    if (extension === 'docx') {
+    if (extension === 'docx' || extension === 'pptx') {
       kind = 'encrypted-office'
     } else if (extension === 'doc') {
       kind = 'legacy-office'

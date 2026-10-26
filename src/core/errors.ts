@@ -62,10 +62,14 @@ export class OcrFailedError extends Error {
 }
 
 export function errorMessage(error: unknown): string {
-  if (error instanceof PasswordRequiredError)
+  if (error instanceof PasswordRequiredError) {
+    if (error.message.includes('Save')) return error.message
     return `${error.message} Save the file without a password and try again.`
-  if (error instanceof LegacyDocError)
+  }
+  if (error instanceof LegacyDocError) {
+    if (error.message.includes('Save as')) return error.message
     return `${error.message} Use a modern .docx format instead.`
+  }
   if (error instanceof CorruptFileError)
     return `${error.message} Choose another copy of the file.`
   if (error instanceof ScannedPdfError) return error.message

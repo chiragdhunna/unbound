@@ -35,6 +35,10 @@ const registry: Partial<
     import('../converters/docx').then((module) => ({
       converter: module.docxConverter
     })),
+  pptx: () =>
+    import('../converters/pptx').then((module) => ({
+      converter: module.pptxConverter
+    })),
   xlsx: () =>
     import('../converters/xlsx').then((module) => ({
       converter: module.xlsxConverter
