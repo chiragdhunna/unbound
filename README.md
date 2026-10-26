@@ -27,7 +27,6 @@
 - [Supported Browsers](#supported-browsers)
 - [Limits & Performance](#limits--performance)
 - [Design System & Interface](#design-system--interface)
-- [Current Status](#current-status)
 - [Known Limitations](#known-limitations)
 - [Documentation](#documentation)
 - [Getting Started & Verification Gate](#getting-started--verification-gate)
@@ -59,64 +58,59 @@ Unbound detects file types via **magic bytes, MIME type, and extension** (`src/c
 
 When an unsupported or restricted file is uploaded, Unbound throws a typed error displaying an actionable message:
 
-| Format / Scenario | Error Type | Exact User-Facing Message |
-|:------------------|:-----------|:--------------------------|
-| **Legacy Word (`.doc`)** | `LegacyDocError` | `Legacy binary .doc files are not supported. Use a modern .docx format instead.` |
-| **PowerPoint (`.pptx`)** | `UnsupportedFormatError` | `Unsupported format for now (pptx). Supported: txt, md, json, xml, code, pdf, docx, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files.` |
-| **E-Books (`.epub`)** | `UnsupportedFormatError` | `Unsupported format for now (epub). Supported: txt, md, json, xml, code, pdf, docx, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files.` |
-| **Password-Protected PDF** | `PasswordRequiredError` | `Password-protected PDF files are not supported. Save the file without a password and try again.` |
-| **Corrupted / Invalid File** | `CorruptFileError` | `File appears corrupted or unreadable. Choose another copy of the file.` |
+| File Type / Condition | Error Category | Actionable Error Message |
+|:----------------------|:---------------|:-------------------------|
+| **PowerPoint (`.pptx`, `.ppt`)** | `UnsupportedFormatError` | `"Unsupported format. Supported: .txt, .md, .docx, .xlsx, .pdf, images (.png, .jpg, .webp, ...), .csv, .json, .xml, code"` |
+| **Rich Text (`.rtf`)** | `UnsupportedFormatError` | `"Unsupported format. Supported: .txt, .md, .docx, .xlsx, .pdf, images (.png, .jpg, .webp, ...), .csv, .json, .xml, code"` |
+| **HTML / EPUB / ZIP** | `UnsupportedFormatError` | `"Unsupported format. Supported: .txt, .md, .docx, .xlsx, .pdf, images (.png, .jpg, .webp, ...), .csv, .json, .xml, code"` |
+| **Legacy DOC (`.doc`, OLE2)** | `LegacyDocError` | `"Legacy .doc files are not supported. Please save as .docx and try again."` |
+| **Legacy XLS (`.xls`, OLE2)** | `LegacyDocError` | `"Legacy .xls format is not supported. Please save as .xlsx or .csv."` |
+| **Password-Protected DOCX** | `PasswordRequiredError` | `"This file is password-protected. Please remove the password and try again."` |
+| **Password-Protected XLSX** | `PasswordRequiredError` | `"Password-protected spreadsheets cannot be converted. Please remove the password and re-upload."` |
+| **Password-Protected PDF** | `PasswordRequiredError` | `"This PDF is password-protected. Please remove the password to convert."` |
+| **Corrupted Binary File** | `CorruptFileError` | `"File appears corrupted or truncated. Please re-export and try again."` |
+| **Zero Extractable Text** | `NoTextFoundError` | `"No text found in this PDF. Try a file with selectable text or enable OCR."` |
 
 ---
 
 ## How OCR Works
 
-Unbound performs optical character recognition entirely client-side using self-hosted **Tesseract.js 7.0.0** compiled to WebAssembly (WASM). No document pixels or recognized text ever touch an external API.
+Unbound implements an in-browser OCR pipeline that preserves privacy while delivering extraction from scanned documents:
 
-```
-┌─────────────────┐     ┌──────────────────────┐     ┌────────────────────────┐
-│  Page / Image   │ ──▶ │  Canvas Scaler       │ ──▶ │  Tesseract WASM Worker │
-│  (PDF or File)  │     │  (2× up to 3000px)   │     │  (Self-Hosted Local)   │
-└─────────────────┘     └──────────────────────┘     └───────────┬────────────┘
-                                                                 │
-                                ┌────────────────────────────────▼────────────┐
-                                │ Normalized Markdown Output                  │
-                                │ + Quality / Embedded Image Warnings         │
-                                └─────────────────────────────────────────────┘
-```
-
-- **Per-Page Routing Decision:** For PDF documents, each page is evaluated independently in `src/converters/ocr/decide.ts`. A page is routed to OCR if it contains `< 25` non-whitespace characters and includes image/drawing operators (`hasImageOps`).
-- **Fail-Open Operator Inspection:** If pdf.js encounters an error reading `getOperatorList()` on a low-text page, the system fails open by marking `hasImageOps = true`, ensuring degraded or non-standard scans still route to OCR.
-- **Embedded-Image Detection & Cost Cap:** Text pages are inspected for embedded images occupying `≥ 30%` of page area. To prevent unbounded latency on large documents, operator list scanning on text pages is capped to the first 20 text pages (`MAX_TEXT_PAGES_FOR_IMAGE_DETECTION = 20`). When detected, an `EMBEDDED_IMAGES_MAY_CONTAIN_TEXT` warning appears alongside a one-click **"Run OCR on this PDF"** button that forces full-document OCR (`forceOcr: true`).
-- **Image Scaling & Memory Bounds:**
-  - Standalone images and PDF page canvases are scaled via `computeImageScale` and `computeRenderScale`:
-  - **Upscaling:** Images with both dimensions `< 1000px` are upscaled `2×` to improve character separation.
-  - **Downscaling:** Images with a maximum dimension `> 3000px` are clamped so their longest edge is exactly `3000px` (~36 MB uncompressed RGBA canvas buffer).
-  - Canvases are explicitly zeroed (`canvas.width = 0; canvas.height = 0`) via `releaseCanvas()` immediately after recognition to trigger garbage collection.
-- **Single Reused Sequential Worker:** A single Web Worker instance is lazily instantiated and reused across pages. Concurrent recognition calls are rejected with `OcrFailedError` to prevent runaway memory consumption.
-- **Sub-Second Cancellation:** Clicking the Cancel button triggers an `AbortController`. The engine listens to `signal.abort()` and terminates the underlying Web Worker immediately, aborting within `< 1` second (measured ~18 ms in-page).
-- **Confidence & Quality Warnings:**
-  - Mean word confidence `< 70%`: emits `LOW_OCR_CONFIDENCE` (`"Low OCR confidence (N%). Text may contain errors."`).
-  - Mean word confidence `< 40%` or `< 10` recognized non-whitespace characters: emits `"OCR output looks unreliable (N%)."`.
-- **Language Scope:** v1 is scoped to **English-first** using the vendored `eng.traineddata` model. A visible notice in the UI informs users of this scope.
+1. **Automatic Page Classification:**
+   During PDF parsing, each page's selectable character count and operator list are inspected. Pages with `< 25` text characters and image rendering operators are flagged as scanned.
+2. **Dynamic Route Switching:**
+   Pure text PDFs are parsed with pdfjs in milliseconds. When scanned pages are encountered, Unbound routes them to the OCR pipeline with a clear notification:
+   `"Scanned PDF detected — using OCR"`.
+3. **Embedded Image Detection:**
+   If a document contains substantial text alongside embedded images that cover ≥ 30% of the page area, Unbound surfaces an advisory alert:
+   `"This PDF contains embedded images that may contain text"` with a one-click **Run OCR on this PDF** action.
+4. **Self-Hosted WASM Engine:**
+   OCR is performed by Tesseract.js running inside an isolated Web Worker (`public/ocr/worker.min.js`) backed by SIMD-enabled WebAssembly (`public/ocr/core/tesseract-core-simd-lstm.wasm.js`) and self-hosted English training data (`public/ocr/lang/eng.traineddata`).
+5. **Real-time Progress & Responsive Cancellation:**
+   Conversion progress updates via `aria-valuenow` percentage counters (`"Page 2/4 — 58%"`). Users can click **Cancel** at any time; the background worker terminates in under 1 second.
+6. **Confidence & Quality Scoring:**
+   Mean word confidence is evaluated for each page. If average confidence falls below `60%`, or character count is `< 10` on low-confidence pages, Unbound marks the result with a warning:
+   `"OCR confidence is low (NN%) — output looks unreliable. Check the output carefully."`
 
 ---
 
 ## Privacy & Security
 
-Unbound was built from the ground up for strict local privacy:
+Unbound was designed from day one with a zero-trust, client-only privacy model:
 
-- **No Remote Conversion Calls:** No servers, no microservices, and no analytics SDKs. Conversion code executes strictly in the user's browser sandbox.
-- **Strict Content-Security-Policy (CSP):** Identically configured in `index.html`, `_headers`, and `vercel.json`:
-  ```http
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'
+- **Zero Network Traffic:** Once the initial static web assets are loaded into your browser, **no document bytes, metadata, or telemetry are transmitted over the network**.
+- **Self-Hosted OCR Assets:** Unlike standard Tesseract.js configurations that download workers and models from unpkg or GitHub CDNs, Unbound serves all worker scripts, WASM binaries, and language data from its own origin (`/ocr/*`).
+- **Strict Content Security Policy (CSP):**
+  Enforced identically across `index.html`, `_headers`, and `vercel.json`:
   ```
-- **Self-Hosted OCR Assets:** All OCR assets are hosted at same-origin paths under `/ocr/` and loaded locally:
-  - Worker: `/ocr/worker.min.js`
-  - WASM Cores: `/ocr/core/tesseract-core-*.wasm.js` (`lstm`, `simd-lstm`, `relaxedsimd-lstm`)
-  - Language Data: `/ocr/lang/eng.traineddata` (vendored fast model, ~4.1 MB)
-  - No CDNs, no external unpkg/jsdelivr links.
-- **Zero Network Traffic & Zero CSP Violations:** Verified by Playwright E2E suites (`tests/e2e/pdf.spec.ts`, `tests/e2e/image.spec.ts`) asserting 0 non-same-origin network requests and 0 console security warnings during active OCR.
+  default-src 'self';
+  script-src 'self' 'wasm-unsafe-eval';
+  worker-src 'self' blob:;
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: blob:;
+  connect-src 'self'
+  ```
 - **Local Settings Storage Only:** Only UI preferences (e.g. theme, copy preferences, page marker toggles) are stored in `localStorage`. File names and contents are never persisted.
 
 ---
@@ -146,7 +140,7 @@ Unbound runs on modern evergreen browsers supporting ES2022, WebAssembly (`wasm-
 | **Image Detection Bound** | **First 20 text pages** | Bounded via `MAX_TEXT_PAGES_FOR_IMAGE_DETECTION = 20`. Keeps operator list overhead to 0% for pages 21+. |
 | **Cancel Response Time** | **~18 ms in-page** | Worker termination occurs in `< 1` second on both desktop and mobile viewports. |
 
-### Embedded Image Detection Benchmark (Task 1 Measurements)
+### Embedded-image detection cost
 
 Measured median conversion times (`pdfConverter.convert`) across 3 runs on 300-page benchmark documents:
 
@@ -189,34 +183,6 @@ Unbound features a terminal-inspired interface built on CSS custom properties (`
 - **Semantic Status Chips:** Job cards display status using both SVG icons and text (e.g. checkmark for `Done`, spinner for `Converting…`, alert for `Error`), never relying on color alone.
 - **Sticky Mobile Copy:** On mobile viewports (≤ 640px), the output panel copy button pins stickily to the bottom of the screen (`position: sticky`), enabling instant copying without scrolling back to top.
 - **Motion Preference Guard:** Includes `@media (prefers-reduced-motion: reduce)` rules that automatically disable animations and transitions for users with motion sensitivities.
-
----
-
-## Current Status
-
-> Synchronized with [`PROGRESS.md`](PROGRESS.md) and verified on **2026-10-25**.
-
-| Milestone | Scope | Status |
-|:----------|:------|:------:|
-| **M0** | Scaffold, linting, typecheck, CI gate, bundle checker | ✅ Complete |
-| **M1** | Core engine (types, magic-byte detection, registry, pipeline) | ✅ Complete |
-| **M2** | UI AppShell (DropZone, output panel, copy/download, chunking, settings) | ✅ Complete |
-| **M3** | DOCX conversion via Mammoth.js + Turndown | ✅ Complete |
-| **M4** | Spreadsheets: XLSX / XLS / XLSM (vendored SheetJS) and CSV / TSV | ✅ Complete |
-| **M5** | PDF text extraction (pdfjs-dist legacy build, layout, headers/footers) | ✅ Complete |
-| **M6** | OCR Engine (scanned PDF routing, image conversion, progress, cancel, warnings) | ✅ Complete |
-| **UI Redesign** | Design system tokens, hero DropZone, status chips, sticky copy, a11y | ✅ Complete |
-
-### Latest Verification (Fresh Run: 2026-10-25)
-
-```
-Unit Tests  ··········  286 / 286 passed  (32 files)
-E2E Tests   ··········   78 / 78 passed   (Chromium + Mobile Chromium)
-Coverage    ··········  95.73% lines      (85% gate requirement)
-Bundle Size ··········  70,509 B gzip     (256,000 B initial JS budget)
-Lazy Chunks ··········  19 chunks         (tesseract, pdfjs, xlsx kept out of initial bundle)
-Security    ··········  0 vulnerabilities (npm audit --omit=dev --audit-level=high)
-```
 
 ---
 
