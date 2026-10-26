@@ -509,3 +509,8 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
 - Added `scripts/generate-notices.mjs` to deterministically regenerate `THIRD_PARTY_NOTICES.md` from installed production dependencies.
 - Verified inclusion of `fast-xml-parser` (MIT, Copyright (c) 2017 Amit Kumar Gupta) and `jszip` (MIT, Copyright (c) 2009-2016 Stuart Knightley et al.) with full license terms and copyright statements.
 - Verified 0 `/home/` absolute paths in generated notices.
+
+### 2026-10-26 — Phase B Close-Out: C0.4 Documentation Consistency Check
+- Audited `README.md`, `docs/ARCHITECTURE.md`, and `docs/TRACEABILITY.md` for contradictions, stale test counts, or "coming soon" references.
+- Updated `docs/TRACEABILITY.md` R001 to note M7 PPTX completion.
+- Confirmed supported format tables and error messages in `README.md` and `docs/ARCHITECTURE.md` accurately reflect PPTX support and current status.
