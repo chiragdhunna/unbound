@@ -514,3 +514,36 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
 - Audited `README.md`, `docs/ARCHITECTURE.md`, and `docs/TRACEABILITY.md` for contradictions, stale test counts, or "coming soon" references.
 - Updated `docs/TRACEABILITY.md` R001 to note M7 PPTX completion.
 - Confirmed supported format tables and error messages in `README.md` and `docs/ARCHITECTURE.md` accurately reflect PPTX support and current status.
+
+### 2026-10-26 — Phase C Scope: C1.1 & C1.2 Implementation Plan for M8 (RTF, HTML, URL)
+- **Deferred Requirements Ownership Audit (C1.1):**
+  - `R001` (Support common file types for LLMs): Owned by M8 (RTF/HTML) & M9 (EPUB/ZIP).
+  - `R004` (No LLM API dependency): Architectural decision; pure client-side processing.
+  - `R013` (RTF conversion): Owned by M8 (RTF tolerant tokenizer).
+  - `R014` (HTML & URL content extraction): Owned by M8 (HTML and URL mode).
+  - `R016` (EPUB parser): Owned by M9.
+  - `R017` (ZIP & folder recursion): Owned by M9.
+  - `R038` (Provider portability): Architectural decision; generic Markdown output.
+  - `R042` (Libraries stack): Architectural decision; zero-backend client-side stack.
+  - `R044` (Static deployment): Owned by M12.
+  - `R045` (Serverless function): Architectural decision; deferred for v1 in favor of zero-backend.
+  - `R051` (Direct LLM pasting workflow): Owned by M12.
+  - `R060` (Backend vs Client-side for PPTX): Resolved in M7 via JSZip.
+  - `R061` (Quick paste mode toggle): Owned by M10.
+
+- **Ordered M8 Implementation Plan (C1.2):**
+  1. **Task M8.1 — RTF Converter (`src/converters/rtf.ts`):**
+     - Files touched: `src/converters/rtf.ts`, `src/core/detect.ts`, `src/core/registry.ts`, `src/core/pipeline.ts`, `src/app/components/DropZone.tsx`.
+     - Tests: `tests/unit/converters/rtf.test.ts` (control words, destinations to skip, hex `\'hh` escapes, unicode `\uN?` escapes, bold/italic, lists, empty input, corrupt input, cancellation), `tests/unit/core/detect.test.ts`, `tests/e2e/rtf.spec.ts`.
+     - Dependencies: Zero new dependencies (custom zero-dependency TypeScript tokenizer).
+  2. **Task M8.2 — HTML File Converter (`src/converters/html.ts`):**
+     - Files touched: `package.json`, `package-lock.json`, `src/converters/html.ts`, `src/core/detect.ts`, `src/core/registry.ts`, `src/core/pipeline.ts`, `src/app/components/DropZone.tsx`.
+     - Tests: `tests/unit/converters/html.test.ts` (Readability article extraction, non-article fallback to body, script/style stripping, turndown GFM tables and formatting, title handling, error cases), `tests/unit/core/detect.test.ts`, `tests/e2e/html.spec.ts`.
+     - Dependencies: `@mozilla/readability@0.6.0` (Apache-2.0, zero transitive dependencies, lazy-loaded in `html` chunk).
+  3. **Task M8.3 — URL Fetching, CORS Guidance, and UI Action (`src/converters/url.ts`):**
+     - Files touched: `src/converters/url.ts`, `src/core/errors.ts`, `src/app/components/DropZone.tsx`, `src/app/AppShell.tsx`, `docs/optional-proxy/README.md`.
+     - Tests: `tests/unit/converters/url.test.ts` (direct fetch, 15s timeout, relative link resolution, CORS failure handling, optional proxy), `tests/e2e/url.spec.ts`.
+     - Dependencies: None (native browser fetch + AbortController).
+  4. **Task M8.4 — Documentation, ADRs, Traceability, Third-Party Notices, and Verification Gate:**
+     - Files touched: `README.md`, `docs/ARCHITECTURE.md`, `docs/TRACEABILITY.md`, `THIRD_PARTY_NOTICES.md`, `DECISIONS.md`, `PROGRESS.md`.
+     - Tests: `check-traceability.mjs`, `check-bundle.mjs`, full Playwright E2E suite on all projects with repeat verification.

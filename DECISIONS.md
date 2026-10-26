@@ -295,3 +295,16 @@
 
 
 
+
+## 2026-10-26 — M8 Architecture: Client-Side RTF Tokenizer, Inert HTML Readability, and URL CORS Guidance (ADR-10)
+
+### Context
+Requirements R013 and R014 specify conversion of Rich Text Format (`.rtf`), HTML files, and web pages (URLs).
+- For RTF, REQUIREMENTS §6 mentions `pandoc` or a JS RTF parser, while PLAN §7.7 specifies a client-side tokenizer handling groups, skipped destinations (`fonttbl`, `colortbl`, `stylesheet`, `info`, `pict`, `*`), `\par`, `\tab`, `\'hh`, `\uN?`, `\line`, bold/italic, and lists.
+- For HTML, PLAN §7.8 specifies inert DOM parsing via `@mozilla/readability` and `turndown(GFM)`, explicitly requiring that scripts never execute and HTML is never inserted into the active DOM.
+- For URLs, ADR-10 notes browsers enforce cross-origin resource sharing (CORS). Direct `fetch` can only reach CORS-enabled endpoints; cross-origin blocking must produce clear, actionable guidance instructing users to save the page as an HTML file or paste HTML, with an optional documented proxy sample.
+
+### Decision
+1. **Zero-Dependency Client-Side RTF Tokenizer:** Implement a native TypeScript tokenizer in `src/converters/rtf.ts`. External RTF parsers on npm are either stale, rely on native Node modules, or bundle unneeded formatting features. Our custom parser implements PLAN §7.7 directly: state stack for group scoping, destination skipping, hex and Unicode escape decoding, formatting delimiters, and list handling.
+2. **Inert HTML & Readability Parsing:** Use `new DOMParser().parseFromString(html, 'text/html')` to construct a detached `Document`. Content is extracted with `@mozilla/readability@0.6.0` (Apache-2.0, zero dependencies, lazy-loaded) and converted to GFM via existing `turndown`. If Readability finds no article structure, we fall back to cleaned `<body>` elements stripping `nav`, `header`, `footer`, `aside`, `script`, `style`, `noscript`.
+3. **URL Fetch Engine with Actionable CORS Guidance:** Implement direct `fetch` with `AbortController` (15s timeout) in `src/converters/url.ts`. On network/CORS error, throw `UrlFetchError` providing explicit instructions to save the HTML file or paste content directly. Document an optional proxy in `docs/optional-proxy/` without enabling it by default.
