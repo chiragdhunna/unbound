@@ -50,6 +50,7 @@ Unbound detects file types via **magic bytes, MIME type, and extension** (`src/c
 | **Code** | `.js`, `.ts`, `.tsx`, `.jsx`, `.py`, `.go`, `.rs`, `.java`, `.c`, `.cpp`, `.cs`, `.rb`, `.php`, `.swift`, `.kt`, `.sql`, `.sh`, `.yaml`, `.yml` | Syntax fence | Tagged with appropriate language identifier; handles nested backtick runs safely. |
 | **CSV / TSV** | `.csv`, `.tsv` | Custom RFC-4180 parser | Sniffs delimiters (`,`, `;`, `\t`), strips BOMs, preserves exact literal cell text (leading zeros, exponent notation, quoted spacing). |
 | **DOCX** | `.docx` | Mammoth.js + Turndown | Converts headings, lists, tables, and links to markdown; counts and warns about omitted embedded images. |
+| **PowerPoint** | `.pptx` | JSZip + fast-xml-parser | Preserves presentation slide order (`sldIdLst`), titles (`###`), nested bullet levels (`-`), tables (GFM), speaker notes (`**Notes:**`), hidden slides (`## Slide N (hidden)`), and warns about omitted images and charts (`PPTX_NON_TEXT_OMITTED`). |
 | **XLSX / XLS / XLSM** | `.xlsx`, `.xls`, `.xlsm` | Vendored SheetJS (0.20.3) | Emits `## Sheet: <name>` sections, GFM tables, ISO formatted dates, replicates merged top-left cells, and flags hidden sheets. |
 | **PDF (Text)** | `.pdf` | `pdfjs-dist` legacy build | Strips running headers/footers (≥ 60% pages) and bare page numbers; classifies font sizes into `#`, `##`, `###` headings; de-hyphenates words across line breaks. |
 | **PDF (Scanned & Mixed)** | `.pdf` | Per-page OCR routing | Evaluates each page: pages with `< 25` characters and graphics operators route automatically to self-hosted OCR. |
@@ -61,9 +62,10 @@ When an unsupported or restricted file is uploaded, Unbound throws a typed error
 
 | File Type / Condition | Error Category | Actionable Error Message |
 |:----------------------|:---------------|:-------------------------|
-| **PowerPoint (`.pptx`, `.ppt`)** | `UnsupportedFormatError` | `"Unsupported format. Supported: .txt, .md, .docx, .xlsx, .pdf, images (.png, .jpg, .webp, ...), .csv, .json, .xml, code"` |
-| **Rich Text (`.rtf`)** | `UnsupportedFormatError` | `"Unsupported format. Supported: .txt, .md, .docx, .xlsx, .pdf, images (.png, .jpg, .webp, ...), .csv, .json, .xml, code"` |
-| **HTML / EPUB / ZIP** | `UnsupportedFormatError` | `"Unsupported format. Supported: .txt, .md, .docx, .xlsx, .pdf, images (.png, .jpg, .webp, ...), .csv, .json, .xml, code"` |
+| **Legacy PowerPoint (`.ppt`, OLE2)** | `LegacyDocError` | `"Legacy .ppt files are not supported. Save as .pptx and try again."` |
+| **Password-Protected PPTX** | `PasswordRequiredError` | `"This PowerPoint is password-protected. Save a copy without a password and try again."` |
+| **Rich Text (`.rtf`)** | `UnsupportedFormatError` | `"Unsupported format for now (rtf). Supported: txt, md, json, xml, code, pdf, docx, pptx, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files."` |
+| **HTML / EPUB / ZIP** | `UnsupportedFormatError` | `"Unsupported format for now (<kind>). Supported: txt, md, json, xml, code, pdf, docx, pptx, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files."` |
 | **Legacy DOC (`.doc`, OLE2)** | `LegacyDocError` | `"Legacy .doc files are not supported. Please save as .docx and try again."` |
 | **Legacy XLS (`.xls`, OLE2)** | `LegacyDocError` | `"Legacy .xls format is not supported. Please save as .xlsx or .csv."` |
 | **Password-Protected DOCX** | `PasswordRequiredError` | `"This file is password-protected. Please remove the password and try again."` |
@@ -194,6 +196,7 @@ Unbound features a terminal-inspired interface built on CSS custom properties (`
 - **Complex Scans & Handwriting:** Low-quality scans, blurry camera photos, or handwriting produce lower recognition rates; Unbound flags these with a `"looks unreliable"` warning when confidence is `< 40%`.
 - **Large Scan Processing Time:** Sequential WASM OCR execution on 50+ page scanned documents can take several minutes depending on CPU performance.
 - **DOCX Images:** Images inside `.docx` files are not extracted or OCR'd; an informational warning (`IMAGES_OMITTED`) is emitted.
+- **PPTX Non-Text Elements:** Images, charts, and SmartArt diagrams inside `.pptx` presentations are not converted to images; an informational warning (`PPTX_NON_TEXT_OMITTED`) is emitted with counts.
 
 ---
 

@@ -440,5 +440,49 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - Security audit: 0 high or critical vulnerabilities (`npm audit --omit=dev --audit-level=high`).
   - Source hygiene: 0 absolute local paths, 0 unauthorized console statements, 0 unapproved CSP alterations.
 
+### 2026-10-26 — Phase A Cleanup, License, Traceability & M7 PPTX (P0)
+
+- **Phase A Tasks Completed:**
+  - **A1 README Cleanup:** Removed `## Current Status` section and TOC entry; renamed benchmark header to `### Embedded-image detection cost`; removed process jargon; verified all relative links and internal anchors resolve via automated script (`check-readme-links.mjs`). Commit: `3d303dc`.
+  - **A2 Archive Stale Docs & Rewrite AGENTS.md:** Archived `AUDIT_REPORT.md` to `docs/archive/AUDIT_REPORT_2026-10-early.md` and `docs/AGENT_PROMPT.md` to `docs/archive/AGENT_PROMPT_original.md` with historical banners and neutralized local paths; rewrote root `AGENTS.md` (32 lines) as concise maintenance guide; updated historical references. Commit: `5be2dfe`.
+  - **A3 License, Metadata & Third-Party Notices:** Added root `LICENSE` (MIT, Chirag Dhunna); enriched `package.json` with metadata while preserving private status and lockfile; created `THIRD_PARTY_NOTICES.md` documenting production dependency licenses; added License section to `README.md`. Commit: `09932da`.
+  - **A4 Traceability Honesty:** Replaced placeholder strings in `docs/TRACEABILITY.md` with real automated test symbols (R005, R015, R025, R032, R035, R036, R048); annotated deferred, architecture decision, and manual rows (R001, R004, R009, R013, R014, R016, R017, R038, R042, R044, R045, R051, R060, R061); added 20-page (<5s) test in `tests/unit/converters/pdf.test.ts`; asserted `'Converting…'` in unit and E2E specs. Exit code: 0. Commit: `18f0e34`.
+  - **A5 Verification Gate:** Passed full verification suite on `main` before Phase B.
+- **Phase B (M7 PPTX) Implementation:**
+  - Added runtime dependencies `jszip@3.10.2` and `fast-xml-parser@5.11.2` (exact versions) and devDependency `pptxgenjs@4.0.1` for test fixtures.
+  - Implemented client-side PPTX parser `src/converters/pptx.ts` adhering strictly to PLAN §7.6:
+    - Presentation slide order parsed from `ppt/presentation.xml` `sldIdLst` mapped through `ppt/_rels/presentation.xml.rels` (never sorted by filename).
+    - Extracted slide headings (`## Slide N`, or `## Slide N (hidden)` for hidden slides with `show="0"`).
+    - Extracted title placeholders (`p:ph@type="title"|"ctrTitle"`) as `### <title>` headers.
+    - Extracted body text with nested list bullet indentation from `a:pPr@lvl` (`-`), auto-numbered lists (`1.`), and plain paragraphs (`a:buNone`).
+    - Converted tables (`a:tbl`) to GitHub Flavored Markdown (GFM) tables using `escapeCellValue` and `buildMarkdownTable`, escaping cell pipes `\|` and replacing internal newlines with `<br>`.
+    - Recursively traversed grouped shapes (`p:grpSp`) in XML document order.
+    - Extracted speaker notes (`**Notes:**` subsection) following slide rels to `notesSlide`, skipping slide image and slide number placeholders.
+    - Emitted a single informational warning `PPTX_NON_TEXT_OMITTED` with counts for omitted images, charts, and SmartArt diagrams.
+    - Enforced 20 MB per-part and 200 MB total uncompressed zip-bomb guard (`TooLargeError`).
+    - Handled password-protected PPTX with `PasswordRequiredError` and legacy `.ppt` with `LegacyDocError`.
+    - Handled empty text decks with `NoTextFoundError` and corrupt archives with `CorruptFileError`.
+    - Verified cancellation mid-conversion with `CancelledError` and per-slide progress callbacks.
+  - Detection and routing:
+    - Updated `src/core/detect.ts` to route OLE2 bytes with `.pptx` extension to `'encrypted-office'` and `.ppt` to `'legacy-office'`.
+    - Registered lazy converter in `src/core/registry.ts`.
+    - Added `'pptx'` to `supportedKinds` in `src/core/pipeline.ts` and updated `UnsupportedFormatError` message.
+    - Updated `src/app/components/DropZone.tsx` to accept `.pptx` and `application/vnd.openxmlformats-officedocument.presentationml.presentation` and display `pptx` in supported formats.
+  - Traceability: Flipped R009 to ✅ mapped to real test paths in `docs/TRACEABILITY.md`.
+- **Mutation Verification (4 required mutations tested and confirmed red):**
+  1. Sort slides by filename instead of `sldIdLst`: `pptxConverter > follows presentation sldIdLst order instead of filename` failed.
+  2. Drop notes: `pptxConverter > emits speaker notes as **Notes:**, skipping slide-number and empty notes` failed.
+  3. Remove hidden-slide label: `pptxConverter > labels hidden slides with (hidden)` failed.
+  4. Skip zip-bomb guard: `pptxConverter > triggers zip-bomb guard when declared uncompressed part size exceeds limit` failed.
+- **Verification Evidence:**
+  - Unit tests: 306 passed across 33 test files (`npm run test:unit`, vitest 5.0.5, 0 failed).
+  - Code coverage: global lines 95.76% (threshold ≥ 85%), `src/converters/pptx.ts` lines 96.17% (threshold ≥ 90%).
+  - Performance: 100-slide generated deck converted in 117–139 ms (< 5,000 ms requirement).
+  - Production build & bundle check: initial JS gzip 70,600 bytes / 256,000 bytes budget (grew by only 91 bytes from 70,509 bytes; well under 1 KB limit). Separate lazy chunk `dist/assets/pptx-*.js` created: 167.37 kB (53.90 kB gzip).
+  - E2E tests: 140 passed across Chromium and Mobile Chromium with `--repeat-each=5 --retries=0` (0 failed, 0 flaky).
+  - Traceability gate: `node scripts/check-traceability.mjs` exits 0 (63 rows verified).
+  - Security audit: 0 high or critical vulnerabilities (`npm audit --omit=dev --audit-level=high`).
+  - Source hygiene: 0 absolute local paths, 0 unauthorized console statements, 0 unapproved CSP alterations.
+
 
 

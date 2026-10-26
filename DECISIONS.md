@@ -268,6 +268,30 @@
     - **Graceful Failure:** Any missing modern JS/Canvas API in an outdated browser is caught and surfaced as an actionable error directing the user to update their browser (e.g. `"Your browser is missing a feature required to process this PDF (...). Please update your browser."`), never as an unhelpful `"No text found"`.
 - **Consequences:** Broader browser compatibility without increasing bundle budget or altering CSP rules. All unit and cross-browser E2E suites pass green.
 
+## 2026-10-26 — M7 PPTX client-side parsing architecture, slide ordering, speaker notes, and security bounds
+
+- **Context:** Milestone 7 implements client-side conversion of `.pptx` presentations (a P0 requirement in `docs/REQUIREMENTS.md`). Requirements mandate 100% browser-only execution under strict CSP (`default-src 'self'`), preserving presentation slide boundaries, reading order, nested lists, tables, speaker notes, hidden slides, and security against zip bombs.
+- **Decision (Parsing Libraries & XML Ordering):**
+  - Uses `jszip` (3.10.2) to read the OpenXML archive and `fast-xml-parser` (5.11.2) for XML parsing.
+  - Initialized `XMLParser` with `{ preserveOrder: true, ignoreAttributes: false, attributeNamePrefix: '@_', parseTagValue: false, parseAttributeValue: false, trimValues: false }`. `preserveOrder: true` ensures elements are processed strictly in XML document order (which corresponds to z-order / visual reading order on the slide), avoiding non-deterministic key-iteration reordering.
+- **Decision (Slide Ordering via `sldIdLst`):**
+  - Slide order is extracted from `ppt/presentation.xml` `<p:sldIdLst>` and mapped via `r:id` through `ppt/_rels/presentation.xml.rels`. Files are **never** sorted by filename (e.g. `slide1.xml`, `slide2.xml`), which does not reflect presentation order when slides are reordered or deleted in PowerPoint.
+  - External relationships (`TargetMode="External"`) are strictly ignored with zero network requests.
+- **Decision (Speaker Notes Handling):**
+  - Follows relationships in `ppt/slides/_rels/<slide>.rels` to targets of type ending in `/notesSlide`.
+  - Emits notes as a `**Notes:**` subsection under the slide.
+  - Explicitly filters out non-body placeholders: shapes with `ph@type="sldImg"` (slide thumbnail) and `ph@type="sldNum"` (slide number) are skipped; empty notes slides produce no `**Notes:**` section.
+- **Decision (Zip-Bomb & Resource Limits):**
+  - Enforces a 20 MB maximum uncompressed size per declared part and a 200 MB maximum total uncompressed size across the archive (`TooLargeError`).
+  - Measures both declared size (`_data.uncompressedSize`) before decompression and actual decompressed bytes during decompression to protect against spoofed zip headers.
+- **Decision (Why `pdfPageMarkers` Was Not Overloaded):**
+  - `ctx.options.pdfPageMarkers` is an explicit PDF-only user option ("Add page markers (PDF)"). PPTX slides already possess inherent structural boundaries represented as `## Slide N` headings (and `## Slide N (hidden)` for hidden slides). Overloading `pdfPageMarkers` for slides would pollute the PDF setting semantics and create duplicate or conflicting headings.
+- **Decision (Bundle Impact & Code Splitting):**
+  - Both `jszip` and `fast-xml-parser` are isolated inside the lazy `dist/assets/pptx-*.js` chunk.
+  - `node scripts/check-bundle.mjs` verification: initial JavaScript bundle gzip size grew by only 91 bytes (from 70,509 bytes to 70,600 bytes, well within the 256,000 bytes budget).
+  - Lazy `pptx-*.js` chunk is 167.37 kB (53.90 kB gzip).
+- **Consequences:** R009 is fully satisfied. 15 new unit tests and 3 new e2e tests pass. Line coverage on `pptx.ts` is 96.17% (global coverage 95.76%). Conversion of a 100-slide deck completes in ~117–139 ms (< 5 s requirement).
+
 
 
 
