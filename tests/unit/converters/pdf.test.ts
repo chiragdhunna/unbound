@@ -689,6 +689,33 @@ describe('pdf header/footer removal, large PDFs and page markers', () => {
     })
   }, 90_000)
 
+  it('converts a 20-page document in under 5 seconds', async () => {
+    vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
+
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(StandardFonts.Helvetica)
+
+    for (let index = 1; index <= 20; index += 1) {
+      const page = doc.addPage([612, 792])
+      page.drawText(`Page ${index} body content for performance budget testing.`, {
+        x: 72,
+        y: 700,
+        size: 12,
+        font
+      })
+    }
+
+    const started = performance.now()
+    const result = await pdfConverter.convert(
+      converterInput(await doc.save()),
+      createConvertContext()
+    )
+    const elapsedMs = performance.now() - started
+
+    expect(elapsedMs).toBeLessThan(5000)
+    expect(result.stats.pages).toBe(20)
+  })
+
   it('emits page marker blocks when pdfPageMarkers is on', async () => {
     vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
 

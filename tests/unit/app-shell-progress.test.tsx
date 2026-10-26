@@ -32,6 +32,7 @@ describe('AppShell OCR progress UI (M6.5 / Item c)', () => {
 
     // Initially in converting status, before onProgress
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    expect(screen.getByText('Converting…')).toBeInTheDocument()
 
     // Trigger onProgress from converter
     act(() => {

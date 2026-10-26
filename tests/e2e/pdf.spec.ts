@@ -338,6 +338,7 @@ test('cancels OCR conversion in under 1 second', async ({ page, baseURL }) => {
 
   const cancelButton = page.getByRole('button', { name: 'Cancel' })
   await expect(cancelButton).toBeVisible()
+  await expect(page.getByText('Converting…')).toBeVisible()
 
   // Wait for OCR worker to be spawned so we are cancelling an active OCR conversion
   await page.waitForFunction(() => {
