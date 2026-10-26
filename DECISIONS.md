@@ -308,3 +308,18 @@ Requirements R013 and R014 specify conversion of Rich Text Format (`.rtf`), HTML
 1. **Zero-Dependency Client-Side RTF Tokenizer:** Implement a native TypeScript tokenizer in `src/converters/rtf.ts`. External RTF parsers on npm are either stale, rely on native Node modules, or bundle unneeded formatting features. Our custom parser implements PLAN §7.7 directly: state stack for group scoping, destination skipping, hex and Unicode escape decoding, formatting delimiters, and list handling.
 2. **Inert HTML & Readability Parsing:** Use `new DOMParser().parseFromString(html, 'text/html')` to construct a detached `Document`. Content is extracted with `@mozilla/readability@0.6.0` (Apache-2.0, zero dependencies, lazy-loaded) and converted to GFM via existing `turndown`. If Readability finds no article structure, we fall back to cleaned `<body>` elements stripping `nav`, `header`, `footer`, `aside`, `script`, `style`, `noscript`.
 3. **URL Fetch Engine with Actionable CORS Guidance:** Implement direct `fetch` with `AbortController` (15s timeout) in `src/converters/url.ts`. On network/CORS error, throw `UrlFetchError` providing explicit instructions to save the HTML file or paste content directly. Document an optional proxy in `docs/optional-proxy/` without enabling it by default.
+
+## 2026-10-27 — Removal of URL Fetching to Preserve Zero-Network Privacy Guarantee (Correction to ADR-10)
+
+### Context
+In ADR-10 (2026-10-26), URL fetching was designed and implemented via `src/converters/url.ts`, a "Fetch URL" action in `DropZone.tsx`, and an optional proxy guide in `docs/optional-proxy/`. However, in production, Unbound strictly enforces the Content Security Policy:
+```
+connect-src 'self'
+```
+Because `connect-src 'self'` blocks all cross-origin fetches at the browser platform level, attempting to fetch any public web page triggers a CSP violation and a misleading network/CORS error in the console and UI. Loosening the CSP (e.g. allowing `connect-src *` or remote endpoints) would directly violate Unbound's core architectural principle and user guarantee: **"Files never leave your device"** and **zero runtime network requests**.
+
+### Decision
+1. **Remove URL Fetching Entirely:** Remove `src/converters/url.ts`, the "Fetch URL" UI button and inputs in `DropZone.tsx`, pasted URL auto-fetch interception in `AppShell.tsx`, `UrlFetchError`, `docs/optional-proxy/`, and all URL-related tests and configuration references.
+2. **Reaffirm Zero-Network Local Conversion:** All conversions must remain 100% client-side and offline. To convert a web page, users simply save the page locally as an HTML file (`.html` / `.htm`) and drop it into Unbound. The client-side HTML converter (`src/converters/html.ts`) processes saved `.html` files completely locally through `@mozilla/readability` and Turndown with zero network requests.
+3. **Preserve Strict CSP:** The CSP directive `connect-src 'self'` remains strictly untouched and non-negotiable across `index.html`, `_headers`, and `vercel.json`.
+

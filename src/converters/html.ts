@@ -15,7 +15,6 @@ import { NoTextFoundError } from '../core/errors'
 export interface HtmlConvertOptions {
   signal?: AbortSignal
   onProgress?: (percent: number) => void
-  baseUrl?: string
 }
 
 function escapeRegex(str: string): string {
@@ -72,38 +71,6 @@ export function parseHtmlToMarkdown(
   ]
   for (const tag of tagsToRemove) {
     doc.querySelectorAll(tag).forEach((el) => el.remove())
-  }
-
-  // Resolve relative links and images against base URL if present
-  const baseElement = doc.querySelector('base')
-  const baseHref = options?.baseUrl || baseElement?.getAttribute('href')
-  if (baseHref) {
-    for (const a of Array.from(doc.querySelectorAll('a[href]'))) {
-      const raw = a.getAttribute('href')
-      if (
-        raw &&
-        !raw.startsWith('#') &&
-        !raw.startsWith('mailto:') &&
-        !raw.startsWith('tel:') &&
-        !raw.startsWith('javascript:')
-      ) {
-        try {
-          a.setAttribute('href', new URL(raw, baseHref).href)
-        } catch {
-          // Keep original attribute if URL parsing fails
-        }
-      }
-    }
-    for (const img of Array.from(doc.querySelectorAll('img[src]'))) {
-      const raw = img.getAttribute('src')
-      if (raw && !raw.startsWith('data:') && !raw.startsWith('blob:')) {
-        try {
-          img.setAttribute('src', new URL(raw, baseHref).href)
-        } catch {
-          // Keep original attribute if URL parsing fails
-        }
-      }
-    }
   }
 
   try {

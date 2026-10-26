@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type DragEvent, type RefObject } from 'react'
+import { type ChangeEvent, type DragEvent, type RefObject } from 'react'
 
 type DropZoneProps = {
   dragging: boolean
@@ -6,7 +6,6 @@ type DropZoneProps = {
   onDrop: (event: DragEvent<HTMLDivElement>) => void
   onPaste: (event: React.ClipboardEvent<HTMLDivElement>) => void
   onInputChange: (event: ChangeEvent<HTMLInputElement>) => void
-  onFetchUrl?: (url: string) => void
   fileInputRef: RefObject<HTMLInputElement>
   folderInputRef: RefObject<HTMLInputElement>
 }
@@ -17,12 +16,9 @@ export function DropZone({
   onDrop,
   onPaste,
   onInputChange,
-  onFetchUrl,
   fileInputRef,
   folderInputRef
 }: DropZoneProps) {
-  const [urlInput, setUrlInput] = useState('')
-  const [showUrlInput, setShowUrlInput] = useState(false)
   return (
     <div
       role="region"
@@ -75,56 +71,7 @@ export function DropZone({
         >
           Choose folder
         </button>
-        {!showUrlInput ? (
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => setShowUrlInput(true)}
-          >
-            Fetch URL
-          </button>
-        ) : null}
       </div>
-      {showUrlInput ? (
-        <form
-          className="url-fetch-form"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (urlInput.trim() && onFetchUrl) {
-              onFetchUrl(urlInput.trim())
-              setUrlInput('')
-              setShowUrlInput(false)
-            }
-          }}
-        >
-          <input
-            id="url-fetch-input"
-            type="url"
-            className="url-fetch-input"
-            placeholder="https://example.com/article"
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            aria-label="Enter web page URL"
-          />
-          <button
-            type="submit"
-            className="btn-secondary"
-            disabled={!urlInput.trim()}
-          >
-            Fetch
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setShowUrlInput(false)
-              setUrlInput('')
-            }}
-          >
-            Cancel
-          </button>
-        </form>
-      ) : null}
       <input
         ref={fileInputRef}
         type="file"

@@ -641,6 +641,21 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - **Traceability:** All 63 rows verified via `node scripts/check-traceability.mjs`.
   - **Third-Party Notices:** Updated via `scripts/generate-notices.mjs` including `@mozilla/readability@0.6.0` (Apache-2.0).
 
+### 2026-10-27 — Removal of URL Fetching to Preserve Zero-Network Privacy Guarantee
+
+- **Context & Motivation:** The URL fetch feature built in Task M8.3 is unusable under the strict Content Security Policy (`connect-src 'self'`), as the browser blocks all cross-origin fetches at the network layer and logs misleading CORS/CSP errors. Loosening the CSP would compromise Unbound's foundational guarantee that **files never leave your device** and **zero network requests** are made during conversion.
+- **Actions Taken:**
+  - Removed URL converter `src/converters/url.ts` and related unit tests in `tests/unit/converters/url.test.ts`.
+  - Removed "Fetch URL" action button, URL text input, and associated form handlers from `src/app/components/DropZone.tsx`.
+  - Removed `handleFetchUrl`, `retryUrlJob`, dynamic imports of `url.ts`, and URL paste detection from `src/app/AppShell.tsx`.
+  - Removed `UrlFetchError` from `src/core/errors.ts`.
+  - Removed sample CORS proxy documentation and code (`docs/optional-proxy/`).
+  - Removed `tests/e2e/url.spec.ts` and added a new guard E2E test in `tests/e2e/html.spec.ts` asserting that no "Fetch URL" controls exist and that dropping `.html` files converts cleanly with zero cross-origin requests and zero CSP violations.
+  - Updated `README.md` and `docs/ARCHITECTURE.md` to remove URL fetch claims and clarify that web pages are converted by saving them locally as `.html` files.
+  - Appended ADR-11 to `DECISIONS.md`.
+  - Updated `docs/TRACEABILITY.md` row R014 with HTML unit and E2E test names, noting that URL fetch is deliberately not shipped to preserve the CSP privacy guarantee.
+
+
 
 
 

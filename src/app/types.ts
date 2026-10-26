@@ -14,7 +14,7 @@ export type Job = {
   warningCodes?: string[]
   error: string | null
   size: number
-  file?: File
+  file: File
   attemptId: number
   progress?: ConvertProgress
 }
