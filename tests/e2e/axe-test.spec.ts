@@ -1,8 +1,22 @@
 import { test, expect } from '@playwright/test';
 import { AxeBuilder } from '@axe-core/playwright';
 import type { Result } from 'axe-core';
+import pptxgen from 'pptxgenjs';
 
 const textFile = (name: string, content: string) => ({ name, mimeType: 'text/plain', buffer: Buffer.from(content) });
+
+async function pptxFile(name: string, title: string, content: string) {
+  const pptx = new pptxgen();
+  const slide = pptx.addSlide();
+  slide.addText(title, { x: 1, y: 1, fontSize: 24 });
+  slide.addText(content, { x: 1, y: 2, fontSize: 14 });
+  const buffer = (await pptx.write({ outputType: 'nodebuffer' })) as Buffer;
+  return {
+    name,
+    mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    buffer
+  };
+}
 
 test('axe: empty state should have no serious or critical violations', async ({ page }) => {
   await page.goto('/');
@@ -136,4 +150,29 @@ test('ui-redesign: copy button is sticky on mobile viewports', async ({ page }) 
   await expect(copyBtn).toBeVisible();
   const position = await copyBtn.evaluate((el) => window.getComputedStyle(el).position);
   expect(position).toBe('sticky');
+});
+
+test('axe: pptx output state should have no serious or critical violations', async ({ page }) => {
+  await page.goto('/');
+  const file = await pptxFile('presentation.pptx', 'Deck Title', 'Deck content text');
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(file);
+  await page.getByRole('textbox', { name: 'Converted output' }).waitFor();
+  const results = await new AxeBuilder({ page }).analyze();
+  const seriousOrCritical = results.violations.filter(
+    (v: Result) => v.impact === 'serious' || v.impact === 'critical'
+  );
+  expect(seriousOrCritical).toEqual([]);
+});
+
+test('axe: pptx output state in light theme should have no serious or critical violations', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/');
+  const file = await pptxFile('presentation.pptx', 'Deck Title', 'Deck content text');
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(file);
+  await page.getByRole('textbox', { name: 'Converted output' }).waitFor();
+  const results = await new AxeBuilder({ page }).analyze();
+  const seriousOrCritical = results.violations.filter(
+    (v: Result) => v.impact === 'serious' || v.impact === 'critical'
+  );
+  expect(seriousOrCritical).toEqual([]);
 });
