@@ -44,6 +44,7 @@
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@fontsource/jetbrains-mono": "^5.2.7",
+    "@mozilla/readability": "0.6.0",
     "fast-xml-parser": "5.11.2",
     "jszip": "3.10.2",
     "mammoth": "^1.13.0",

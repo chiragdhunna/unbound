@@ -5,7 +5,7 @@ Unbound incorporates open-source software and font packages licensed under permi
 ## Summary of Licenses
 
 - **(MIT AND Zlib)**: 1 package(s)
-- **Apache-2.0**: 6 package(s)
+- **Apache-2.0**: 7 package(s)
 - **BSD-2-Clause**: 7 package(s)
 - **ISC**: 1 package(s)
 - **MIT**: 40 package(s)
@@ -1608,6 +1608,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### @mozilla/readability@0.6.0 (Apache-2.0)
+Source: [https://github.com/mozilla/readability](https://github.com/mozilla/readability)
+
+```
+Copyright (c) 2010 Arc90 Inc
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
 ### react@18.3.1 (MIT)
 Source: [https://github.com/facebook/react](https://github.com/facebook/react)
 
@@ -1874,6 +1893,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 #### Packages
 
+- **@mozilla/readability@0.6.0** ([Source](https://github.com/mozilla/readability))
 - **idb-keyval@6.3.0** ([Source](https://github.com/jakearchibald/idb-keyval))
 - **pdfjs-dist@6.4.299** ([Source](https://github.com/mozilla/pdf.js))
 - **tesseract.js@7.0.0** ([Source](https://github.com/naptha/tesseract.js))

@@ -208,6 +208,19 @@ export function detectFileKindWithWarnings(input: {
   )
     kind = 'image'
   else if (!looksLikeText(sample)) kind = 'unknown'
+  else if (
+    new TextDecoder('utf-8', { fatal: false })
+      .decode(sample.slice(0, 256))
+      .trimStart()
+      .toLowerCase()
+      .startsWith('<!doctype html') ||
+    new TextDecoder('utf-8', { fatal: false })
+      .decode(sample.slice(0, 256))
+      .trimStart()
+      .toLowerCase()
+      .startsWith('<html')
+  )
+    kind = 'html'
   else if (extension === 'md' || extension === 'markdown') kind = 'markdown'
   else if (extension === 'txt') kind = 'text'
   else if (extension === 'csv' || extension === 'tsv') kind = 'csv'
@@ -229,11 +242,13 @@ export function detectFileKindWithWarnings(input: {
           ? 'pptx'
           : extension === 'rtf'
             ? 'rtf'
-            : extension === 'xlsx' || extension === 'xls'
-            ? 'xlsx'
-            : imageExtensions.has(extension)
-              ? 'image'
-              : undefined
+            : extension === 'html' || extension === 'htm'
+              ? 'html'
+              : extension === 'xlsx' || extension === 'xls'
+                ? 'xlsx'
+                : imageExtensions.has(extension)
+                  ? 'image'
+                  : undefined
   if (extensionKind && extensionKind !== kind && kind !== 'unknown')
     warnings.push({
       code: 'TYPE_MISMATCH',

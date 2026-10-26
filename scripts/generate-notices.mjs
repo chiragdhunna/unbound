@@ -102,6 +102,7 @@ const featuredPackages = [
   'mammoth',
   'marked',
   'turndown',
+  '@mozilla/readability',
   'react',
   'react-dom',
   '@fontsource/ibm-plex-mono',

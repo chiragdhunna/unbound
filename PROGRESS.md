@@ -572,3 +572,31 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
 - Updated `docs/TRACEABILITY.md` row R013 to `✅`, verified passing with `node scripts/check-traceability.mjs`.
 - Updated `README.md` and `docs/ARCHITECTURE.md`.
 
+### 2026-10-26 — Task M8.2: Inert HTML File Converter with Mozilla Readability Implementation and Verification
+
+- Installed `@mozilla/readability@0.6.0` (exact, Apache-2.0, zero dependencies, lazy-loaded in `dist/assets/html-*.js`).
+- Implemented `src/converters/html.ts`:
+  - Inert detached DOM parsing via `new DOMParser().parseFromString(html, 'text/html')` ensuring zero script execution and zero live DOM mounting.
+  - Pre-extraction stripping of non-content boilerplate: `script`, `style`, `noscript`, `nav`, `header`, `footer`, `aside`, `svg`, `template`, `iframe`, `object`, `embed`.
+  - Article extraction via `@mozilla/readability` with `{ keepClasses: true }` to preserve fenced code block languages (`language-<lang>`).
+  - Fallback to cleaned `<body>` with `<h1>` / `<title>` discovery when Readability detects no article.
+  - Conversion to ATX markdown with GFM tables and fenced code blocks via Turndown.
+  - Title deduplication (prevents duplicate `# Title` if body already starts with matching heading).
+  - Clean byline formatting (`*By <author>*`).
+  - Cancellation via `AbortSignal` with `DOMException('The operation was aborted.', 'AbortError')`.
+  - Progress reporting (30%, 60%, 100%).
+  - Typed error handling: `NoTextFoundError` for empty or whitespace-only documents.
+- Registered HTML in `src/core/detect.ts` (sniffing `<!DOCTYPE html` / `<html` and `.html`/`.htm` extension), `src/core/registry.ts` (lazy chunk `dist/assets/html-*.js`), `src/core/pipeline.ts` (`supportedKinds`), and `src/app/components/DropZone.tsx` (`.html,.htm,text/html` accept).
+- Configured Rollup lazy chunk naming in `vite.config.ts` to sanitize shared `turndown-plugin-gfm` chunk filename, keeping initial JS gzip size at 70,814 B (+139 B delta, well within < 1,024 B limit) and lazy chunk count at 23.
+- Regenerated `THIRD_PARTY_NOTICES.md` with `@mozilla/readability@0.6.0` Apache-2.0 notice.
+- Added unit tests in `tests/unit/converters/html.test.ts` (11 tests) and `tests/unit/core/detect.test.ts`. Line coverage on `src/converters/html.ts` is 93.65% (global coverage 95.63%).
+- Added E2E test in `tests/e2e/html.spec.ts` asserting converted markdown output, tables, emphasis, zero external network requests, zero CSP violations, zero console errors.
+- Verified 4 mutation tests on HTML logic:
+  1. Boilerplate tag stripping removed: failed `falls back to body when Readability finds no article, stripping boilerplate tags`.
+  2. Readability article extraction disabled: failed `extracts full article with title, byline, and formatting via Readability`.
+  3. Title deduplication removed: failed `does not duplicate title if markdown already starts with matching heading`.
+  4. Empty markdown check removed: failed `throws NoTextFoundError when body only contains whitespace or empty divs`.
+- Updated `docs/TRACEABILITY.md` row R014 to `✅`, verified passing with `node scripts/check-traceability.mjs`.
+- Updated `README.md` and `docs/ARCHITECTURE.md`.
+
+

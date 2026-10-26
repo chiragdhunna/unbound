@@ -121,4 +121,25 @@ describe('detectFileKind', () => {
     })
     expect(result.kind).toBe('rtf')
   })
+
+  it('detects HTML file by extension', () => {
+    const htmlBytes = new TextEncoder().encode('<html><body>Hello</body></html>').buffer
+    expect(
+      detectFileKind({
+        name: 'page.html',
+        mime: 'text/html',
+        bytes: htmlBytes
+      })
+    ).toBe('html')
+  })
+
+  it('detects HTML file by DOCTYPE even with misleading .txt extension', () => {
+    const htmlBytes = new TextEncoder().encode('<!DOCTYPE html><html><body>Hello</body></html>').buffer
+    const result = detectFileKindWithWarnings({
+      name: 'page.txt',
+      mime: 'text/plain',
+      bytes: htmlBytes
+    })
+    expect(result.kind).toBe('html')
+  })
 })
