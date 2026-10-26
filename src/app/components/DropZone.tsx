@@ -51,7 +51,7 @@ export function DropZone({
       <p className="dropzone-title">Drop a file, folder, or paste a local file here.</p>
       <p className="supported-formats">
         Supported formats: txt, md, json, xml, code files, pdf, docx, pptx,
-        xlsx, xls, xlsm, csv, tsv, png, jpg, webp, bmp, gif.
+        rtf, xlsx, xls, xlsm, csv, tsv, png, jpg, webp, bmp, gif.
       </p>
       <p className="ocr-note">
         English-first in v1; other languages are not supported yet.
@@ -76,7 +76,7 @@ export function DropZone({
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.txt,.md,.markdown,.json,.xml,.js,.ts,.tsx,.jsx,.py,.go,.rs,.java,.c,.cpp,.cs,.rb,.php,.swift,.kt,.sql,.sh,.yaml,.yml,.docx,.pptx,.xlsx,.xls,.xlsm,.csv,.tsv,.png,.jpg,.jpeg,.webp,.bmp,.gif,application/pdf,text/plain,text/markdown,text/csv,text/tab-separated-values,application/json,application/xml,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,image/png,image/jpeg,image/webp,image/bmp,image/gif"
+        accept=".pdf,.txt,.md,.markdown,.json,.xml,.js,.ts,.tsx,.jsx,.py,.go,.rs,.java,.c,.cpp,.cs,.rb,.php,.swift,.kt,.sql,.sh,.yaml,.yml,.docx,.pptx,.rtf,.xlsx,.xls,.xlsm,.csv,.tsv,.png,.jpg,.jpeg,.webp,.bmp,.gif,application/pdf,text/plain,text/markdown,text/csv,text/tab-separated-values,application/json,application/xml,application/rtf,text/rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,image/png,image/jpeg,image/webp,image/bmp,image/gif"
         onChange={onInputChange}
         aria-label="Choose file"
         hidden

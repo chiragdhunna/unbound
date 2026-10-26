@@ -547,3 +547,28 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   4. **Task M8.4 — Documentation, ADRs, Traceability, Third-Party Notices, and Verification Gate:**
      - Files touched: `README.md`, `docs/ARCHITECTURE.md`, `docs/TRACEABILITY.md`, `THIRD_PARTY_NOTICES.md`, `DECISIONS.md`, `PROGRESS.md`.
      - Tests: `check-traceability.mjs`, `check-bundle.mjs`, full Playwright E2E suite on all projects with repeat verification.
+
+### 2026-10-26 — Task M8.1: Client-Side RTF Converter Implementation and Verification
+
+- Implemented `src/converters/rtf.ts`:
+  - Zero-dependency client-side streaming tokenizer and parser implementing PLAN §7.7 and ADR-10.
+  - State stack tracking scoped group formatting (`skip`, `bold`, `italic`, `uc`).
+  - Destination skipping for `\fonttbl`, `\colortbl`, `\stylesheet`, `\info`, `\pict`, `\object`, and user-defined `\*` destinations.
+  - Unicode escape handling (`\uN?`) supporting 16-bit signed negative code points (`codePoint += 65536`) and `\uc` replacement byte skip.
+  - Hex byte escape decoding (`\'hh`) with Windows-1252 code page mapping.
+  - Formatting controls: `\b`, `\i`, `\bullet`, `\par`, `\line`, `\tab`, `~` (non-breaking space), `_`/`-` (hyphen).
+  - Unclosed group tag unwinding in LIFO order (`_` then `**`).
+  - Cancellation via `AbortSignal` with `DOMException('The operation was aborted.', 'AbortError')`.
+  - Progress reporting via `onProgress` callbacks.
+  - Typed error handling: `CorruptFileError` for missing `{\rtf` header, `NoTextFoundError` for empty body text.
+- Registered RTF in `src/core/detect.ts` (sniffing `{\rtf` magic bytes and `.rtf` extension), `src/core/registry.ts` (lazy chunk `dist/assets/rtf-*.js`), `src/core/pipeline.ts` (`supportedKinds`), and `src/app/components/DropZone.tsx` (`.rtf` accept).
+- Added unit tests in `tests/unit/converters/rtf.test.ts` (19 tests) and `tests/unit/core/detect.test.ts` (RTF detection).
+- Added E2E test in `tests/e2e/rtf.spec.ts` asserting converted markdown output, zero external network requests, zero CSP violations, zero console errors.
+- Verified 4 mutation tests on RTF logic:
+  1. Signed Unicode conversion removed: failed `handles negative 16-bit signed Unicode escapes`.
+  2. Destination skipping removed: failed 3 tests (`skips header and metadata destinations completely`, `skips embedded pictures and drawings`, `throws NoTextFoundError if RTF contains no body text`).
+  3. Windows-1252 hex decoding altered: failed `handles hex byte escapes with Windows-1252 decoding`.
+  4. Header validation removed: failed `throws CorruptFileError if input is not valid RTF`.
+- Updated `docs/TRACEABILITY.md` row R013 to `✅`, verified passing with `node scripts/check-traceability.mjs`.
+- Updated `README.md` and `docs/ARCHITECTURE.md`.
+

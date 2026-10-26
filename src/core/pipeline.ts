@@ -11,6 +11,7 @@ const supportedKinds = new Set([
   'code',
   'docx',
   'pptx',
+  'rtf',
   'xlsx',
   'csv',
   'pdf',
@@ -50,7 +51,7 @@ export async function convertFile(
 
   if (!supportedKinds.has(kind)) {
     throw new UnsupportedFormatError(
-      `Unsupported format for now (${kind}). Supported: txt, md, json, xml, code, pdf, docx, pptx, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files.`
+      `Unsupported format for now (${kind}). Supported: txt, md, json, xml, code, pdf, docx, pptx, rtf, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files.`
     )
   }
 

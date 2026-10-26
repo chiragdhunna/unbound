@@ -39,6 +39,10 @@ const registry: Partial<
     import('../converters/pptx').then((module) => ({
       converter: module.pptxConverter
     })),
+  rtf: () =>
+    import('../converters/rtf').then((module) => ({
+      converter: module.rtfConverter
+    })),
   xlsx: () =>
     import('../converters/xlsx').then((module) => ({
       converter: module.xlsxConverter

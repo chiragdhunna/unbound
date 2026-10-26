@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectFileKind } from '../../../src/core/detect'
+import { detectFileKind, detectFileKindWithWarnings } from '../../../src/core/detect'
 
 function makeBuffer(values: number[]): ArrayBuffer {
   return new Uint8Array(values).buffer
@@ -99,5 +99,26 @@ describe('detectFileKind', () => {
         bytes: makeBuffer([0xd0, 0xcf, 0x11, 0xe0, 0x00, 0x00])
       })
     ).toBe('legacy-office')
+  })
+
+  it('detects RTF file by magic bytes {\\rtf', () => {
+    const rtfBytes = new TextEncoder().encode('{\\rtf1\\ansi\\deff0 Hello}').buffer
+    expect(
+      detectFileKind({
+        name: 'document.rtf',
+        mime: 'application/rtf',
+        bytes: rtfBytes
+      })
+    ).toBe('rtf')
+  })
+
+  it('detects RTF file by magic bytes even with misleading extension', () => {
+    const rtfBytes = new TextEncoder().encode('{\\rtf1\\ansi\\deff0 Hello}').buffer
+    const result = detectFileKindWithWarnings({
+      name: 'document.txt',
+      mime: 'text/plain',
+      bytes: rtfBytes
+    })
+    expect(result.kind).toBe('rtf')
   })
 })

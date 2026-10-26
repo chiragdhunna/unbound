@@ -49,6 +49,7 @@ Unbound detects file types via **magic bytes, MIME type, and extension** (`src/c
 | **XML** | `.xml` | Pass-through | Wrapped in an XML-tagged fenced code block. |
 | **Code** | `.js`, `.ts`, `.tsx`, `.jsx`, `.py`, `.go`, `.rs`, `.java`, `.c`, `.cpp`, `.cs`, `.rb`, `.php`, `.swift`, `.kt`, `.sql`, `.sh`, `.yaml`, `.yml` | Syntax fence | Tagged with appropriate language identifier; handles nested backtick runs safely. |
 | **CSV / TSV** | `.csv`, `.tsv` | Custom RFC-4180 parser | Sniffs delimiters (`,`, `;`, `\t`), strips BOMs, preserves exact literal cell text (leading zeros, exponent notation, quoted spacing). |
+| **Rich Text (RTF)** | `.rtf` | Zero-dependency streaming tokenizer | Tokenizes control words and groups; decodes Unicode (`\uN`) and Windows-1252 hex (`\'hh`); maps `\b`, `\i`, `\bullet`, `\par`; skips non-text destinations (`\fonttbl`, `\colortbl`, `\pict`, metadata); emits clean Markdown. |
 | **DOCX** | `.docx` | Mammoth.js + Turndown | Converts headings, lists, tables, and links to markdown; counts and warns about omitted embedded images. |
 | **PowerPoint** | `.pptx` | JSZip + fast-xml-parser | Preserves presentation slide order (`sldIdLst`), titles (`###`), nested bullet levels (`-`), tables (GFM), speaker notes (`**Notes:**`), hidden slides (`## Slide N (hidden)`), and warns about omitted images and charts (`PPTX_NON_TEXT_OMITTED`). |
 | **XLSX / XLS / XLSM** | `.xlsx`, `.xls`, `.xlsm` | Vendored SheetJS (0.20.3) | Emits `## Sheet: <name>` sections, GFM tables, ISO formatted dates, replicates merged top-left cells, and flags hidden sheets. |
@@ -64,8 +65,7 @@ When an unsupported or restricted file is uploaded, Unbound throws a typed error
 |:----------------------|:---------------|:-------------------------|
 | **Legacy PowerPoint (`.ppt`, OLE2)** | `LegacyDocError` | `"Legacy .ppt files are not supported. Save as .pptx and try again."` |
 | **Password-Protected PPTX** | `PasswordRequiredError` | `"This PowerPoint is password-protected. Save a copy without a password and try again."` |
-| **Rich Text (`.rtf`)** | `UnsupportedFormatError` | `"Unsupported format for now (rtf). Supported: txt, md, json, xml, code, pdf, docx, pptx, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files."` |
-| **HTML / EPUB / ZIP** | `UnsupportedFormatError` | `"Unsupported format for now (<kind>). Supported: txt, md, json, xml, code, pdf, docx, pptx, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files."` |
+| **HTML / EPUB / ZIP** | `UnsupportedFormatError` | `"Unsupported format for now (<kind>). Supported: txt, md, json, xml, code, pdf, docx, pptx, xlsx, xls, xlsm, csv, tsv, rtf, and image (png, jpg, webp, bmp, gif) files."` |
 | **Legacy DOC (`.doc`, OLE2)** | `LegacyDocError` | `"Legacy .doc files are not supported. Please save as .docx and try again."` |
 | **Legacy XLS (`.xls`, OLE2)** | `LegacyDocError` | `"Legacy .xls format is not supported. Please save as .xlsx or .csv."` |
 | **Password-Protected DOCX** | `PasswordRequiredError` | `"This file is password-protected. Please remove the password and try again."` |

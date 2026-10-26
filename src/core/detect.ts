@@ -196,6 +196,8 @@ export function detectFileKindWithWarnings(input: {
     }
   } else if (startsWith(sample, [0x50, 0x4b, 0x03, 0x04]))
     kind = zipKind(bytes, extension)
+  else if (startsWith(sample, [0x7b, 0x5c, 0x72, 0x74, 0x66]))
+    kind = 'rtf'
   else if (
     startsWith(sample, [0x89, 0x50, 0x4e, 0x47]) ||
     startsWith(sample, [0xff, 0xd8, 0xff]) ||
@@ -225,7 +227,9 @@ export function detectFileKindWithWarnings(input: {
         ? 'docx'
         : extension === 'pptx'
           ? 'pptx'
-          : extension === 'xlsx' || extension === 'xls'
+          : extension === 'rtf'
+            ? 'rtf'
+            : extension === 'xlsx' || extension === 'xls'
             ? 'xlsx'
             : imageExtensions.has(extension)
               ? 'image'
