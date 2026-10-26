@@ -486,3 +486,6 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
 
 
 
+- **CI Runner Dispatch Note (2026-10-26):**
+  - Initial CI run `40318990007` on commit `9dfdd74` encountered a GitHub Actions runner host stall during `npx playwright install-deps chromium webkit` (apt socket timeout).
+  - Pushed verification commit to trigger fresh runner VM for main.
