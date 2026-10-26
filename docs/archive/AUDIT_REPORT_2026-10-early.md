@@ -1,3 +1,5 @@
+> **HISTORICAL — superseded.** Describes an early state of the project. See PROGRESS.md and docs/TRACEABILITY.md for current status.
+
 # Audit Report
 
 ## 1) Executive verdict
@@ -9,7 +11,7 @@ This repository is a minimal React scaffold with a very narrow text/JSON convers
 ## 2) Environment and commands run
 
 - OS: Linux
-- Workspace: /home/chiragdhunna/Desktop/docs/github_projects/unbound
+- Workspace: <workspace-root>
 - Commands executed:
   - npm ci
   - npm run build
@@ -142,7 +144,7 @@ This is the subset of the requirement set that is directly evidenced by the curr
 ## 9) Exact commands to reproduce the audit
 
 ```bash
-cd /home/chiragdhunna/Desktop/docs/github_projects/unbound
+cd <workspace-root>
 npm ci
 npm run build
 bash scripts/verify.sh

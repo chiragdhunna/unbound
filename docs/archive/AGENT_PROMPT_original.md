@@ -1,3 +1,5 @@
+> **HISTORICAL — superseded.** Historical continuation prompt from an earlier milestone. The project has moved on; see AGENTS.md, PLAN.md, and docs/REQUIREMENTS.md for current guidance.
+
 # UNBOUND — CONTINUATION PROMPT (paste this whole file into your coding agent)
 
 You are a careful senior engineer continuing an existing project called **Unbound**

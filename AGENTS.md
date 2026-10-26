@@ -1,40 +1,32 @@
-Before ANY work, read docs/AGENT_PROMPT.md completely and obey it.
-# AGENTS.md — Agent Guidance for Unbound
+# AGENTS.md — Maintenance Guide for Unbound
 
 ## Authoritative Documents
-- **Requirements**: `docs/REQUIREMENTS.md` (scope and mandatory behavior)
-- **Plan**: `PLAN.md` (implementation order and acceptance criteria)
-- **Architecture**: `docs/ARCHITECTURE.md` (module boundaries, data flow, current state)
-- **Decisions**: `DECISIONS.md` (justified deviations and consequences)
-- **Progress**: `PROGRESS.md` (milestone checklist and verification results)
-- **Traceability**: `docs/TRACEABILITY.md` (requirement ↔ test mapping and status)
+- **Requirements**: `docs/REQUIREMENTS.md` (mandatory behaviors and format limits)
+- **Plan**: `PLAN.md` (implementation phases and acceptance criteria)
+- **Architecture**: `docs/ARCHITECTURE.md` (module boundaries, pipeline flow)
+- **Decisions**: `DECISIONS.md` (append-only ADRs and deviation rationale)
+- **Progress**: `PROGRESS.md` (append-only milestone log and test evidence)
+- **Traceability**: `docs/TRACEABILITY.md` (requirement ↔ automated test matrix)
+- **Historical**: `docs/archive/` (superseded audit reports and legacy prompts)
 
-## Active Task and Acceptance Criteria
-Before starting work, the agent **must**:
-1. Read the current active task description (if provided by the user).
-2. Review the acceptance criteria in `PLAN.md` and `docs/TRACEABILITY.md` for the relevant requirement(s).
-3. Understand the `Definition of Done`: the gate script (`scripts/verify.sh`) exits 0 and every row in `docs/TRACEABILITY.md` relevant to the task is ✅ with a real test path that exists and passes.
-
-## Build/Test Commands and Browser Provisioning
+## Standard Commands
 - **Install**: `npm ci`
-- **Dev server**: `npm run dev`
+- **Dev Server**: `npm run dev`
 - **Build**: `npm run build`
-- **Unit tests**: `npm run test:unit`
-- **E2E tests**: `npm run test:e2e` (requires Chromium and WebKit with system dependencies)
-- **Verification gate**: `npm run verify` (runs lint, typecheck, build, unit tests, and E2E tests)
-- **Browser provisioning**: The CI installs Chromium and WebKit via Playwright. Locally, run `npx playwright install-deps` to install system dependencies, then `npx playwright install` to install browsers.
+- **Unit Tests**: `npm run test:unit` (or `npm run test:unit -- --coverage`)
+- **E2E Tests**: `npm run test:e2e` (Chromium, Mobile Chromium, Mobile WebKit)
+- **Verification Gate**: `npm run verify` (runs full CI suite locally)
 
-## Implementation Requirements
-- **Implementation plus meaningful regression tests**: For every fix or feature, add a regression test that captures the defect and verifies the fix. Do not rely solely on existing test totals, comments, or toasts to claim completion.
-- **Explicit blocked/unverified statuses**: In `docs/TRACEABILITY.md`, use ⬜ for blocked/unverified, ✅ for passing, and ❌ for failing. Do not weaken thresholds or skip failing required checks.
-- **No completion claims from old evidence**: Do not claim a requirement is implemented based on old test totals, comments, or toasts alone. Verify with current test runs and explicit assertions.
+## Core Prohibitions
+- Never weaken test thresholds, coverage targets, bundle budgets, or timeouts.
+- Never edit `scripts/verify.sh`, `.github/workflows/*`, or test/lint configs to pass checks.
+- Never loosen the Content Security Policy in `index.html`, `_headers`, or `vercel.json`.
+- Never commit absolute local paths (`/home/`, `/Users/`, `C:\Users`).
+- Never run `npm audit fix --force` or touch vendored libraries (`vendor/`).
+- Never claim completion without current passing test runs and explicit evidence.
 
-## Prohibitions
-- Do not weaken test thresholds, budgets, or timeouts to make a test pass.
-- Do not skip failing required checks; fix the code or document why infeasible in `DECISIONS.md`.
-- Do not claim completion from historical audit reports or outdated traceability.
-- Do not add backend, summarization, accounts, or unrelated scope to compensate for unfinished acceptance criteria.
-- Do not edit `scripts/verify.sh`, `.github/workflows/*`, or lint and test configs to reduce what is checked.
-
-## Concise Guidance
-This file links to the authoritative documents. Read the active task and acceptance criteria first. Implement with regression tests. Update traceability and decisions as needed. Verify with the gate script before claiming completion.
+## Definition of Done
+Before claiming any task complete:
+1. Run `npm run verify` and ensure it exits 0.
+2. Ensure every touched requirement in `docs/TRACEABILITY.md` points to passing tests.
+3. Keep `PROGRESS.md` and `DECISIONS.md` append-only; update `README.md` as needed.

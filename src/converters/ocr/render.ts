@@ -41,7 +41,7 @@ export function computeRenderScale(
 }
 
 /**
- * Pure function: computes scale for standalone image files (PLAN §7.5, AGENT_PROMPT §6.3).
+ * Pure function: computes scale for standalone image files (PLAN §7.5).
  * Downscales images wider or taller than 3000px so max long edge is 3000px.
  * Upscales small text images (< 1000px wide and < 1000px high) 2× to improve OCR character separation.
  */
