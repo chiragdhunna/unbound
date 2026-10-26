@@ -344,6 +344,12 @@ export function AppShell() {
     if (files.length) {
       event.preventDefault()
       await handleFiles(files)
+      return
+    }
+    const text = event.clipboardData.getData('text')?.trim()
+    if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+      event.preventDefault()
+      await handleFetchUrl(text)
     }
   }
 
@@ -354,6 +360,12 @@ export function AppShell() {
       return
     }
     const file = currentJob.file
+    if (!file) {
+      if (currentJob.name.startsWith('http://') || currentJob.name.startsWith('https://')) {
+        return retryUrlJob(currentJob)
+      }
+      return
+    }
 
     const attemptId = currentJob.attemptId + 1
     setJobs((previous) =>
@@ -425,6 +437,170 @@ export function AppShell() {
     }
   }
 
+  const retryUrlJob = async (currentJob: Job) => {
+    const jobId = currentJob.id
+    const attemptId = currentJob.attemptId + 1
+
+    setJobs((previous) =>
+      previous.map((j) =>
+        j.id === jobId
+          ? { ...j, status: 'converting' as JobStatus, error: null, attemptId, progress: undefined }
+          : j
+      )
+    )
+
+    const controller = new AbortController()
+    abortControllersRef.current.set(jobId, controller)
+
+    try {
+      const { fetchUrlToMarkdown } = await import('../converters/url')
+      const result = await fetchUrlToMarkdown(currentJob.name, {
+        signal: controller.signal,
+        onProgress: (percent) => {
+          setJobs((previous) =>
+            previous.map((j) =>
+              j.id === jobId && j.attemptId === attemptId
+                ? { ...j, progress: { phase: 'fetching', current: percent, total: 100, percent } }
+                : j
+            )
+          )
+        }
+      })
+
+      const displayOutput =
+        settings.outputMode === 'markdown'
+          ? result.markdown
+          : markdownToPlain(result.markdown)
+
+      setJobs((previous) =>
+        previous.map((j) =>
+          j.id === jobId && j.attemptId === attemptId
+            ? {
+                ...j,
+                status: 'done',
+                output: displayOutput,
+                rawMarkdown: result.markdown,
+                warnings: result.warnings.map((w) => w.message),
+                warningCodes: result.warnings.map((w) => w.code),
+                error: null,
+                progress: undefined
+              }
+            : j
+        )
+      )
+    } catch (error) {
+      const message = formatError(error)
+      setJobs((previous) =>
+        previous.map((j) =>
+          j.id === jobId && j.attemptId === attemptId
+            ? {
+                ...j,
+                status: 'error',
+                error: message,
+                warnings: [],
+                warningCodes: [],
+                rawMarkdown: '',
+                output: '',
+                progress: undefined
+              }
+            : j
+        )
+      )
+    } finally {
+      abortControllersRef.current.delete(jobId)
+    }
+  }
+
+  const handleFetchUrl = async (url: string) => {
+    const jobId = `url-${Math.random().toString(36).slice(2, 9)}-${Date.now()}`
+    const attemptId = 0
+
+    const newJob: Job = {
+      id: jobId,
+      name: url,
+      output: '',
+      rawMarkdown: '',
+      warnings: [],
+      warningCodes: [],
+      error: null,
+      status: 'converting',
+      size: 0,
+      attemptId
+    }
+
+    setJobs((previous) => [...previous, newJob])
+    setSelectedJobId(jobId)
+
+    const controller = new AbortController()
+    abortControllersRef.current.set(jobId, controller)
+
+    try {
+      const { fetchUrlToMarkdown } = await import('../converters/url')
+      const result = await fetchUrlToMarkdown(url, {
+        signal: controller.signal,
+        onProgress: (percent) => {
+          setJobs((previous) =>
+            previous.map((j) =>
+              j.id === jobId && j.attemptId === attemptId
+                ? {
+                    ...j,
+                    progress: {
+                      phase: 'fetching',
+                      current: percent,
+                      total: 100,
+                      percent
+                    }
+                  }
+                : j
+            )
+          )
+        }
+      })
+
+      const displayOutput =
+        settings.outputMode === 'markdown'
+          ? result.markdown
+          : markdownToPlain(result.markdown)
+
+      setJobs((previous) =>
+        previous.map((j) =>
+          j.id === jobId && j.attemptId === attemptId
+            ? {
+                ...j,
+                status: 'done',
+                output: displayOutput,
+                rawMarkdown: result.markdown,
+                warnings: result.warnings.map((w) => w.message),
+                warningCodes: result.warnings.map((w) => w.code),
+                error: null,
+                progress: undefined
+              }
+            : j
+        )
+      )
+    } catch (error) {
+      const message = formatError(error)
+      setJobs((previous) =>
+        previous.map((j) =>
+          j.id === jobId && j.attemptId === attemptId
+            ? {
+                ...j,
+                status: 'error',
+                error: message,
+                warnings: [],
+                warningCodes: [],
+                rawMarkdown: '',
+                output: '',
+                progress: undefined
+              }
+            : j
+        )
+      )
+    } finally {
+      abortControllersRef.current.delete(jobId)
+    }
+  }
+
   const runOcrOnJob = async (job: Job) => {
     const jobId = job.id
     const currentJob = jobs.find((j) => j.id === jobId)
@@ -432,6 +608,7 @@ export function AppShell() {
       return
     }
     const file = currentJob.file
+    if (!file) return
 
     const attemptId = currentJob.attemptId + 1
     setJobs((previous) =>
@@ -600,6 +777,7 @@ export function AppShell() {
           onDrop={onDrop}
           onPaste={onPaste}
           onInputChange={onInputChange}
+          onFetchUrl={handleFetchUrl}
           fileInputRef={fileInputRef}
           folderInputRef={folderInputRef}
         />

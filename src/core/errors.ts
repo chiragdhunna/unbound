@@ -61,7 +61,15 @@ export class OcrFailedError extends Error {
   }
 }
 
+export class UrlFetchError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UrlFetchError'
+  }
+}
+
 export function errorMessage(error: unknown): string {
+  if (error instanceof UrlFetchError) return error.message
   if (error instanceof PasswordRequiredError) {
     if (error.message.includes('Save')) return error.message
     return `${error.message} Save the file without a password and try again.`

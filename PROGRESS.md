@@ -599,4 +599,31 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
 - Updated `docs/TRACEABILITY.md` row R014 to `✅`, verified passing with `node scripts/check-traceability.mjs`.
 - Updated `README.md` and `docs/ARCHITECTURE.md`.
 
+### 2026-10-26 — Task M8.3: Web Page / URL Fetching, CORS Guidance, and Optional Proxy Implementation
+
+- Implemented `src/converters/url.ts`:
+  - `buildFetchTargetUrl`: validates URL scheme (`http:` and `https:`), rejects unsupported schemes and invalid URLs with descriptive `UrlFetchError`.
+  - Supports optional proxy routing via `proxyUrl` argument or `import.meta.env.VITE_FETCH_PROXY_URL`.
+  - `injectBaseTag` and relative link/image rewriting in detached DOM: rewrites relative `href` and `src` attributes to absolute URLs using target page origin.
+  - Direct `fetch` with 15-second `AbortController` timeout and signal merging with user `AbortSignal`.
+  - Progress reporting through fetch (10%, 30%) and HTML parsing (30% to 100%) phases.
+  - Actionable CORS / network error guidance: throws `UrlFetchError` detailing `"Unable to fetch URL directly due to browser cross-origin restrictions (CORS). To convert this page, save it as an HTML file (.html) or copy-paste its content directly."`.
+- Documented optional proxy in `docs/optional-proxy/README.md` and `docs/optional-proxy/worker.js`:
+  - Explains browser CORS boundaries and why Unbound maintains a 100% client-side zero-backend default.
+  - Provides a self-hostable Cloudflare Worker sample proxy implementation with origin filtering and security guidance.
+- UI Integration in `src/app/components/DropZone.tsx` and `src/app/AppShell.tsx`:
+  - Added "Fetch URL" action button in DropZone revealing URL input form without disrupting single-textbox role queries.
+  - Wired `onPaste` in AppShell to detect pasted `http://` and `https://` URLs automatically and trigger URL conversion.
+  - Lazy-loaded `fetchUrlToMarkdown` via dynamic `import('../converters/url')` in `AppShell.tsx`, keeping initial JS gzip size at 71,542 B (well within 256,000 B budget) and lazy chunk count at 24.
+- Added comprehensive unit tests in `tests/unit/converters/url.test.ts` (15 tests, 100% line coverage on `src/converters/url.ts`, global line coverage 95.58%).
+- Added E2E tests in `tests/e2e/url.spec.ts` testing both successful same-origin URL fetch with link resolution and CORS-blocked URL with actionable guidance and retry action. Ran 20/20 repeat passes on Chromium and Mobile Chromium with 0 retries.
+- Verified 4 mutation tests on URL logic:
+  1. Protocol check altered: caught by `throws UrlFetchError on unsupported protocols`.
+  2. Base tag injection bypassed: caught by `injects base tag into head when head is present` and `prepends base tag when head is absent`.
+  3. Actionable CORS error guidance altered: caught by `throws UrlFetchError with actionable CORS guidance on network failure`.
+  4. 15-second timeout check altered: caught by `throws UrlFetchError on timeout`.
+- Updated `docs/TRACEABILITY.md` row R014 with URL unit and E2E test mappings, passing `node scripts/check-traceability.mjs`.
+- Updated `README.md` and `docs/ARCHITECTURE.md`.
+
+
 

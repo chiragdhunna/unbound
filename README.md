@@ -51,6 +51,7 @@ Unbound detects file types via **magic bytes, MIME type, and extension** (`src/c
 | **CSV / TSV** | `.csv`, `.tsv` | Custom RFC-4180 parser | Sniffs delimiters (`,`, `;`, `\t`), strips BOMs, preserves exact literal cell text (leading zeros, exponent notation, quoted spacing). |
 | **Rich Text (RTF)** | `.rtf` | Zero-dependency streaming tokenizer | Tokenizes control words and groups; decodes Unicode (`\uN`) and Windows-1252 hex (`\'hh`); maps `\b`, `\i`, `\bullet`, `\par`; skips non-text destinations (`\fonttbl`, `\colortbl`, `\pict`, metadata); emits clean Markdown. |
 | **HTML** | `.html`, `.htm` | Inert DOM + Mozilla Readability + Turndown | Safely parses detached DOM via `DOMParser` (scripts never run); extracts article title, byline, and body via `@mozilla/readability`; falls back to cleaned `<body>` with boilerplate stripped (`<nav>`, `<header>`, `<footer>`, `<aside>`); renders GFM tables and code blocks. |
+| **Web Page / URL** | `http://`, `https://` | Fetch + Inert Readability + Turndown | Fetches web pages directly with 15 s timeout and resolves relative links; if blocked by browser cross-origin restrictions (CORS), provides clear guidance to save as `.html` or paste directly. Optional proxy instructions in `docs/optional-proxy/`. |
 | **DOCX** | `.docx` | Mammoth.js + Turndown | Converts headings, lists, tables, and links to markdown; counts and warns about omitted embedded images. |
 | **PowerPoint** | `.pptx` | JSZip + fast-xml-parser | Preserves presentation slide order (`sldIdLst`), titles (`###`), nested bullet levels (`-`), tables (GFM), speaker notes (`**Notes:**`), hidden slides (`## Slide N (hidden)`), and warns about omitted images and charts (`PPTX_NON_TEXT_OMITTED`). |
 | **XLSX / XLS / XLSM** | `.xlsx`, `.xls`, `.xlsm` | Vendored SheetJS (0.20.3) | Emits `## Sheet: <name>` sections, GFM tables, ISO formatted dates, replicates merged top-left cells, and flags hidden sheets. |
@@ -64,6 +65,7 @@ When an unsupported or restricted file is uploaded, Unbound throws a typed error
 
 | File Type / Condition | Error Category | Actionable Error Message |
 |:----------------------|:---------------|:-------------------------|
+| **Cross-Origin URL (CORS Blocked)** | `UrlFetchError` | `"Unable to fetch URL directly due to browser cross-origin restrictions (CORS). To convert this page, save it as an HTML file (.html) or copy-paste its content directly."` |
 | **Legacy PowerPoint (`.ppt`, OLE2)** | `LegacyDocError` | `"Legacy .ppt files are not supported. Save as .pptx and try again."` |
 | **Password-Protected PPTX** | `PasswordRequiredError` | `"This PowerPoint is password-protected. Save a copy without a password and try again."` |
 | **EPUB / ZIP** | `UnsupportedFormatError` | `"Unsupported format for now (<kind>). Supported: txt, md, json, xml, code, pdf, docx, pptx, rtf, html, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files."` |

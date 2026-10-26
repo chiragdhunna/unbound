@@ -205,6 +205,31 @@ h1 {
   justify-content: center;
 }
 
+.url-fetch-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 460px;
+  margin-top: var(--space-3);
+}
+
+.url-fetch-input {
+  flex: 1;
+  background: var(--surface-1);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  outline: none;
+}
+
+.url-fetch-input:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
+}
+
 /* ==========================================================================
    Buttons & Interactive Elements
    ========================================================================== */
