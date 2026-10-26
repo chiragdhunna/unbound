@@ -624,6 +624,23 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   4. 15-second timeout check altered: caught by `throws UrlFetchError on timeout`.
 - Updated `docs/TRACEABILITY.md` row R014 with URL unit and E2E test mappings, passing `node scripts/check-traceability.mjs`.
 - Updated `README.md` and `docs/ARCHITECTURE.md`.
+- Remote CI Verification: Commit `eaaf5e1` verified on GitHub Actions run `40360228009` (`conclusion: success`, job `verify`: success).
+
+### 2026-10-26 — Task M8.4: Milestone 8 Completion, Audit, and Close-Out
+
+- **Scope Completed:** Milestone 8 (P1 formats: RTF, HTML file, URL with CORS guidance and optional proxy sample) is functionally complete and verified:
+  - **M8.1 RTF:** Custom zero-dependency tokenizer in `src/converters/rtf.ts` handling formatting control words, destination skipping, signed Unicode escapes, Windows-1252 hex decoding, unclosed group recovery. 19 unit tests (96.35% line coverage) and E2E test in `tests/e2e/rtf.spec.ts`. Traceability row R013: ✅.
+  - **M8.2 HTML:** Detached inert DOM parsing in `src/converters/html.ts` via `DOMParser`, `@mozilla/readability@0.6.0`, boilerplate tag stripping, Turndown GFM tables and code blocks, title deduplication, clean bylines. 11 unit tests (90.12% line coverage) and E2E test in `tests/e2e/html.spec.ts`. Traceability row R014: ✅.
+  - **M8.3 URL & CORS Guidance:** Direct client-side fetch in `src/converters/url.ts` with 15 s `AbortController` timeout, detached DOM `<base>` link/image resolution, actionable CORS guidance, optional proxy documentation in `docs/optional-proxy/`. UI support via "Fetch URL" button and automatic pasted URL detection. 15 unit tests (100% line coverage) and E2E tests in `tests/e2e/url.spec.ts`. Traceability row R014: ✅.
+- **Architectural & Quality Gates:**
+  - **Zero Network Egress for Local Files:** Conversions remain 100% client-side with zero external network requests.
+  - **Strict CSP:** Unchanged across `index.html`, `_headers`, and `vercel.json` (`connect-src 'self'`).
+  - **Bundle Budget:** Initial JS bundle is 71,534 bytes gzip (well within the 256,000 bytes budget; 24 lazy chunks).
+  - **Coverage:** Global line coverage is 95.58% (≥ 85% requirement; converters: `rtf.ts` 96.35%, `html.ts` 90.12%, `url.ts` 100%). Total unit tests: 355 passing across 36 files.
+  - **E2E & Accessibility:** 92 Playwright E2E tests pass across Chromium and Mobile Chromium, with full CI suite passing on Mobile WebKit. Zero axe accessibility violations.
+  - **Traceability:** All 63 rows verified via `node scripts/check-traceability.mjs`.
+  - **Third-Party Notices:** Updated via `scripts/generate-notices.mjs` including `@mozilla/readability@0.6.0` (Apache-2.0).
+
 
 
 
