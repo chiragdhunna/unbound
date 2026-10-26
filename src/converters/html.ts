@@ -28,6 +28,12 @@ export function createTurndown(): TurndownService {
     codeBlockStyle: 'fenced'
   })
   service.use(gfm)
+  service.addRule('stripJavascriptLinks', {
+    filter: (node) =>
+      node.nodeName === 'A' &&
+      /^\s*javascript:/i.test(node.getAttribute('href') || ''),
+    replacement: (content) => content
+  })
   return service
 }
 
@@ -72,6 +78,14 @@ export function parseHtmlToMarkdown(
   for (const tag of tagsToRemove) {
     doc.querySelectorAll(tag).forEach((el) => el.remove())
   }
+
+  // Strip javascript: links to plain text per PLAN §7.8
+  doc.querySelectorAll('a').forEach((el) => {
+    const href = el.getAttribute('href') || ''
+    if (/^\s*javascript:/i.test(href)) {
+      el.removeAttribute('href')
+    }
+  })
 
   try {
     const clonedDoc = doc.cloneNode(true) as Document

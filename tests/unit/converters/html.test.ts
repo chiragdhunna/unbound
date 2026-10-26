@@ -173,4 +173,28 @@ describe('htmlConverter and parseHtmlToMarkdown', () => {
     expect(result.markdown).toContain('Spec Header')
     expect(result.markdown).toContain('Paragraph text.')
   })
+
+  it('strips javascript: links to plain text per PLAN §7.8', () => {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Link Security Test</title></head>
+        <body>
+          <article>
+            <h1>Link Security Test</h1>
+            <p>Here is a <a href="javascript:alert('pwned')">malicious link</a> and a <a href="  JAVASCRIPT:void(0)">whitespace upper link</a>.</p>
+            <p>Here is a <a href="https://example.com/safe">safe link</a> for comparison.</p>
+          </article>
+        </body>
+      </html>
+    `
+    const { markdown } = parseHtmlToMarkdown(html)
+    expect(markdown).toContain('malicious link')
+    expect(markdown).toContain('whitespace upper link')
+    expect(markdown).toContain('[safe link](https://example.com/safe)')
+    expect(markdown).not.toContain('javascript:')
+    expect(markdown).not.toContain('JAVASCRIPT:')
+    expect(markdown).not.toContain('[malicious link]')
+    expect(markdown).not.toContain('[whitespace upper link]')
+  })
 })
