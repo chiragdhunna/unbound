@@ -39,9 +39,8 @@ test('self-hosted OCR recognizes text in the page with zero external requests', 
     }
   })
   page.on('console', (message) => {
-    // The app has no /favicon.ico (it ships favicon.svg); that 404 is unrelated to OCR.
     const source = new URL(message.location().url || pageOrigin).pathname
-    if (message.type() === 'error' && source !== '/favicon.ico') {
+    if (message.type() === 'error') {
       consoleErrors.push(`${message.text()} @ ${source}`)
     }
   })

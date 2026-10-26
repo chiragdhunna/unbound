@@ -224,7 +224,7 @@ test('converts a scanned PDF using self-hosted OCR with zero external requests',
   })
   page.on('console', (message) => {
     const source = new URL(message.location().url || pageOrigin).pathname
-    if (message.type() === 'error' && source !== '/favicon.ico') {
+    if (message.type() === 'error') {
       consoleErrors.push(`${message.text()} @ ${source}`)
     }
   })
@@ -304,8 +304,7 @@ test('cancels OCR conversion in under 1 second', async ({ page, baseURL }) => {
     }
   })
   page.on('console', (message) => {
-    const source = new URL(message.location().url || pageOrigin).pathname
-    if (message.type() === 'error' && source !== '/favicon.ico') {
+    if (message.type() === 'error') {
       consoleErrors.push(message.text())
     }
   })

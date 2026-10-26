@@ -70,7 +70,7 @@ test('uploads a generated image and renders recognized OCR text in the output pa
   page.on('console', (message) => {
     const source = new URL(message.location().url || pageOrigin).pathname
     if (
-      (message.type() === 'error' && source !== '/favicon.ico') ||
+      message.type() === 'error' ||
       message.text().includes('Content-Security-Policy')
     ) {
       consoleErrors.push(`${message.text()} @ ${source}`)
