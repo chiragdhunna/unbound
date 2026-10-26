@@ -181,6 +181,8 @@ Unbound features a terminal-inspired interface built on CSS custom properties (`
 ![Active OCR Progress Bar and Cancel Action](docs/screenshots/ocr-progress.png)
 <!-- slide -->
 ![Sticky Mobile Copy Button on Narrow Viewports](docs/screenshots/mobile-copy.png)
+<!-- slide -->
+![Mobile Light Theme Home Screen](docs/screenshots/mobile-light.png)
 ```
 
 - **Hero DropZone:** Prominent upload target with format tags, file picker, and folder upload support.
