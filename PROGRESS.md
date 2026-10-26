@@ -504,3 +504,8 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - `jszip` (`3.10.2`) and `fast-xml-parser` (`5.11.2`) are correctly in `dependencies` (runtime converter engine).
   - `pptxgenjs` (`4.0.1`) is correctly in `devDependencies` (test-fixture generator only).
   - `grep -rn "pptxgenjs" src/` returned 0 matches, confirming zero runtime leakage into production chunks.
+
+### 2026-10-26 — Phase B Close-Out: C0.3 Third-Party Notices Regeneration
+- Added `scripts/generate-notices.mjs` to deterministically regenerate `THIRD_PARTY_NOTICES.md` from installed production dependencies.
+- Verified inclusion of `fast-xml-parser` (MIT, Copyright (c) 2017 Amit Kumar Gupta) and `jszip` (MIT, Copyright (c) 2009-2016 Stuart Knightley et al.) with full license terms and copyright statements.
+- Verified 0 `/home/` absolute paths in generated notices.
