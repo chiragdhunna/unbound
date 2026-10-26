@@ -2,6 +2,28 @@
   "name": "unbound",
   "private": true,
   "version": "0.1.0",
+  "description": "Browser-only file-to-markdown converter for pasting into LLM chats",
+  "license": "MIT",
+  "author": "Chirag Dhunna",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chiragdhunna/unbound.git"
+  },
+  "homepage": "https://unbound-amber-eight.vercel.app/",
+  "bugs": {
+    "url": "https://github.com/chiragdhunna/unbound/issues"
+  },
+  "keywords": [
+    "markdown",
+    "converter",
+    "pdf",
+    "docx",
+    "xlsx",
+    "ocr",
+    "tesseract",
+    "client-side",
+    "privacy"
+  ],
   "engines": {
     "node": ">=22"
   },

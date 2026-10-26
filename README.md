@@ -31,6 +31,7 @@
 - [Documentation](#documentation)
 - [Getting Started & Verification Gate](#getting-started--verification-gate)
 - [Tech Stack](#tech-stack)
+- [License](#license)
 
 ---
 
@@ -272,6 +273,14 @@ node scripts/check-traceability.mjs
 | **Spreadsheet Parsing** | SheetJS (0.20.3) | Vendored tarball parsing `.xlsx`, `.xls`, `.xlsm` workbooks. |
 | **Markdown Conversion**| Turndown + GFM plugin | Clean HTML-to-ATX markdown transformation. |
 | **Testing** | Vitest & Playwright | Fast unit tests with V8 coverage; cross-browser E2E testing with `axe-core`. |
+
+---
+
+## License
+
+Unbound is open-source software licensed under the [MIT License](LICENSE).
+
+Third-party libraries, WASM binaries, and fonts used by Unbound are distributed under their respective permissive open-source licenses (MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, SIL OFL-1.1). Complete license texts and attributions are detailed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ---
 
