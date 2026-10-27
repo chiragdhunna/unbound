@@ -63,7 +63,13 @@ export class OcrFailedError extends Error {
 
 export function errorMessage(error: unknown): string {
   if (error instanceof PasswordRequiredError) {
-    if (error.message.includes('Save')) return error.message
+    if (
+      error.message.includes('Save') ||
+      error.message.includes("can't be converted") ||
+      error.message.includes('DRM')
+    ) {
+      return error.message
+    }
     return `${error.message} Save the file without a password and try again.`
   }
   if (error instanceof LegacyDocError) {

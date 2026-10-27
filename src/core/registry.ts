@@ -62,6 +62,10 @@ const registry: Partial<
   image: () =>
     import('../converters/image').then((module) => ({
       converter: module.imageConverter
+    })),
+  epub: () =>
+    import('../converters/epub').then((module) => ({
+      converter: module.epubConverter
     }))
 }
 

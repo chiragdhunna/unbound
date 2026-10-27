@@ -16,7 +16,8 @@ const supportedKinds = new Set([
   'xlsx',
   'csv',
   'pdf',
-  'image'
+  'image',
+  'epub'
 ])
 
 async function readFileBytes(file: File): Promise<ArrayBuffer> {
