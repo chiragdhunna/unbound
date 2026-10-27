@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { isJunkPath, JUNK_PATTERNS } from '../../../src/core/junk'
+import {
+  isJunkPath,
+  JUNK_PATTERNS,
+  getFileDisplayName,
+  filterFolderFiles,
+  FOLDER_MAX_FILES
+} from '../../../src/core/junk'
 
 describe('isJunkPath and JUNK_PATTERNS', () => {
   it('exports expected junk patterns', () => {
@@ -38,5 +44,55 @@ describe('isJunkPath and JUNK_PATTERNS', () => {
     expect(isJunkPath('docs/guide.pdf')).toBe(false)
     expect(isJunkPath('nested/folder/notes.docx')).toBe(false)
     expect(isJunkPath('data/table.xlsx')).toBe(false)
+  })
+
+  describe('getFileDisplayName and filterFolderFiles helpers', () => {
+    it('returns webkitRelativePath when present, falling back to name', () => {
+      expect(
+        getFileDisplayName({
+          name: 'doc.txt',
+          webkitRelativePath: 'myfolder/sub/doc.txt'
+        })
+      ).toBe('myfolder/sub/doc.txt')
+      expect(
+        getFileDisplayName({
+          name: 'doc.txt',
+          webkitRelativePath: ''
+        })
+      ).toBe('doc.txt')
+      expect(
+        getFileDisplayName({
+          name: 'doc.txt'
+        })
+      ).toBe('doc.txt')
+    })
+
+    it('filters junk files from folder file list and counts skipped junk', () => {
+      const files = [
+        { name: 'doc.txt', webkitRelativePath: 'project/doc.txt' },
+        { name: '.DS_Store', webkitRelativePath: 'project/.DS_Store' },
+        { name: 'config.pyc', webkitRelativePath: 'project/__pycache__/config.pyc' },
+        { name: 'readme.md', webkitRelativePath: 'project/readme.md' }
+      ]
+      const result = filterFolderFiles(files)
+      expect(result.accepted).toHaveLength(2)
+      expect(result.skippedJunkCount).toBe(2)
+      expect(result.limitReached).toBe(false)
+      expect(result.accepted.map((f) => f.name)).toEqual(['doc.txt', 'readme.md'])
+    })
+
+    it('caps at maxFiles and sets limitReached to true', () => {
+      const files = Array.from({ length: 15 }, (_, i) => ({
+        name: `file${i}.txt`,
+        webkitRelativePath: `folder/file${i}.txt`
+      }))
+      const result = filterFolderFiles(files, 10)
+      expect(result.accepted).toHaveLength(10)
+      expect(result.limitReached).toBe(true)
+    })
+
+    it('exports FOLDER_MAX_FILES constant as 500', () => {
+      expect(FOLDER_MAX_FILES).toBe(500)
+    })
   })
 })

@@ -57,10 +57,26 @@ Unbound detects file types via **magic bytes, MIME type, and extension** (`src/c
 | **PDF (Text)** | `.pdf` | `pdfjs-dist` legacy build | Strips running headers/footers (≥ 60% pages) and bare page numbers; classifies font sizes into `#`, `##`, `###` headings; de-hyphenates words across line breaks. |
 | **PDF (Scanned & Mixed)** | `.pdf` | Per-page OCR routing | Evaluates each page: pages with `< 25` characters and graphics operators route automatically to self-hosted OCR. |
 | **Images** | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif` | Self-hosted Tesseract.js | Decoded locally via Canvas/ImageBitmap; scaled to bounded dimensions; OCR recognized to structured text. |
+| **EPUB** | `.epub` | JSZip + fast-xml-parser + Turndown | Follows OPF spine order (never manifest or alphabetical); extracts `dc:title`/`dc:creator` metadata; shifts chapter heading hierarchy down one level (`##` per chapter); warns on omitted images (`EPUB_IMAGES_OMITTED`). |
+| **ZIP Archives** | `.zip` | JSZip + recursive sub-pipeline | Recurses nested archives up to depth 3; sanitizes paths against zip-slip; generates an indented ASCII file tree (`## Files`); converts each supported entry via `# File: <path>` boundaries; isolates per-file failures (`> ⚠ <path>: <reason>`). |
+| **Folders** | Directory drop / file picker | `webkitdirectory` + pipeline | Labels files by `webkitRelativePath` to disambiguate identical basenames across directories; filters junk and developer artifacts; supports Separate or Combined batch modes. |
 
 ### Converting Web Pages
 
 To convert a web page or online article, save it locally in your browser as an HTML file (`.html` / `.htm`) and drop it into Unbound. Unbound makes **zero runtime network requests by design**, and its strict Content Security Policy (`connect-src 'self'`) prohibits outbound network traffic to guarantee complete privacy. All extraction runs 100% offline in your browser.
+
+### Archive & Folder Limits & Safety Bounds
+
+To ensure responsive in-browser performance and prevent decompression bombs or tab freezing, archives and directory uploads enforce strict resource bounds:
+
+| Limit | Value | Scope | Action on Limit |
+|:------|:------|:------|:----------------|
+| **Max Converted Files** | 500 entries | ZIP & Folder | Returns partial conversion of processed files + `ZIP_LIMIT_REACHED` warning / UI limit banner |
+| **Max Uncompressed Bytes** | 200 MB | ZIP | Checked on declared sizes before inflation and tracked during inflation; stops cleanly |
+| **Max Per-File Bytes** | 50 MB | ZIP | Skips oversized entry + emits warning; continues converting remainder |
+| **Max Output Characters** | 2,000,000 chars | ZIP | Caps output length to avoid browser DOM lockup; returns partial output |
+| **Max Archive Recursion** | 3 levels | ZIP | Recurses into nested `.zip` archives up to depth 3; deeper archives skipped |
+| **Junk / Artifact Filter** | Automatic | ZIP & Folder | Filters `__MACOSX`, `.DS_Store`, `Thumbs.db`, `.git`, `node_modules`, `.idea`, `.vscode`, `dist`, `build`, `__pycache__`, `*.pyc`, `*.class`, `*.lock`, and lockfiles |
 
 ### Unsupported File Types & Explicit Error Messages
 
@@ -70,7 +86,9 @@ When an unsupported or restricted file is uploaded, Unbound throws a typed error
 |:----------------------|:---------------|:-------------------------|
 | **Legacy PowerPoint (`.ppt`, OLE2)** | `LegacyDocError` | `"Legacy .ppt files are not supported. Save as .pptx and try again."` |
 | **Password-Protected PPTX** | `PasswordRequiredError` | `"This PowerPoint is password-protected. Save a copy without a password and try again."` |
-| **EPUB / ZIP** | `UnsupportedFormatError` | `"Unsupported format for now (<kind>). Supported: txt, md, json, xml, code, pdf, docx, pptx, rtf, html, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files."` |
+| **DRM-Protected EPUB** | `PasswordRequiredError` | `"This EPUB is DRM-protected and can't be converted."` |
+| **Password-Protected ZIP** | `PasswordRequiredError` | `"This ZIP is password-protected. Extract it with a password and drop the files instead."` |
+| **Unsupported format** | `UnsupportedFormatError` | `"Unsupported format for now (<kind>). Supported: txt, md, json, xml, code, pdf, docx, pptx, rtf, html, epub, zip, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files."` |
 | **Legacy DOC (`.doc`, OLE2)** | `LegacyDocError` | `"Legacy .doc files are not supported. Please save as .docx and try again."` |
 | **Legacy XLS (`.xls`, OLE2)** | `LegacyDocError` | `"Legacy .xls format is not supported. Please save as .xlsx or .csv."` |
 | **Password-Protected DOCX** | `PasswordRequiredError` | `"This file is password-protected. Please remove the password and try again."` |

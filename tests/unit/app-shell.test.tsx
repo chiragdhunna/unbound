@@ -97,4 +97,39 @@ describe('App shell', () => {
       )
     })
   })
+
+  it('handles folder upload by filtering junk and labeling duplicate basenames with webkitRelativePath', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    const folderInput = screen.getByLabelText('Choose folder')
+
+    const fileA = new File(['alpha content'], 'doc.txt', { type: 'text/plain' })
+    Object.defineProperty(fileA, 'webkitRelativePath', {
+      value: 'folderA/doc.txt'
+    })
+
+    const fileB = new File(['beta content'], 'doc.txt', { type: 'text/plain' })
+    Object.defineProperty(fileB, 'webkitRelativePath', {
+      value: 'folderB/doc.txt'
+    })
+
+    const junkFile = new File(['junk'], '.DS_Store', { type: 'text/plain' })
+    Object.defineProperty(junkFile, 'webkitRelativePath', {
+      value: 'folderA/.DS_Store'
+    })
+
+    await user.upload(folderInput, [fileA, fileB, junkFile])
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /folderA\/doc\.txt/ })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /folderB\/doc\.txt/ })
+      ).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole('button', { name: /\.DS_Store/ })).not.toBeInTheDocument()
+  })
 })

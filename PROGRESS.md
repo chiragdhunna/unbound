@@ -655,6 +655,28 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - Appended ADR-11 to `DECISIONS.md`.
   - Updated `docs/TRACEABILITY.md` row R014 with HTML unit and E2E test names, noting that URL fetch is deliberately not shipped to preserve the CSP privacy guarantee.
 
+### 2026-10-27 — Phase D (Milestone 9: EPUB, ZIP Archives, and Folder Ingestion)
+
+- **Completed Scope (M9):**
+  - **D1 EPUB Converter (`src/converters/epub.ts`, commit `38f4661`):** Client-side EPUB parser leveraging JSZip + fast-xml-parser and Turndown. Follows OPF package document spine order (`<spine><itemref idref="...">`) for chapters, extracts Dublin Core metadata (`dc:title`, `dc:creator`), shifts chapter heading hierarchy down one level (`## Chapter N`), detects DRM encryption (`PasswordRequiredError`), emits `EPUB_IMAGES_OMITTED` warnings, and enforces zip-bomb uncompressed size caps (20 MB per part, 200 MB total). 12 unit tests (88.7% line coverage) and E2E test in `tests/e2e/epub.spec.ts`. Traceability row R016: ✅.
+  - **D2 ZIP Archives (`src/converters/zip.ts`):** Client-side archive converter using JSZip and recursive sub-pipeline delegation (`convertFile`, `loadConverter`, `detectFileKind`). Produces an indented ASCII file tree (`## Files`) followed by `# File: <path>` markdown sections. Recurses into nested `.zip` archives up to depth 3; sanitizes paths against zip-slip directory traversal; isolates per-file failures with `> ⚠ <path>: <reason>` and `ZIP_ENTRIES_FAILED` warnings; enforces safety bounds (`ZIP_MAX_ENTRIES = 500`, `ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES = 200 MB`, `ZIP_MAX_FILE_BYTES = 50 MB`, `ZIP_MAX_OUTPUT_CHARS = 2,000,000`) returning partial results + `ZIP_LIMIT_REACHED` warning; detects password-protected entries via general-purpose bit 0 throwing `PasswordRequiredError`. 19 unit tests (96.42% line coverage) and E2E test in `tests/e2e/zip.spec.ts`. Traceability row R017: ✅.
+  - **D3 Folder Input (`src/app/AppShell.tsx`, `src/core/junk.ts`):** Folder selection via `webkitdirectory` and drag-and-drop. Labels files by `webkitRelativePath` to disambiguate identical filenames across subdirectories (`subA/doc.txt` vs `subB/doc.txt`); filters junk files and developer artifacts (`__MACOSX`, `.DS_Store`, `Thumbs.db`, `.git`, `node_modules`, `.idea`, `.vscode`, `dist`, `build`, `__pycache__`, `*.pyc`, `*.class`, `*.lock`, and lockfiles) without pulling the zip lazy chunk into the main bundle; respects Separate/Combined toggle; caps at `FOLDER_MAX_FILES = 500` displaying an accessible UI warning callout (`role="alert"`). 8 unit tests in `tests/unit/core/junk.test.ts`, unit test in `tests/unit/app-shell.test.tsx`, and E2E test in `tests/e2e/folder.spec.ts`.
+- **Mutations Verified:**
+  1. Break EPUB spine order: caught by `respects spine reading order even when manifest or files are ordered differently`.
+  2. Remove ZIP declared-size check: caught by `rejects declared-size zip-bomb entries before inflating`.
+  3. Remove junk filtering: caught by `filters out junk files and OS metadata` and `filters junk files from folder file list and counts skipped junk`.
+  4. Remove ZIP recursion depth limit: caught by `recurses into nested zip archives up to depth limit`.
+  5. Remove per-file failure isolation: caught by `isolates per-file failure without aborting archive conversion`.
+- **Quality & Performance Metrics:**
+  - Unit tests: 385 passed across 38 test files.
+  - Global line coverage: 94.98% (threshold 85%).
+  - New converter line coverage: `src/converters/zip.ts` at 96.42%, `src/converters/epub.ts` at 88.7%, `src/core/junk.ts` at 94.12%.
+  - Initial JS bundle gzip: 71,490 bytes (well under 256,000 byte budget).
+  - Lazy chunks: 28 chunks (all heavy archive/parsing logic in lazy chunks).
+  - Playwright E2E: Chromium and Mobile Chromium passing with 0 flakes, zero cross-origin requests, zero CSP violations, zero console errors.
+  - Traceability: 63 rows checked, 100% valid test references (`node scripts/check-traceability.mjs` exits 0).
+
+
 
 
 

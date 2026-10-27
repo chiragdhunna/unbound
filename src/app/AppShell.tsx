@@ -20,6 +20,12 @@ import { DropZone } from './components/DropZone'
 import { JobCard } from './components/JobCard'
 import { OptionsBar } from './components/OptionsBar'
 import { OutputPanel } from './components/OutputPanel'
+import { WarningIcon } from './components/WarningIcon'
+import {
+  filterFolderFiles,
+  FOLDER_MAX_FILES,
+  getFileDisplayName
+} from '../core/junk'
 import {
   type Job,
   type JobStatus,
@@ -99,6 +105,7 @@ export function AppShell() {
   const [toast, setToast] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [copyIndex, setCopyIndex] = useState(0)
+  const [limitWarning, setLimitWarning] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
@@ -220,31 +227,47 @@ export function AppShell() {
   }, [displayText, editMode, selectedJob])
 
   const handleFiles = async (incoming: FileList | File[]) => {
-    const fileList = Array.from(incoming)
-    if (!fileList.length) {
+    const rawList = Array.from(incoming)
+    if (!rawList.length) {
       return
     }
 
-    const createdJobs = fileList.map((file) => ({
-      id: `${file.name}-${Math.random()}-${Date.now()}`,
-      name: file.name,
-      output: '',
-      rawMarkdown: '',
-      warnings: [],
-      warningCodes: [],
-      error: null,
-      status: 'converting' as JobStatus,
-      size: file.size,
-      file,
-      attemptId: 0
-    }))
+    const { accepted, limitReached } = filterFolderFiles(rawList)
+    if (limitReached) {
+      setLimitWarning(
+        `Folder limit reached: only the first ${FOLDER_MAX_FILES} files are processed.`
+      )
+    } else {
+      setLimitWarning(null)
+    }
+
+    if (!accepted.length) {
+      return
+    }
+
+    const createdJobs = accepted.map((file) => {
+      const displayName = getFileDisplayName(file)
+      return {
+        id: `${displayName}-${Math.random()}-${Date.now()}`,
+        name: displayName,
+        output: '',
+        rawMarkdown: '',
+        warnings: [],
+        warningCodes: [],
+        error: null,
+        status: 'converting' as JobStatus,
+        size: file.size,
+        file,
+        attemptId: 0
+      }
+    })
 
     setJobs((previous) => [...previous, ...createdJobs])
     setSelectedJobId(createdJobs[0]?.id ?? null)
 
     // Process each file using its pre-created job ID
-    for (let index = 0; index < fileList.length; index++) {
-      const file = fileList[index]!
+    for (let index = 0; index < accepted.length; index++) {
+      const file = accepted[index]!
       const jobId = createdJobs[index]!.id
       const attemptId = createdJobs[index]!.attemptId // should be 0
 
@@ -609,6 +632,13 @@ export function AppShell() {
         />
 
         <OptionsBar settings={settings} setSettings={setSettings} />
+
+        {limitWarning ? (
+          <div className="warning-item limit-warning" role="alert">
+            <WarningIcon />
+            <span>{limitWarning}</span>
+          </div>
+        ) : null}
 
         {jobs.length > 0 ? (
           <ul className="job-list" aria-label="Conversion jobs">

@@ -323,3 +323,36 @@ Because `connect-src 'self'` blocks all cross-origin fetches at the browser plat
 2. **Reaffirm Zero-Network Local Conversion:** All conversions must remain 100% client-side and offline. To convert a web page, users simply save the page locally as an HTML file (`.html` / `.htm`) and drop it into Unbound. The client-side HTML converter (`src/converters/html.ts`) processes saved `.html` files completely locally through `@mozilla/readability` and Turndown with zero network requests.
 3. **Preserve Strict CSP:** The CSP directive `connect-src 'self'` remains strictly untouched and non-negotiable across `index.html`, `_headers`, and `vercel.json`.
 
+## 2026-10-27 — M9 Architecture: EPUB Spine Ordering, ZIP Archive Pipeline Reuse & Safety Bounds, Junk Filtering, and Folder Ingestion
+
+### Context
+Milestone 9 implements client-side conversion of `.epub` e-books, `.zip` archives of mixed files, and local folder uploads via `webkitdirectory`. These features involve composite multi-part inputs that require explicit policies on reading order, zip-bomb defense, junk file isolation, nested recursion, and browser memory safety.
+
+### Decision (EPUB Spine vs TOC Policy)
+1. **Spine Ordering as Single Source of Truth:** `src/converters/epub.ts` locates the OPF package document via `META-INF/container.xml` and traverses `<spine><itemref idref="...">` in exact document order. Chapters are never sorted by filename or manifest declaration order. The navigational TOC (`nav.xhtml` or `toc.ncx`) is consulted only as a fallback for chapter title labels when an XHTML document lacks internal headings; the TOC is never used to reorder chapters.
+2. **Heading Shift & DRM Detection:** Headings within each XHTML chapter shift down one level (`h1` becomes `##`, `h2` becomes `###`) under the chapter title header to maintain valid document outline hierarchy. DRM encryption (`META-INF/encryption.xml` or `rights.xml`) is detected before parsing and throws a typed `PasswordRequiredError` with the friendly message `"This EPUB is DRM-protected and can't be converted."`.
+3. **Safety Caps:** Enforces a 20 MB per-part and 200 MB total uncompressed size limit, with a 2,000 chapter count ceiling.
+
+### Decision (ZIP Archive Pipeline Reuse & Limits)
+1. **Pipeline Reuse (No Converter Forking):** `src/converters/zip.ts` lists archive entries using JSZip, sanitizes entry paths against zip-slip directory traversal, and converts each entry by building a standard `ConverterInput` and delegating to `detectFileKind` and `loadConverter`. Converters are never duplicated or forked.
+2. **Deterministic Golden Output Format:** Produces an indented ASCII file tree (`## Files`) of included paths and skipped file counts, followed by `# File: <relative-path>` markdown sections.
+3. **Per-File Failure Isolation:** Corrupt or password-protected files within an archive do not abort the entire conversion; they emit a `> ⚠ <path>: <friendly reason>` blockquote, record a `ZIP_ENTRIES_FAILED` warning, and continue processing subsequent entries.
+4. **Safety Limits and Rationale:**
+   - `ZIP_MAX_ENTRIES = 500`: limits total files converted to prevent memory exhaustion and browser tab freezing.
+   - `ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES = 200 * 1024 * 1024` (200 MB): checked on declared sizes in zip headers before inflation, and tracked cumulatively during inflation.
+   - `ZIP_MAX_FILE_BYTES = 50 * 1024 * 1024` (50 MB): individual oversized files are skipped with a warning while remaining files continue converting.
+   - `ZIP_MAX_OUTPUT_CHARS = 2_000_000`: caps generated markdown output length to prevent browser DOM lockups.
+   - `ZIP_MAX_RECURSION_DEPTH = 3`: recurses into nested `.zip` archives up to depth 3, cleanly preventing circular or infinite archive nesting.
+   - Any limit reached stops further processing cleanly and returns a partial result for processed files along with a `ZIP_LIMIT_REACHED` warning.
+5. **Sequential OCR Processing:** Embedded PDFs and images within archives that require OCR are processed strictly sequentially to avoid concurrent worker contention and memory spikes.
+
+### Decision (Junk Filtering in Lightweight Core Module)
+- OS metadata and developer build artifacts (`__MACOSX`, `.DS_Store`, `Thumbs.db`, `.git`, `node_modules`, `.idea`, `.vscode`, `dist`, `build`, `__pycache__`, `*.pyc`, `*.class`, `*.lock`, and lockfiles) are filtered via `src/core/junk.ts`.
+- Placing `isJunkPath`, `filterFolderFiles`, and `getFileDisplayName` in `src/core/junk.ts` ensures that folder upload filtering does not pull the heavy JSZip lazy chunk into the initial JavaScript bundle, maintaining the ~71 KB gzip initial bundle size (budget 256 KB).
+
+### Decision (Folder Ingestion & Relative Path Disambiguation)
+1. **Folder Upload via `webkitdirectory`:** Ingests folders via the existing "Choose folder" input and drag-and-drop.
+2. **Relative Path Labeling:** Files with `webkitRelativePath` are labeled by their full relative path (`folderA/doc.txt` vs `folderB/doc.txt`), allowing users and the UI to distinguish identical basenames in different directories.
+3. **Separate / Combined Output Support:** In Combined mode, `# File: <path>` headers display the relative path for each file. In Separate mode, each job card and output selection displays the relative path.
+4. **Resource Bounds & Visible UI Warning:** Capped at `FOLDER_MAX_FILES = 500`. Exceeding the limit displays a high-visibility accessible warning callout (`role="alert"`) in the UI rather than freezing the tab.
+

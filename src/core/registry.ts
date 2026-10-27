@@ -66,6 +66,10 @@ const registry: Partial<
   epub: () =>
     import('../converters/epub').then((module) => ({
       converter: module.epubConverter
+    })),
+  zip: () =>
+    import('../converters/zip').then((module) => ({
+      converter: module.zipConverter
     }))
 }
 

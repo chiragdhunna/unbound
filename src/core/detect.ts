@@ -246,7 +246,9 @@ export function detectFileKindWithWarnings(input: {
               ? 'html'
               : extension === 'epub'
                 ? 'epub'
-                : extension === 'xlsx' || extension === 'xls'
+                : extension === 'zip'
+                  ? 'zip'
+                  : extension === 'xlsx' || extension === 'xls'
                 ? 'xlsx'
                 : imageExtensions.has(extension)
                   ? 'image'

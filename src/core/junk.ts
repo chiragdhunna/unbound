@@ -35,3 +35,51 @@ export function isJunkPath(path: string): boolean {
   }
   return false
 }
+
+export const FOLDER_MAX_FILES = 500
+
+export function getFileDisplayName(file: {
+  name: string
+  webkitRelativePath?: string
+}): string {
+  if (file.webkitRelativePath && file.webkitRelativePath.trim() !== '') {
+    return file.webkitRelativePath.replace(/\\/g, '/')
+  }
+  return file.name
+}
+
+export interface FolderFilterResult<
+  T extends { name: string; webkitRelativePath?: string }
+> {
+  accepted: T[]
+  skippedJunkCount: number
+  limitReached: boolean
+}
+
+export function filterFolderFiles<
+  T extends { name: string; webkitRelativePath?: string }
+>(
+  files: Iterable<T> | ArrayLike<T>,
+  maxFiles: number = FOLDER_MAX_FILES
+): FolderFilterResult<T> {
+  const fileArray = Array.from(files)
+  const accepted: T[] = []
+  let skippedJunkCount = 0
+  let limitReached = false
+
+  for (const file of fileArray) {
+    const relativeOrName = getFileDisplayName(file)
+    if (isJunkPath(relativeOrName)) {
+      skippedJunkCount++
+      continue
+    }
+    if (accepted.length >= maxFiles) {
+      limitReached = true
+      break
+    }
+    accepted.push(file)
+  }
+
+  return { accepted, skippedJunkCount, limitReached }
+}
+

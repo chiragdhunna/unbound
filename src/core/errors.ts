@@ -65,6 +65,7 @@ export function errorMessage(error: unknown): string {
   if (error instanceof PasswordRequiredError) {
     if (
       error.message.includes('Save') ||
+      error.message.includes('Extract') ||
       error.message.includes("can't be converted") ||
       error.message.includes('DRM')
     ) {
