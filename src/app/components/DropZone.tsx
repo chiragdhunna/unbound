@@ -63,6 +63,12 @@ export function DropZone({
           type="button"
           className="btn-primary"
           onClick={() => fileInputRef.current?.click()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              fileInputRef.current?.click()
+            }
+          }}
         >
           Choose files
         </button>
@@ -70,6 +76,12 @@ export function DropZone({
           type="button"
           className="btn-secondary"
           onClick={() => folderInputRef.current?.click()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              folderInputRef.current?.click()
+            }
+          }}
         >
           Choose folder
         </button>

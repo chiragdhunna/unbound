@@ -393,3 +393,26 @@ Phase E addresses production hardening across edge cases (M10), accessibility, m
    - Enforces zero network calls outside `same-origin` or `data:` / `blob:`.
    - Enforces zero console errors and zero CSP violations.
    - Enforces clean `localStorage` storing only `unbound-settings-v1` with zero user content, tokens, or session IDs.
+
+
+## 2026-10-27 — ADR-13: Final Architecture & Production Readiness Sign-off (Phase F / M12)
+
+### Context
+Phase F represents the final milestone (M12) of the Unbound build plan. With all 21 document formats (P0, P1, P2), accessibility requirements (WCAG AA), responsive mobile targets (360×640, 390×844), edge cases, and performance budgets fully implemented, the project requires an authoritative architecture audit, final documentation alignment, long-term maintenance instructions, and completion sign-off.
+
+### Decision
+1. **Authoritative Final Audit (`docs/FINAL_AUDIT.md`):**
+   - Synthesized and recorded comprehensive evidence for all seven success criteria (S1–S7) and 12 edge cases from `docs/REQUIREMENTS.md`.
+   - Verified that 100% of requirement rows (63 of 63) in `docs/TRACEABILITY.md` point to existing, passing automated tests.
+   - Enforced all limits and code constants in documentation and living architecture records.
+2. **Offline Architecture & Privacy Verification:**
+   - Re-verified that Unbound makes zero network calls during conversion across all 10 format families (`tests/e2e/privacy.spec.ts`).
+   - Content Security Policy remains strictly enforced (`default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'`).
+   - URL fetching is permanently documented as unsupported by design, with guidance for users to save pages locally as `.html` files.
+3. **Bundle Budget & Lazy Chunking Conformance:**
+   - Initial JavaScript gzip bundle remains at ~71.7 KB (71,665 B), well within the 256,000 B budget.
+   - All 27 lazy-loaded chunks segregate heavy dependencies (`pdfjs-dist`, SheetJS, `tesseract.js`, Mammoth, `jszip`, `fast-xml-parser`, Readability, Turndown).
+4. **Maintenance & Hygiene Rules for Future Iterations:**
+   - Test suites must maintain zero skips (`it.skip`, `test.skip`, `test.todo`), zero `console.log` statements, and zero absolute local paths (`/home/`, `/Users/`, `C:\Users`).
+   - Any future dependency must be lazy-loaded, permissively licensed (MIT, Apache-2.0, BSD), and audited with `npm audit --omit=dev --audit-level=high`.
+   - `scripts/verify.sh` and CI workflows must never be loosened or weakened.

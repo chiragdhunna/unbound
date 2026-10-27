@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, Page } from '@playwright/test'
 
 const textFile = (name: string, content: string) => ({
   name,
@@ -6,12 +6,33 @@ const textFile = (name: string, content: string) => ({
   buffer: Buffer.from(content)
 })
 
+async function installClipboard(page: Page) {
+  await page.evaluate(() => {
+    const writes: string[] = []
+    ;(window as unknown as { __clipboardWrites: string[] }).__clipboardWrites = writes
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: (value: string) => {
+          writes.push(value)
+          return Promise.resolve()
+        }
+      },
+      configurable: true
+    })
+  })
+}
+
 test.describe('Keyboard-only flow & accessibility standards (E3)', () => {
   test('Tab onto DropZone, activates with Enter, reaches output, copies via keyboard, and preserves visible focus', async ({
     page
   }) => {
     await page.goto('/')
     await page.waitForSelector('h1')
+    await installClipboard(page)
+
+    // Ensure interactive button is rendered before initiating keyboard sequence
+    const chooseBtn = page.getByRole('button', { name: 'Choose files' })
+    await expect(chooseBtn).toBeVisible()
 
     // Initial page focus
     await page.locator('body').focus()
@@ -40,7 +61,7 @@ test.describe('Keyboard-only flow & accessibility standards (E3)', () => {
 
     // 3. Activate upload via keyboard Enter on Choose files
     const chooserPromise = page.waitForEvent('filechooser')
-    await page.keyboard.press('Enter')
+    await chooseBtn.press('Enter')
     const chooser = await chooserPromise
     await chooser.setFiles(textFile('keyboard-test.txt', 'Keyboard accessible text.'))
 

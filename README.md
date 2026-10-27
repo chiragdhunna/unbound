@@ -22,16 +22,30 @@
 ## Table of Contents
 
 - [Supported Formats](#supported-formats)
+- [How It Works](#how-it-works)
 - [How OCR Works](#how-ocr-works)
 - [Privacy & Security](#privacy--security)
 - [Supported Browsers](#supported-browsers)
 - [Limits & Performance](#limits--performance)
+- [Keyboard Navigation & Accessibility](#keyboard-navigation--accessibility)
+- [Mobile Experience](#mobile-experience)
 - [Design System & Interface](#design-system--interface)
 - [Known Limitations](#known-limitations)
 - [Documentation](#documentation)
 - [Getting Started & Verification Gate](#getting-started--verification-gate)
 - [Tech Stack](#tech-stack)
 - [License](#license)
+
+---
+
+## How It Works
+
+Unbound converts documents entirely inside your browser using client-side WebAssembly, Web Workers, and specialized parsing libraries:
+
+1. **Upload & Ingestion:** Drop files, select folders (via directory picker), or paste clipboard text. Files are ingested into browser memory as `ArrayBuffer` objects; no bytes are ever uploaded to a server or external service.
+2. **Type Detection:** Magic bytes and file headers are inspected (`src/core/detect.ts`) to determine the exact format, inspecting ZIP central directories to distinguish DOCX, PPTX, XLSX, and EPUB even if file extensions are missing or spoofed.
+3. **Lazy-Loaded Conversion:** The matching converter module is dynamically imported on demand (`src/core/registry.ts`). Scanned PDF pages and images route to self-hosted Tesseract.js WASM OCR running in a Web Worker.
+4. **Copy & Export:** Clean, ATX-formatted markdown with GFM tables and code blocks is rendered in the output panel. Copy directly to clipboard with one click (or auto-copy via quick-paste) or download as `.md` / `.txt`.
 
 ---
 
@@ -160,11 +174,16 @@ Unbound runs on modern evergreen browsers supporting ES2022, WebAssembly (`wasm-
 | Dimension | Measured Value | Implementation & Enforcement |
 |:----------|:---------------|:-----------------------------|
 | **Initial JS Bundle** | **~71.7 KB gzip** | Strictly enforced under 256,000 B budget (`scripts/check-bundle.mjs`). Heavy dependencies (pdfjs, SheetJS, tesseract.js) live in 27 lazy-loaded chunks. |
-| **Output Preview Cap** | **200,000 characters** | UI preview caps display at 200,000 chars to maintain 60fps rendering. The **Copy** and **Download** actions always operate on the full uncapped output. |
-| **Large Document Warning** | **300 pages** | Documents exceeding 300 pages display an advisory note. Page loops yield to the browser UI thread via macrotask yields (`setTimeout(0)`). |
-| **OCR Memory Ceiling** | **≤ 3000 px max edge** | Canvas buffers are capped at a 3000px long edge (~36 MB uncompressed RGBA) and zeroed out upon job completion. |
+| **Output Preview Cap** | **200,000 characters** | UI preview caps display at 200,000 chars (`MAX_PREVIEW_CHARS`) to maintain 60fps rendering. The **Copy** and **Download** actions always operate on the full uncapped output. |
+| **Large Document Warning** | **300 pages** | Documents exceeding 300 pages (`LARGE_PDF_PAGE_THRESHOLD`) display an advisory note. Page loops yield to the browser UI thread via macrotask yields (`setTimeout(0)`). |
+| **OCR Memory Ceiling** | **≤ 3000 px max edge** | Canvas buffers are capped at a 3000px long edge (`MAX_CANVAS_LONG_EDGE`, ~36 MB uncompressed RGBA) and zeroed out upon job completion. |
 | **Image Detection Bound** | **First 20 text pages** | Bounded via `MAX_TEXT_PAGES_FOR_IMAGE_DETECTION = 20`. Keeps operator list overhead to 0% for pages 21+. |
-| **Cancel Response Time** | **~18 ms in-page** | Worker termination occurs in `< 1` second on both desktop and mobile viewports. |
+| **Cancel Response Time** | **< 1 second** | Worker termination occurs in `< 1` second on both desktop and mobile viewports (`tesseractEngine.terminateWorker()`). |
+| **Archive Max Converted Files** | **500 entries** | Capped at 500 entries (`ZIP_MAX_CONVERTED_FILES = 500`, `FOLDER_MAX_FILES = 500`) to prevent tab freezing; returns partial output + warning. |
+| **Archive Max Total Size** | **200 MB uncompressed** | Enforced at 200 MB (`ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES = 200 * 1024 * 1024`) before inflation and tracked continuously. |
+| **Archive Max Per-File Size** | **50 MB** | Enforced at 50 MB (`ZIP_MAX_FILE_BYTES = 50 * 1024 * 1024`); skips oversized entries and continues archive processing. |
+| **Archive Max Output Length** | **2,000,000 chars** | Capped at 2,000,000 characters (`ZIP_MAX_OUTPUT_CHARS = 2_000_000`) to prevent memory exhaustion. |
+| **Archive Recursion Depth** | **3 nested levels** | Recurses nested `.zip` archives up to depth 3 (`ZIP_MAX_RECURSION_DEPTH = 3`). |
 
 ### Performance Benchmark Suite (Verified in `tests/unit/perf.test.ts`)
 
@@ -254,8 +273,12 @@ Unbound features a terminal-inspired interface built on CSS custom properties (`
 ## Known Limitations
 
 - **English-Only OCR (v1):** OCR is currently scoped to English using the vendored `eng.traineddata` model. A visible note in the UI informs users. Non-English language models are planned for future releases.
-- **Unstructured Scanned Tables:** OCR extracts sequential lines of text; complex tables and multi-column layouts inside scanned pages are not reconstructed into markdown grid syntax.
+- **No URL Fetching by Design:** Unbound makes zero outbound network requests by design. The strict Content Security Policy (`connect-src 'self'`) prohibits external fetch calls to guarantee complete privacy. To convert a web page or online article, save it locally in your browser as an `.html` / `.htm` file and drop it into Unbound.
+- **Encrypted & Password-Protected Files:** Password-protected Office documents (`.docx`, `.pptx`, `.xlsx`), password-encrypted `.zip` archives, and DRM-protected `.epub` files cannot be decrypted client-side without credentials and are rejected with typed, actionable error messages.
+- **Legacy Binary Office Formats:** Proprietary binary formats from Office 97–2003 (`.doc`, `.ppt`, `.xls` in OLE2 wrappers) are not supported. Users must save them as modern OpenXML (`.docx`, `.pptx`, `.xlsx`) or `.csv`.
+- **Desktop Firefox Untested in CI:** Automated E2E test suites run against Chromium, Mobile Chromium, and Mobile WebKit. Desktop Firefox is currently untested in CI.
 - **Complex Scans & Handwriting:** Low-quality scans, blurry camera photos, or handwriting produce lower recognition rates; Unbound flags these with a `"looks unreliable"` warning when confidence is `< 40%`.
+- **Unstructured Scanned Tables:** OCR extracts sequential lines of text; complex tables and multi-column layouts inside scanned pages are not reconstructed into markdown grid syntax.
 - **Large Scan Processing Time:** Sequential WASM OCR execution on 50+ page scanned documents can take several minutes depending on CPU performance.
 - **DOCX Images:** Images inside `.docx` files are not extracted or OCR'd; an informational warning (`IMAGES_OMITTED`) is emitted.
 - **PPTX Non-Text Elements:** Images, charts, and SmartArt diagrams inside `.pptx` presentations are not converted to images; an informational warning (`PPTX_NON_TEXT_OMITTED`) is emitted with counts.

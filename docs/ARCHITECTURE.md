@@ -19,17 +19,84 @@ Unbound runs entirely in the browser. No file data is sent to external servers. 
 1. **Input**: User selects file(s) via drag-and-drop, file picker, or paste.
 2. **Detection** (`src/core/detect.ts`):
    - Inspects magic bytes (first 4 KB): `%PDF-`, PK ZIP family (`50 4B 03 04`), OLE2 (`D0 CF 11 E0`), `{\rtf`, PNG, JPEG, GIF, WEBP, BMP.
-   - For ZIP files, inspects the central directory (end-of-central-directory record) to differentiate DOCX (`word/`), PPTX (`ppt/`), XLSX (`xl/`), and EPUB.
+   - For ZIP files, inspects the central directory (end-of-central-directory record) to differentiate DOCX (`word/`), PPTX (`ppt/`), XLSX (`xl/`), and EPUB (`META-INF/container.xml`).
    - For text without binary signatures, tests UTF-8/UTF-16/Windows-1252 decoding and maps by extension.
-3. **Registry** (`src/core/registry.ts`):
+3. **Registry & Lazy-Chunk Loading** (`src/core/registry.ts`):
    - Dynamically imports the appropriate converter module on demand via lazy `import()`.
-   - Heavy dependencies (pdfjs, SheetJS, tesseract.js) remain in lazy chunks and are never in the initial bundle.
+   - Heavy dependencies (pdfjs, SheetJS, tesseract.js, Mammoth, Turndown) remain in lazy chunks and are never in the initial bundle.
 4. **Converter**:
    - The converter's `convert` method processes the file bytes with a `ConvertContext` (`signal`, `onProgress`, `requestPassword`, `options`).
    - Returns a `ConvertResult` containing `markdown`, `warnings` array, and `stats`.
 5. **Output**:
    - Converted markdown is stored in the job's `rawMarkdown` and `output` fields.
    - React state triggers output rendering, live token/character counting, structure-aware chunking, and clipboard/download handlers.
+
+## Converter Registry & Lazy-Chunk Map
+
+All non-trivial parsers and heavy binary dependencies are partitioned into on-demand lazy chunks to keep the initial application entry strictly under the 256,000 B gzip budget (~71.7 KB measured):
+
+| Format / Kind | Converter Implementation | Chunk Artifact | Dynamic Dependencies | Dynamic Import Trigger |
+|:--------------|:-------------------------|:---------------|:---------------------|:-----------------------|
+| `pdf` | `src/converters/pdf.ts` | `dist/assets/pdf-*.js` | `pdfjs-dist/legacy/build/pdf.mjs` | First PDF upload |
+| `docx` | `src/converters/docx.ts` | `dist/assets/docx-*.js` | `mammoth`, `turndown` | First DOCX upload |
+| `xlsx` | `src/converters/xlsx.ts` | `dist/assets/xlsx-*.js` | `vendor/xlsx-0.20.3.tgz` (SheetJS) | First XLSX/XLS/XLSM upload |
+| `pptx` | `src/converters/pptx.ts` | `dist/assets/pptx-*.js` | `jszip`, `fast-xml-parser` | First PPTX upload |
+| `epub` | `src/converters/epub.ts` | `dist/assets/epub-*.js` | `jszip`, `fast-xml-parser`, `turndown` | First EPUB upload |
+| `zip` | `src/converters/zip.ts` | `dist/assets/zip-*.js` | `jszip` | First ZIP archive upload |
+| `html` | `src/converters/html.ts` | `dist/assets/html-*.js` | `@mozilla/readability`, `turndown` | First HTML file upload |
+| `rtf` | `src/converters/rtf.ts` | `dist/assets/rtf-*.js` | Pure TypeScript tokenizer (zero deps) | First RTF upload |
+| `image` | `src/converters/image.ts` | `dist/assets/image-*.js` | `src/converters/ocr/engine.ts` | First image upload |
+| `ocr-engine` | `src/converters/ocr/engine.ts` | `dist/assets/tesseract-*.js` | `tesseract.js` | Scanned PDF page or image OCR |
+| `csv` | `src/converters/csv.ts` | Core / main chunk | RFC-4180 parser (zero deps) | CSV/TSV upload |
+| `plain` / `md` / `code` | `src/converters/{text,code}.ts` | Core / main chunk | Pure string normalization | Text/Code/MD upload |
+
+## Detection Architecture & ZIP Central Directory Introspection
+
+Unbound's detector (`src/core/detect.ts`) avoids brittle file extension reliance by prioritizing content signatures and structural metadata:
+
+```
+Buffer Ingestion
+  │
+  ├── First 4 KB Magic Byte Sniffing
+  │     ├── %PDF-                         → 'pdf'
+  │     ├── {\rtf                         → 'rtf'
+  │     ├── \x89PNG, \xFF\xD8\xFF, GIF8,
+  │     │   RIFF...WEBP, BM              → 'image'
+  │     ├── \xD0\xCF\x11\xE0 (OLE2 Compound Document)
+  │     │     ├── .doc                    → LegacyDocError (.doc unsupported)
+  │     │     ├── .ppt                    → LegacyDocError (.ppt unsupported)
+  │     │     ├── .xls                    → 'xlsx' (SheetJS binary parser)
+  │     │     └── Encrypted Package       → PasswordRequiredError
+  │     └── PK\x03\x04 (ZIP Family)
+  │           │
+  │           └── End-of-Central-Directory (EOCD) Record Parse
+  │                 ├── Contains 'word/'                 → 'docx'
+  │                 ├── Contains 'ppt/'                  → 'pptx'
+  │                 ├── Contains 'xl/'                   → 'xlsx'
+  │                 ├── Contains 'META-INF/container.xml'→ 'epub'
+  │                 └── Default                          → 'zip'
+  │
+  └── Plain-Text / Code Sniffing (No binary signatures)
+        ├── UTF-8 BOM, UTF-16 LE/BE detection
+        ├── Windows-1252 heuristic fallback
+        └── Extension mapping (code languages, md, csv, tsv, json, xml)
+```
+
+## Archive & Folder Safety Limits
+
+To guarantee responsive performance without browser tab freezing, resource caps are enforced:
+
+| Constant | Value | Purpose & Action on Breach |
+|:---------|:------|:---------------------------|
+| `ZIP_MAX_CONVERTED_FILES` | 500 entries | Stops archive conversion, returns accumulated markdown + `ZIP_LIMIT_REACHED` warning |
+| `FOLDER_MAX_FILES` | 500 files | Halts folder ingestion, renders prominent accessible warning alert (`role="alert"`) |
+| `ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES` | 200 MB | Checked against pre-declared uncompressed sizes and inflation tracker; aborts with limit warning |
+| `ZIP_MAX_FILE_BYTES` | 50 MB | Skips single oversized entry, logs `> ⚠ <path>: Oversized entry (> 50 MB)`, continues processing |
+| `ZIP_MAX_OUTPUT_CHARS` | 2,000,000 chars | Output character ceiling preventing DOM lockup; returns truncated output with warning |
+| `ZIP_MAX_RECURSION_DEPTH` | 3 nested levels | Limits recursion into nested `.zip` archives to 3 levels |
+| `LARGE_PDF_PAGE_THRESHOLD` | 300 pages | Triggers `PDF_LARGE` advisory note; page extraction yields to UI thread via macrotask yields |
+| `MAX_PREVIEW_CHARS` | 200,000 chars | Caps live textarea DOM rendering; Copy and Download always operate on uncapped text |
+| `MAX_TEXT_PAGES_FOR_IMAGE_DETECTION` | 20 pages | Bounds embedded image search to first 20 pages, eliminating operator scan overhead on large PDFs |
 
 ## Supported Formats (Current Status)
 

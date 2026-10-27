@@ -710,3 +710,23 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - Lazy JavaScript chunks: 27.
   - Playwright E2E: 146 passed across Chromium and Mobile Chromium (16 axe scans, 10 privacy invariant tests, 7 mobile tests, 3 keyboard flow tests, 2 quick-paste tests, 1 negative guard test).
   - Traceability: 63 rows checked, 100% valid test references (`node scripts/check-traceability.mjs` exits 0).
+
+
+### 2026-10-27 — Phase F (Milestone 12: Final Audit, Docs, Stability, and Project Completion Sign-Off)
+
+- **Completed Scope (M12):**
+  - **F1 Documentation Finalization (`README.md`):** Updated with clear "How It Works" 4-step offline pipeline overview; comprehensive 21-format table; full code limits table with verified constants (`MAX_PREVIEW_CHARS`, `LARGE_PDF_PAGE_THRESHOLD`, `MAX_CANVAS_LONG_EDGE`, `ZIP_MAX_*`, `FOLDER_MAX_FILES`); updated "Known Limitations" explicitly detailing all 7 required constraints (English-only OCR, offline-only no-URL design, encrypted Office/ZIP/EPUB-DRM rejection, legacy .doc/.ppt/.xls unsupported, handwriting/low-quality scans, RTL stream ordering, desktop Firefox untested in CI); verified 100% of relative links and GFM anchors.
+  - **F2 Architecture Overview (`docs/ARCHITECTURE.md`):** Documented full converter list, complete 27-chunk lazy-loading map with dynamic import triggers, detailed detection architecture with ZIP EOCD central directory introspection, OCR pipeline flow with Mermaid diagram, responsive cancellation path (< 1s worker termination), and archive/folder safety bounds.
+  - **F3 Authoritative Final Audit (`docs/FINAL_AUDIT.md`):** Published comprehensive production audit per PLAN §16 covering all success criteria (S1–S7), format coverage table, 12-point edge case matrix, fresh test counts, line coverage percentages, bundle size breakdowns, and deploy readiness sign-off.
+  - **F4 Stability Suite Verification:** Executed 5-repeat stability test across all Phase D/E specs (`tests/e2e/pdf.spec.ts`, `image.spec.ts`, `pptx.spec.ts`, `epub.spec.ts`, `zip.spec.ts`, `html.spec.ts`, `rtf.spec.ts`, `axe-test.spec.ts`, `keyboard-flow.spec.ts`, `mobile.spec.ts`, `privacy.spec.ts`) with `--repeat-each=5 --retries=0`. All 510 test runs passed with 0 flakes.
+  - **Clean Clone Verification:** Successfully executed clean clone, `npm ci`, and `npm run build` in `/tmp/unbound-clean-test` exiting 0 with deterministic asset synchronization.
+  - **Architecture Decision Record:** Appended ADR-13 to `DECISIONS.md`.
+- **Quality & Performance Metrics:**
+  - Unit tests: 413 passed across 40 test files (100%).
+  - Line coverage: 95.22% lines (threshold ≥ 85%).
+  - Initial JS bundle gzip: 71,665 bytes / 256,000 bytes budget (28.0% of budget).
+  - Lazy JavaScript chunks: 27.
+  - Playwright E2E: 146 passed locally across Chromium and Mobile Chromium (510 passed in repeat-5 stability run) + Mobile WebKit passing on CI.
+  - Traceability: 63 rows checked, 100% valid test references (`node scripts/check-traceability.mjs` exits 0).
+  - Security audit: `npm audit --omit=dev --audit-level=high` reports 0 vulnerabilities.
+  - Hygiene: 0 `TODO`, `FIXME`, `XXX`, `console.log`, `.skip`, or absolute local paths.

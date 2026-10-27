@@ -342,61 +342,61 @@ Enforce size budgets in `check-bundle.mjs`; enforce time budgets in a `tests/per
 
 ## 13. Milestones (execute in order; do not start a milestone until the prior one's acceptance passes)
 
-### M0 — Scaffold, tooling, gates
+### [x] M0 — Scaffold, tooling, gates
 - Init Vite+React+TS strict, ESLint/Prettier, Vitest, Playwright, CI workflow, `scripts/verify.sh` (initially runs what exists; grows with the project), `PROGRESS.md`, `DECISIONS.md`, `docs/TRACEABILITY.md` seeded with **every** requirement line from `docs/REQUIREMENTS.md` (status ⬜).
 - Design tokens + self-hosted fonts + empty app shell.
 - **Accept:** `verify.sh` runs green on the skeleton; CI green; traceability file lists all requirements.
 
-### M1 — Core engine
+### [x] M1 — Core engine
 - `types`, `errors`, `detect` (+ tests incl. mismatch & zip introspection), `registry`, `queue` (concurrency, cancel, progress), worker RPC, normalizer, encoding helper.
 - **Spike (ADR-5):** decide worker vs main-thread for DOM-dependent converters; write the decision in `DECISIONS.md` with evidence.
 - Converters: text/markdown/json/xml/code.
 - **Accept:** detection matrix tests pass; queue tests pass; dropping a `.txt`/`.json`/`.md` yields output in the UI.
 
-### M2 — Output experience & app shell
+### [x] M2 — Output experience & app shell
 - DropZone, JobList, OutputPanel, counters, markdown/plain toggle, copy (+fallback), download, toasts, options persistence, error cards, preview cap.
 - Chunker + ChunkList + sequential copy + preamble option; combine mode.
 - **Accept:** e2e happy path (S1) on text files; chunk property tests pass; counters correct; copy/download verified in e2e.
 
-### M3 — DOCX
+### [x] M3 — DOCX
 - Implement 7.2 + fixtures + tests + encrypted-docx message.
 - **Accept:** golden output matches; images warning present; e2e passes.
 
-### M4 — XLSX / XLS / CSV
+### [x] M4 — XLSX / XLS / CSV
 - Implement 7.3 (ADR-11) + large-sheet batching.
 - **Accept:** multi-sheet golden output; pipe/newline escaping; 10 MB perf budget.
 
-### M5 — PDF (text)
+### [x] M5 — PDF (text)
 - Implement 7.4 incl. heuristics, header/footer removal, password flow (dialog + worker round-trip), page markers setting.
 - **Accept:** golden tests on fixtures (heading/list/paragraph fidelity), password tests, 20-page perf budget.
 
-### M6 — OCR (scanned PDF + images)
+### [x] M6 — OCR (scanned PDF + images)
 - Self-hosted tesseract assets (ADR-6), 7.5 in full, per-page routing, confidence warnings, progress + cancel, language opt-in UX.
 - **Accept:** scanned fixture text recovered (assert key phrases; fuzzy match ≥ 90 %); mixed PDF routes correctly; cancel < 1 s; privacy test still zero external requests.
 
-### M7 — PPTX
+### [x] M7 — PPTX
 - Implement 7.6 (client-side, ADR-2).
 - **Accept:** slide order correct for reordered fixture; notes and tables present; hidden slide labelled.
 
-### M8 — P1 formats: RTF, HTML file, URL
+### [x] M8 — P1 formats: RTF, HTML file, URL
 - Implement 7.7, 7.8, ADR-10 (incl. docs for optional proxy).
 - **Accept:** fixtures pass; URL CORS-failure guidance e2e passes.
 
-### M9 — P2 formats: EPUB, ZIP/folders
+### [x] M9 — P2 formats: EPUB, ZIP/folders
 - Implement 7.10, 7.11 with limits and file tree.
 - **Accept:** nested zip and junk-dir filtering correct; limit tests produce partial result + warning, no crash.
 
-### M10 — Edge cases & robustness sweep
+### [x] M10 — Edge cases & robustness sweep
 - Walk §"Edge Cases" of the requirements line by line: password-protected, corrupted, 500-page PDF (generated) warnings + bounded memory, embedded-image text flag, non-English, no-text-found, mismatched extension, zero-byte, duplicate filenames, very long single line, huge single-cell spreadsheet.
 - Quick-paste mode + gesture fallback.
 - **Accept:** each edge case has a named test; no uncaught exceptions in any negative fixture (assert via `page.on('pageerror')`).
 
-### M11 — Accessibility, mobile, performance, privacy hardening
+### [x] M11 — Accessibility, mobile, performance, privacy hardening
 - axe scans, keyboard-only e2e, mobile projects, CSP headers/meta, bundle budget, perf suite, Lighthouse CI, `npm audit`.
 - *(stretch)* PWA.
 - **Accept:** S2, S3, S5, S6, S7 all proven by automated checks.
 
-### M12 — Docs, deploy, final audit
+### [x] M12 — Docs, deploy, final audit
 - `README.md` (what/why/how, supported formats table, privacy statement, limitations incl. CORS and encrypted Office files, dev commands), `docs/ARCHITECTURE.md`, deploy workflows (GitHub Pages with correct `base`, Vercel config), LICENSE, third-party license notices for bundled OCR data.
 - **Final audit (see §16).** Only then create `.unbound-complete`.
 
