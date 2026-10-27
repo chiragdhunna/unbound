@@ -681,3 +681,32 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
 
 
 
+
+### 2026-10-27 — Phase E (M10/M11: Edge Cases, Quick-Paste Mode, Accessibility, Mobile, Performance, and Privacy Hardening)
+
+- **Completed Scope (M10/M11):**
+  - **E1 Edge Cases Sweep (`tests/unit/edge-cases.test.ts`, `tests/e2e/negative-guard.spec.ts`, commit `33dfed0`):** Complete test coverage across all 12 edge cases from REQUIREMENTS.md §9 (zero-byte files, huge files up to 200MB, corrupt headers/bodies, invalid zip containers, password-protected PDF/XLSX, non-English text with Latin-1/Windows-1252/UTF-16 encoding, blank pages with zero text, table parsing limits, images with text, junk/unsupported files). Emits `page.on('pageerror')` negative guard asserting 0 uncaught exceptions. Traceability section `## Edge Case → Test Matrix` added to `docs/TRACEABILITY.md`.
+  - **E2 Quick-Paste Mode (`src/app/AppShell.tsx`, `src/app/components/OptionsBar.tsx`, commit `3b0a3d6`):** Opt-in power user toggle (`quickPaste`) in OptionsBar that immediately auto-copies converted text to clipboard on job completion with an announced toast (`"Quick paste copied"`), and provides a graceful user-gesture fallback toast (`"Quick paste ready — tap Copy"`) when automated clipboard access is rejected. Tested across unit and E2E in `tests/unit/app-shell.test.tsx` and `tests/e2e/quick-paste.spec.ts`. Traceability row R061: ✅.
+  - **E3 Accessibility Standards (`src/app/AppShell.tsx`, `src/app/components/JobCard.tsx`, `tests/e2e/axe-test.spec.ts`, `tests/e2e/keyboard-flow.spec.ts`):** Automated axe scans across 10 distinct UI states (empty state, converted state, chunked output, error card, options bar, preview-cap notice, PPTX, EPUB, ZIP with entry warnings, light theme, and mobile viewport) with 0 serious or critical violations. Full keyboard-only flow: Tab navigation onto Choose files, Enter/Space activation, output focus, and Enter to Copy. Visible focus ring (`:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }`). Aria-live status pill (`role="status" aria-live="polite"`) announcing batch progress (`"Converting file N of M: name"`), and assertive error alert (`role="alert" aria-live="assertive"`). Contrast verified (dark theme ~16:1 text, ~8.5:1 muted; light theme ~15:1 text, ~6.8:1 muted). Mutation test verified.
+  - **E4 Mobile Viewports & Touch Hardening (`src/styles/base.css`, `tests/e2e/mobile.spec.ts`):** Responsive viewport verification at 360×640 (small Android) and 390×844 (iPhone 14) with strict zero horizontal overflow (`scrollWidth <= innerWidth`). Touch targets for all buttons, segmented controls, and toggle labels enforced at ≥ 44×44 CSS px. Sticky Copy button pinned to viewport bottom with safe bottom padding (`bottom: max(1rem, env(safe-area-inset-bottom, 1rem))`). Touch drag hint: `"Tap to choose, drop a file, folder, or paste a local file here"`. Mutation test verified.
+  - **E5 Performance Budgets (`tests/unit/perf.test.ts`):** Unit benchmark suite asserting conversion times under realistic synthetic inputs:
+    - Typical 20-page PDF: 190 ms (budget < 5 s).
+    - Typical DOCX (50 sections): 112 ms (budget < 5 s).
+    - Typical XLSX (3 sheets, 300 rows): 42 ms (budget < 5 s).
+    - Typical PPTX (10 slides): 36 ms (budget < 5 s).
+    - Large 320-page PDF: 772 ms (budget < 60 s).
+    - ZIP archive (50 small files): 88 ms (budget < 10 s).
+    - EPUB eBook (200 chapters): 392 ms (budget < 5 s).
+  - **E6 Privacy Invariant Suite (`tests/e2e/privacy.spec.ts`):** E2E suite covering all 10 format families (plain text, docx, xlsx, pptx, html, epub, zip, pdf, image ocr, and corrupt/unsupported input). Asserts zero requests to any external host, analytics, telemetry, or CDN (only `same-origin`, `blob:`, or `data:` permitted). Asserts zero console errors, zero CSP violations, and clean `localStorage` storing only `unbound-settings-v1` with zero user content.
+  - **E7 Security Scan & Licenses:** `npm audit --omit=dev --audit-level=high` reports 0 vulnerabilities. All 59 third-party runtime dependencies are MIT, Apache-2.0, or BSD-3-Clause compliant.
+  - **E8 Documentation & Living Records:** Updated `README.md` with Keyboard Navigation & Accessibility, Mobile Experience, and Performance sections. Appended ADR-12 to `DECISIONS.md`. Updated `docs/TRACEABILITY.md` (R008, R049, R050, R051, R052, R056, R060, R061 marked ✅ with exact passing test references).
+- **Mutations Verified:**
+  1. Remove focus-visible style or aria-live attribute: caught by `tests/e2e/keyboard-flow.spec.ts` (`assertive aria-live alert on job error`).
+  2. Remove mobile bottom padding on sticky Copy: caught by `tests/e2e/mobile.spec.ts` (`sticky Copy button has safe bottom padding on mobile`).
+- **Quality & Performance Metrics:**
+  - Unit tests: 413 passed across 40 test files.
+  - Global line coverage: 95.22% (threshold 85%).
+  - Initial JS bundle gzip: ~71.7 KB (budget 256.00 KB).
+  - Lazy JavaScript chunks: 27.
+  - Playwright E2E: 146 passed across Chromium and Mobile Chromium (16 axe scans, 10 privacy invariant tests, 7 mobile tests, 3 keyboard flow tests, 2 quick-paste tests, 1 negative guard test).
+  - Traceability: 63 rows checked, 100% valid test references (`node scripts/check-traceability.mjs` exits 0).

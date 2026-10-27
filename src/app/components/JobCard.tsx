@@ -78,7 +78,11 @@ export function JobCard({
           <span className="progress-text">{progressText}</span>
         </div>
       ) : null}
-      {job.error ? <p className="job-error">{job.error}</p> : null}
+      {job.error ? (
+        <p className="job-error" role="alert" aria-live="assertive">
+          {job.error}
+        </p>
+      ) : null}
       {job.warnings.length > 0 ? (
         <ul className="warning-list">
           {job.warnings.map((warning) => (

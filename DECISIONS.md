@@ -356,3 +356,40 @@ Milestone 9 implements client-side conversion of `.epub` e-books, `.zip` archive
 3. **Separate / Combined Output Support:** In Combined mode, `# File: <path>` headers display the relative path for each file. In Separate mode, each job card and output selection displays the relative path.
 4. **Resource Bounds & Visible UI Warning:** Capped at `FOLDER_MAX_FILES = 500`. Exceeding the limit displays a high-visibility accessible warning callout (`role="alert"`) in the UI rather than freezing the tab.
 
+
+## 2026-10-27 — ADR-12: Accessibility, Mobile, and Performance Hardening Architecture (Phase E)
+
+### Context
+Phase E addresses production hardening across edge cases (M10), accessibility, mobile responsiveness, performance budgets, and privacy invariant verification (M11). The goal is to ensure robust, accessible, and fast operation across all device types and converter families without weakening any privacy guarantees or bundle limits.
+
+### Decision
+1. **Automated Axe-Core Accessibility Verification:**
+   - Integrated `@axe-core/playwright` into the end-to-end test suite (`tests/e2e/axe-test.spec.ts`).
+   - Runs automated accessibility scans across 10 distinct states: empty state, converted state, chunked output, error card, options bar in both open and active states, preview-cap advisory notice, PPTX output, EPUB output, ZIP with entry failure warnings, light theme mode, and mobile viewport (360×640).
+   - Zero serious or critical violations are permitted.
+2. **Keyboard-Only Conversion & Focus Ring Standards:**
+   - Full end-to-end keyboard flow verified in `tests/e2e/keyboard-flow.spec.ts`: Tab navigation onto DropZone (`tabIndex={0}`), activation via `Enter`/`Space` keydown listener, output panel focus, and Copy invocation via `Enter`.
+   - All interactive controls enforce `:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }`.
+   - Batch progress announcements are surfaced via `role="status"` and `aria-live="polite"` (`"Converting file N of M: name"`).
+   - Job errors are announced immediately via `role="alert"` and `aria-live="assertive"`.
+3. **Mobile-First Responsive Engineering & Safe-Area Insets:**
+   - Tested at 360×640 (small Android) and 390×844 (iPhone 14) viewports in `tests/e2e/mobile.spec.ts`.
+   - Strictly enforces zero horizontal scrolling (`document.documentElement.scrollWidth <= window.innerWidth`).
+   - Touch targets for all buttons, segmented controls, and toggle labels are enforced at ≥ 44×44 CSS px.
+   - The primary Copy button is pinned stickily with safe bottom padding (`bottom: max(1rem, env(safe-area-inset-bottom, 1rem))`) to avoid collision with mobile home indicators or bottom system navigation bars.
+   - DropZone title includes touch guidance: `"Tap to choose, drop a file, folder, or paste a local file here"`.
+4. **Performance Budgets & Synthetic Benchmarks:**
+   - Implemented an automated benchmark suite in `tests/unit/perf.test.ts`.
+   - Verified that all converters execute within strict limits:
+     - Typical 20-page PDF: < 5s (measured ~190ms).
+     - Typical DOCX (50 sections): < 5s (measured ~112ms).
+     - Typical XLSX (3 sheets, 300 rows): < 5s (measured ~42ms).
+     - Typical PPTX (10 slides): < 5s (measured ~36ms).
+     - Large 320-page PDF: < 60s (measured ~772ms).
+     - ZIP archive (50 small files): < 10s (measured ~88ms).
+     - EPUB eBook (200 chapters): < 5s (measured ~392ms).
+5. **Universal Privacy Invariant Guard:**
+   - Implemented `tests/e2e/privacy.spec.ts` testing every converter family (plain text, docx, xlsx, pptx, html, epub, zip, pdf, image ocr, and corrupt/unsupported input).
+   - Enforces zero network calls outside `same-origin` or `data:` / `blob:`.
+   - Enforces zero console errors and zero CSP violations.
+   - Enforces clean `localStorage` storing only `unbound-settings-v1` with zero user content, tokens, or session IDs.

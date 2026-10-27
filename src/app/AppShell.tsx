@@ -615,9 +615,16 @@ export function AppShell() {
             </p>
           </div>
           <div className="status-pill" role="status" aria-live="polite">
-            {jobs.some((job) => job.status === 'converting')
-              ? 'Converting…'
-              : 'Ready'}
+            {(() => {
+              const convertingIndex = jobs.findIndex(
+                (job) => job.status === 'converting'
+              )
+              if (convertingIndex === -1) return 'Ready'
+              if (jobs.length > 1) {
+                return `Converting file ${convertingIndex + 1} of ${jobs.length}: ${jobs[convertingIndex]?.name}`
+              }
+              return 'Converting…'
+            })()}
           </div>
         </header>
 

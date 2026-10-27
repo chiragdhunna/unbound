@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 const textFile = (name: string, content: string) => ({
   name,
@@ -6,15 +6,33 @@ const textFile = (name: string, content: string) => ({
   buffer: Buffer.from(content)
 })
 
+async function installClipboard(page: Page) {
+  await page.evaluate(() => {
+    const writes: string[] = []
+    Object.defineProperty(window, '__unboundWrites', { value: writes, writable: false })
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: (value: string) => {
+          writes.push(value)
+          return Promise.resolve()
+        }
+      },
+      configurable: true
+    })
+  })
+}
+
 test.describe('Quick paste mode & clipboard fallback (E2 / R061)', () => {
   test('quick-paste auto-copies on conversion and handles clipboard fallback', async ({
     page,
     context
   }) => {
-    // Grant clipboard permissions
-    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    // Grant clipboard permissions where supported (Chromium), catch in WebKit
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {})
 
     await page.goto('/')
+    await installClipboard(page)
     await page.waitForSelector('h1')
 
     // 1. Enable Quick paste setting

@@ -159,12 +159,24 @@ Unbound runs on modern evergreen browsers supporting ES2022, WebAssembly (`wasm-
 
 | Dimension | Measured Value | Implementation & Enforcement |
 |:----------|:---------------|:-----------------------------|
-| **Initial JS Bundle** | **70,509 B gzip** | Strictly enforced under 256,000 B budget (`scripts/check-bundle.mjs`). Heavy dependencies (pdfjs, SheetJS, tesseract.js) live in 19 lazy-loaded chunks. |
+| **Initial JS Bundle** | **~71.7 KB gzip** | Strictly enforced under 256,000 B budget (`scripts/check-bundle.mjs`). Heavy dependencies (pdfjs, SheetJS, tesseract.js) live in 27 lazy-loaded chunks. |
 | **Output Preview Cap** | **200,000 characters** | UI preview caps display at 200,000 chars to maintain 60fps rendering. The **Copy** and **Download** actions always operate on the full uncapped output. |
 | **Large Document Warning** | **300 pages** | Documents exceeding 300 pages display an advisory note. Page loops yield to the browser UI thread via macrotask yields (`setTimeout(0)`). |
 | **OCR Memory Ceiling** | **≤ 3000 px max edge** | Canvas buffers are capped at a 3000px long edge (~36 MB uncompressed RGBA) and zeroed out upon job completion. |
 | **Image Detection Bound** | **First 20 text pages** | Bounded via `MAX_TEXT_PAGES_FOR_IMAGE_DETECTION = 20`. Keeps operator list overhead to 0% for pages 21+. |
 | **Cancel Response Time** | **~18 ms in-page** | Worker termination occurs in `< 1` second on both desktop and mobile viewports. |
+
+### Performance Benchmark Suite (Verified in `tests/unit/perf.test.ts`)
+
+| Scenario | Performance Budget | Verified Benchmark |
+|:---------|:------------------:|:------------------:|
+| **Typical 20-Page PDF** | < 5.0 s | **190 ms** |
+| **Typical DOCX (50 sections)** | < 5.0 s | **112 ms** |
+| **Typical XLSX (3 sheets, 300 rows)** | < 5.0 s | **42 ms** |
+| **Typical PPTX (10 slides)** | < 5.0 s | **36 ms** |
+| **Large 320-Page PDF** | < 60.0 s | **772 ms** |
+| **ZIP Archive (50 small files)** | < 10.0 s | **88 ms** |
+| **EPUB eBook (200 chapters)** | < 5.0 s | **392 ms** |
 
 ### Embedded-image detection cost
 
@@ -176,6 +188,33 @@ Measured median conversion times (`pdfConverter.convert`) across 3 runs on 300-p
 | **Mixed PDF (every 10th page image)** | 554.7 ms | 667.8 ms | +20.4% | 1.204× |
 
 *Decision:* Because detection overhead exceeded the 15% threshold (+23.5% and +20.4%), detection was capped to the first 20 text pages. Low-text OCR routing remains active on every page.
+
+---
+
+## Keyboard Navigation & Accessibility
+
+Unbound is built to meet WCAG AA standards and is verified via automated axe-core scanning:
+
+- **Full Keyboard Navigation:** Navigate entire interface using `Tab` and `Shift+Tab`. Activate file upload directly by pressing `Enter` or `Space` on the DropZone.
+- **Visible Focus Rings:** High-visibility outline (`:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }`) on all interactive controls (buttons, dropzone, segmented pickers, checkboxes, number inputs).
+- **Aria-Live Status Announcements:**
+  - `role="status"` with `aria-live="polite"` announces batch conversion progress (e.g. `"Converting file 2 of 5: notes.docx"`).
+  - `role="alert"` with `aria-live="assertive"` announces error states immediately to screen reader users.
+- **Contrast Ratios:** Exceeds WCAG AA across both themes:
+  - Dark Theme: `#ede9dc` text on `#0b0b0a` background (~16:1 ratio); `#a39e90` muted on `#0b0b0a` (~8.5:1 ratio).
+  - Light Theme: `#191816` text on `#f8f6f0` background (~15:1 ratio); `#575246` muted on `#f8f6f0` (~6.8:1 ratio).
+- **Automated Axe Scans:** 0 critical or serious axe violations across empty, converted, error card, options bar, preview-cap notice, PPTX, EPUB, ZIP with warnings, light theme, and mobile viewport states.
+
+---
+
+## Mobile Experience
+
+Designed mobile-first with verified responsiveness on narrow screens:
+
+- **Responsive Viewport Support:** Verified at 360×640 (small Android) and 390×844 (iPhone 14) viewports with strict zero horizontal scroll (`scrollWidth <= innerWidth`).
+- **Accessible Touch Targets:** All buttons, segmented items, and options labels provide touch targets ≥ 44×44 CSS px to prevent missed taps.
+- **Sticky Copy Toolbar:** The primary Copy button remains stickily pinned to the viewport bottom (`position: sticky; bottom: max(1rem, env(safe-area-inset-bottom))`) with safe-area inset support, allowing immediate clipboard copying without scrolling back to the top.
+- **Touch Drag Hint:** The drop zone displays `"Tap to choose, drop a file, folder, or paste a local file here"` to guide touch device users clearly.
 
 ---
 

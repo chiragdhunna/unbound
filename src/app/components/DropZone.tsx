@@ -48,7 +48,9 @@ export function DropZone({
           <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
       </div>
-      <p className="dropzone-title">Drop a file, folder, or paste a local file here.</p>
+      <p className="dropzone-title">
+        Tap to choose, drop a file, folder, or paste a local file here.
+      </p>
       <p className="supported-formats">
         Supported formats: txt, md, json, xml, code files, pdf, docx, pptx,
         rtf, html, epub, zip, xlsx, xls, xlsm, csv, tsv, png, jpg, webp, bmp, gif.

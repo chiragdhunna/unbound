@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { AxeBuilder } from '@axe-core/playwright';
 import type { Result } from 'axe-core';
 import pptxgen from 'pptxgenjs';
+import JSZip from 'jszip';
 
 const textFile = (name: string, content: string) => ({ name, mimeType: 'text/plain', buffer: Buffer.from(content) });
 
@@ -14,6 +15,58 @@ async function pptxFile(name: string, title: string, content: string) {
   return {
     name,
     mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    buffer
+  };
+}
+
+async function epubFile(name: string, title: string, chapterText: string) {
+  const zip = new JSZip();
+  zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' });
+  zip.file(
+    'META-INF/container.xml',
+    `<?xml version="1.0"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`
+  );
+  const opfContent = `<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>${title}</dc:title>
+  </metadata>
+  <manifest>
+    <item id="c1" href="ch1.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine>
+    <itemref idref="c1"/>
+  </spine>
+</package>`;
+  zip.file('OEBPS/content.opf', opfContent);
+  const ch1 = `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head><title>${title}</title></head>
+  <body><h1>${title}</h1><p>${chapterText}</p></body>
+</html>`;
+  zip.file('OEBPS/ch1.xhtml', ch1);
+  const buffer = (await zip.generateAsync({ type: 'nodebuffer' })) as Buffer;
+  return {
+    name,
+    mimeType: 'application/epub+zip',
+    buffer
+  };
+}
+
+async function zipWithWarningFile(name: string) {
+  const zip = new JSZip();
+  zip.file('readme.txt', 'Valid readable text in archive.');
+  zip.file('broken.pdf', Buffer.from('%PDF-1.4 truncated bad data'));
+  const buffer = (await zip.generateAsync({ type: 'nodebuffer' })) as Buffer;
+  return {
+    name,
+    mimeType: 'application/zip',
     buffer
   };
 }
@@ -170,6 +223,42 @@ test('axe: pptx output state in light theme should have no serious or critical v
   const file = await pptxFile('presentation.pptx', 'Deck Title', 'Deck content text');
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(file);
   await page.getByRole('textbox', { name: 'Converted output' }).waitFor();
+  const results = await new AxeBuilder({ page }).analyze();
+  const seriousOrCritical = results.violations.filter(
+    (v: Result) => v.impact === 'serious' || v.impact === 'critical'
+  );
+  expect(seriousOrCritical).toEqual([]);
+});
+
+test('axe: epub output state should have no serious or critical violations', async ({ page }) => {
+  await page.goto('/');
+  const file = await epubFile('book.epub', 'Epub Axe Title', 'Epub accessible text content.');
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(file);
+  await page.getByRole('textbox', { name: 'Converted output' }).waitFor();
+  const results = await new AxeBuilder({ page }).analyze();
+  const seriousOrCritical = results.violations.filter(
+    (v: Result) => v.impact === 'serious' || v.impact === 'critical'
+  );
+  expect(seriousOrCritical).toEqual([]);
+});
+
+test('axe: zip-with-warning output state should have no serious or critical violations', async ({ page }) => {
+  await page.goto('/');
+  const file = await zipWithWarningFile('archive-warning.zip');
+  await page.getByLabel('Choose file', { exact: true }).setInputFiles(file);
+  await page.getByRole('textbox', { name: 'Converted output' }).waitFor();
+  await expect(page.locator('.warning-item')).toBeVisible();
+  const results = await new AxeBuilder({ page }).analyze();
+  const seriousOrCritical = results.violations.filter(
+    (v: Result) => v.impact === 'serious' || v.impact === 'critical'
+  );
+  expect(seriousOrCritical).toEqual([]);
+});
+
+test('axe: mobile viewport should have no serious or critical violations', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto('/');
+  await page.waitForSelector('h1');
   const results = await new AxeBuilder({ page }).analyze();
   const seriousOrCritical = results.violations.filter(
     (v: Result) => v.impact === 'serious' || v.impact === 'critical'
