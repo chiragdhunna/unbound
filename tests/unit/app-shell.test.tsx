@@ -1,10 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import App from '../../src/App'
 import * as pipeline from '../../src/core/pipeline'
 
 describe('App shell', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.restoreAllMocks()
+  })
   it('renders the unbound shell headline', () => {
     render(<App />)
 
@@ -131,5 +135,57 @@ describe('App shell', () => {
     })
 
     expect(screen.queryByRole('button', { name: /\.DS_Store/ })).not.toBeInTheDocument()
+  })
+
+  it('auto-copies markdown and announces "Quick paste copied" toast when quickPaste setting is enabled', async () => {
+    const user = userEvent.setup()
+    const writeTextMock = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: writeTextMock },
+      configurable: true
+    })
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+
+    render(<App />)
+
+    // Enable Quick paste toggle
+    const quickPasteCheckbox = screen.getByLabelText('Quick paste')
+    await user.click(quickPasteCheckbox)
+
+    const input = screen.getByLabelText('Choose file')
+    const file = new File(['quick paste content'], 'quick.txt', { type: 'text/plain' })
+
+    await user.upload(input, file)
+
+    await waitFor(() => {
+      expect(screen.getByText('Quick paste copied')).toBeInTheDocument()
+    })
+    expect(writeTextMock).toHaveBeenCalledWith('quick paste content\n')
+  })
+
+  it('falls back to "Quick paste ready — tap Copy" toast when clipboard write fails in quickPaste mode', async () => {
+    const user = userEvent.setup()
+    const writeTextMock = vi.fn().mockRejectedValue(new Error('Permission denied'))
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: writeTextMock },
+      configurable: true
+    })
+    document.execCommand = vi.fn().mockReturnValue(false)
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+
+    render(<App />)
+
+    // Enable Quick paste toggle
+    const quickPasteCheckbox = screen.getByLabelText('Quick paste')
+    await user.click(quickPasteCheckbox)
+
+    const input = screen.getByLabelText('Choose file')
+    const file = new File(['quick paste fallback'], 'quick2.txt', { type: 'text/plain' })
+
+    await user.upload(input, file)
+
+    await waitFor(() => {
+      expect(screen.getByText('Quick paste ready — tap Copy')).toBeInTheDocument()
+    })
   })
 })
