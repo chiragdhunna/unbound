@@ -9,12 +9,29 @@ import {
 } from '../core/table'
 import { PasswordRequiredError, CorruptFileError, NoTextFoundError } from '../core/errors'
 
+function hasOle2Signature(bytes: ArrayBuffer): boolean {
+  const view = new Uint8Array(bytes.slice(0, 8))
+  return (
+    view.length >= 4 &&
+    view[0] === 0xd0 &&
+    view[1] === 0xcf &&
+    view[2] === 0x11 &&
+    view[3] === 0xe0
+  )
+}
+
 export const xlsxConverter: Converter = {
   kind: 'xlsx',
   async convert(input, ctx) {
-        // Check for empty input
+    // Check for empty input
     if (input.bytes.byteLength === 0) {
       throw new CorruptFileError('This spreadsheet could not be read; it may be corrupted.')
+    }
+
+    if (input.name.toLowerCase().endsWith('.xlsx') && hasOle2Signature(input.bytes)) {
+      throw new PasswordRequiredError(
+        'This XLSX is password protected or saved with an Office encryption wrapper. Save it without a password and try again.'
+      )
     }
 
     let XLSX

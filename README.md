@@ -220,6 +220,7 @@ Unbound features a terminal-inspired interface built on CSS custom properties (`
 - **Large Scan Processing Time:** Sequential WASM OCR execution on 50+ page scanned documents can take several minutes depending on CPU performance.
 - **DOCX Images:** Images inside `.docx` files are not extracted or OCR'd; an informational warning (`IMAGES_OMITTED`) is emitted.
 - **PPTX Non-Text Elements:** Images, charts, and SmartArt diagrams inside `.pptx` presentations are not converted to images; an informational warning (`PPTX_NON_TEXT_OMITTED`) is emitted with counts.
+- **RTL & Complex Script PDF Ordering:** Non-English and non-Latin scripts (such as CJK, Devanagari, and Arabic) extract Unicode text characters cleanly; however, right-to-left (RTL) scripts in PDF streams may appear in visual glyph order rather than logical reading order due to PDF stream layout conventions.
 
 ---
 

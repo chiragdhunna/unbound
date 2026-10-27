@@ -1,4 +1,4 @@
-import { detectFileKind } from './detect'
+import { detectFileKindWithWarnings } from './detect'
 import { UnsupportedFormatError } from './errors'
 import { loadConverter } from './registry'
 import { type ConvertContext, type ConvertResult } from './types'
@@ -46,7 +46,7 @@ export async function convertFile(
   ctx: ConvertContext
 ): Promise<ConvertResult> {
   const bytes = await readFileBytes(file)
-  const kind = detectFileKind({
+  const { kind, warnings: detectionWarnings } = detectFileKindWithWarnings({
     name: file.name,
     mime: file.type,
     bytes
@@ -59,7 +59,7 @@ export async function convertFile(
   }
 
   const converter = await loadConverter(kind)
-  return converter.convert(
+  const result = await converter.convert(
     {
       name: file.name,
       bytes,
@@ -67,4 +67,13 @@ export async function convertFile(
     },
     ctx
   )
+
+  if (detectionWarnings.length > 0) {
+    return {
+      ...result,
+      warnings: [...detectionWarnings, ...result.warnings]
+    }
+  }
+
+  return result
 }

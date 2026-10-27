@@ -248,11 +248,21 @@ export function detectFileKindWithWarnings(input: {
                 ? 'epub'
                 : extension === 'zip'
                   ? 'zip'
-                  : extension === 'xlsx' || extension === 'xls'
-                ? 'xlsx'
-                : imageExtensions.has(extension)
-                  ? 'image'
-                  : undefined
+                  : extension === 'xlsx' || extension === 'xls' || extension === 'xlsm'
+                    ? 'xlsx'
+                    : extension === 'txt' || extension === 'text' || extension === 'log'
+                      ? 'text'
+                      : extension === 'md' || extension === 'markdown'
+                        ? 'markdown'
+                        : extension === 'csv' || extension === 'tsv'
+                          ? 'csv'
+                          : extension === 'json'
+                            ? 'json'
+                            : extension === 'xml'
+                              ? 'xml'
+                              : imageExtensions.has(extension)
+                                ? 'image'
+                                : undefined
   if (extensionKind && extensionKind !== kind && kind !== 'unknown')
     warnings.push({
       code: 'TYPE_MISMATCH',

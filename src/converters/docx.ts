@@ -3,7 +3,7 @@ import TurndownService from 'turndown'
 import { gfm } from 'turndown-plugin-gfm'
 import { normalizeMarkdown } from '../core/markdown'
 import { type Converter } from '../core/types'
-import { PasswordRequiredError, LegacyDocError } from '../core/errors'
+import { PasswordRequiredError, LegacyDocError, CorruptFileError } from '../core/errors'
 
 function hasOle2Signature(bytes: ArrayBuffer): boolean {
   const view = new Uint8Array(bytes.slice(0, 8))
@@ -48,10 +48,22 @@ export const docxConverter: Converter = {
     }
 
     ctx.onProgress({ phase: 'docx', current: 1, total: 1 })
-    const result = await mammoth.convertToHtml({
-      arrayBuffer: input.bytes,
-      styleMap: ['p[style-name="Title"] => h1:fresh']
-    })
+    let result: Awaited<ReturnType<typeof mammoth.convertToHtml>>
+    try {
+      result = await mammoth.convertToHtml({
+        arrayBuffer: input.bytes,
+        styleMap: ['p[style-name="Title"] => h1:fresh']
+      })
+    } catch (err) {
+      if (
+        err instanceof PasswordRequiredError ||
+        err instanceof LegacyDocError ||
+        err instanceof CorruptFileError
+      ) {
+        throw err
+      }
+      throw new CorruptFileError('This DOCX could not be read; it may be corrupted.')
+    }
     const markdown = normalizeMarkdown(convertHtmlToMarkdown(result.value ?? ''))
 
     const warnings = [] as { code: string; message: string; severity: 'info' | 'warn' }[]
