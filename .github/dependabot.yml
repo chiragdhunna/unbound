@@ -20,6 +20,14 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: '@types/react-dom'
         update-types: ['version-update:semver-major']
+      # Do not upgrade ESLint to v10 (incompatible peerDependencies with eslint-plugin-jsx-a11y)
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@eslint/*'
+        update-types: ['version-update:semver-major']
+      # Ignore all semver-major updates to prevent breaking changes and peer dependency conflicts
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       all-dependencies:
         patterns:
