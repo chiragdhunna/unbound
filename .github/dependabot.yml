@@ -4,7 +4,10 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
-    open-pull-requests-limit: 5
+      day: 'monday'
+      time: '05:00'
+      timezone: 'Asia/Kolkata'
+    open-pull-requests-limit: 10
     ignore:
       # Vendored locally at vendor/xlsx-0.20.3.tgz
       - dependency-name: 'xlsx'
@@ -18,17 +21,19 @@ updates:
       - dependency-name: '@types/react-dom'
         update-types: ['version-update:semver-major']
     groups:
-      react-types:
+      all-dependencies:
         patterns:
-          - '@types/react*'
-      testing:
-        patterns:
-          - '@testing-library/*'
-          - '@vitest/*'
-          - 'vitest*'
+          - '*'
 
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'weekly'
-    open-pull-requests-limit: 5
+      day: 'monday'
+      time: '05:00'
+      timezone: 'Asia/Kolkata'
+    open-pull-requests-limit: 10
+    groups:
+      all-actions:
+        patterns:
+          - '*'
