@@ -730,3 +730,14 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - Traceability: 63 rows checked, 100% valid test references (`node scripts/check-traceability.mjs` exits 0).
   - Security audit: `npm audit --omit=dev --audit-level=high` reports 0 vulnerabilities.
   - Hygiene: 0 `TODO`, `FIXME`, `XXX`, `console.log`, `.skip`, or absolute local paths.
+
+
+### 2026-10-27 — Dependabot Schedule & Major Version Peer Dependency Resolution
+
+- **Schedule & Consolidated Grouping:**
+  - Configured `.github/dependabot.yml` to trigger weekly every Monday at 5:00 AM IST (`timezone: 'Asia/Kolkata'`).
+  - Consolidated all updates into a single grouped PR (`all-dependencies` pattern `*`).
+- **Root Cause & Fix for PR #21 CI Failure:**
+  - *Failure:* PR #21 attempted semver-major updates to `eslint@10.13.0`, conflicting with `eslint-plugin-jsx-a11y@6.10.2` peer requirements (`eslint@<=9`) and causing `npm ci` to fail with `ERESOLVE`.
+  - *Fix:* Added `dependency-name: '*'` with `update-types: ['version-update:semver-major']` in `ignore`, plus explicit rules for `eslint` and `@eslint/*`.
+  - *Result:* Commit `c0ad15e` on `main` verified green in CI (check run `122302291586`, `conclusion: success`). Dependabot automatically superseded PR #21 with PR #22 containing 4 clean minor/patch updates (`docx`, `prettier`, `typescript-eslint`, `vite`), which passed CI verification (check run `122303342789`, `conclusion: success`).

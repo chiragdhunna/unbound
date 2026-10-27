@@ -416,3 +416,20 @@ Phase F represents the final milestone (M12) of the Unbound build plan. With all
    - Test suites must maintain zero skips (`it.skip`, `test.skip`, `test.todo`), zero `console.log` statements, and zero absolute local paths (`/home/`, `/Users/`, `C:\Users`).
    - Any future dependency must be lazy-loaded, permissively licensed (MIT, Apache-2.0, BSD), and audited with `npm audit --omit=dev --audit-level=high`.
    - `scripts/verify.sh` and CI workflows must never be loosened or weakened.
+
+
+## 2026-10-27 — ADR-14: Dependabot Weekly Schedule, Single Grouped PR & Semver-Major Lock
+
+### Context
+Dependabot was configured to run on a weekly schedule (Mondays at 5:00 AM IST) and group all dependency updates into a single PR (`all-dependencies` with `patterns: ['*']`) to prevent fragmented individual PRs. However, Dependabot initially proposed bumping all dependencies including major semver updates (`eslint@10.13.0`, `@eslint/js@10.0.1`, `typescript@7.0.2`, `vite@8.3.5`). In CI on PR #21, `npm ci` failed with `ERESOLVE could not resolve peer eslint@"^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9" from eslint-plugin-jsx-a11y@6.10.2`.
+
+### Decision
+1. **Semver-Major Updates Ignored:**
+   - In `.github/dependabot.yml`, configured `ignore` with `dependency-name: '*'` and `update-types: ['version-update:semver-major']`, along with explicit entries for `eslint` and `@eslint/*`.
+   - Prevents automated breaking major updates from entering the automated weekly grouped PR, avoiding peer dependency resolution errors with ecosystem plugins (`eslint-plugin-jsx-a11y`, `typescript-eslint`).
+2. **Weekly Grouping Maintained:**
+   - Retained weekly schedule at Monday 5:00 AM IST (`day: 'monday'`, `time: '05:00'`, `timezone: 'Asia/Kolkata'`).
+   - All minor and patch updates are consolidated into a single pull request (`all-dependencies`).
+3. **Verification:**
+   - Commit `c0ad15e` on `main` passed GitHub Actions CI `verify` (`conclusion: success`, id `122302291586`) and Dependabot schema validation (`conclusion: success`, id `122302305427`).
+   - Dependabot automatically generated consolidated PR #22 (`chore(deps-dev): bump the all-dependencies group across 1 directory with 4 updates`) upgrading `docx`, `prettier`, `typescript-eslint`, and `vite` without peer dependency conflicts; its CI `verify` run completed with `conclusion: success` (id `122303342789`).
