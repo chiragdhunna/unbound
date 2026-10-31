@@ -70,12 +70,12 @@
     - Rotated pages: deferred; standard orientation handled.
     - Tables in scanned pages: deferred; sequential text layout extracted.
     - PDF embedded-image OCR on request: deferred; scanned pages and full image files converted.
-- ⬜ M7 — PPTX
-- ⬜ M8 — P1 formats: RTF, HTML file, URL
-- ⬜ M9 — P2 formats: EPUB, ZIP/folders
-- ⬜ M10 — Edge cases & robustness sweep
-- ⬜ M11 — Accessibility, mobile, performance, privacy hardening
-- ⬜ M12 — Docs, deploy, final audit
+- ✅ M7 — PPTX
+- ✅ M8 — P1 formats: RTF, HTML file, URL
+- ✅ M9 — P2 formats: EPUB, ZIP/folders
+- ✅ M10 — Edge cases & robustness sweep
+- ✅ M11 — Accessibility, mobile, performance, privacy hardening
+- ✅ M12 — Docs, deploy, final audit
 
 ## M2/M3 Self-Audit
 
@@ -741,3 +741,12 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - *Failure:* PR #21 attempted semver-major updates to `eslint@10.13.0`, conflicting with `eslint-plugin-jsx-a11y@6.10.2` peer requirements (`eslint@<=9`) and causing `npm ci` to fail with `ERESOLVE`.
   - *Fix:* Added `dependency-name: '*'` with `update-types: ['version-update:semver-major']` in `ignore`, plus explicit rules for `eslint` and `@eslint/*`.
   - *Result:* Commit `c0ad15e` on `main` verified green in CI (check run `122302291586`, `conclusion: success`). Dependabot automatically superseded PR #21 with PR #22 containing 4 clean minor/patch updates (`docx`, `prettier`, `typescript-eslint`, `vite`), which passed CI verification (check run `122303342789`, `conclusion: success`).
+
+
+### 2026-10-31 — Status reconciliation: Milestones M7–M12 Complete & URL Removal Reconciliation
+
+- **Status Reconciliation:**
+  - Milestones M7 through M12 are fully complete, verified, and signed off in `docs/FINAL_AUDIT.md`.
+  - All 21 document formats (P0, P1, P2) across text, documents, spreadsheets, presentations, PDFs, OCR images, and composite archives/folders are implemented with zero server dependencies and zero runtime network requests.
+  - URL fetching was removed per the 2026-10-27 ADR (`Removal of URL Fetching to Preserve Zero-Network Privacy Guarantee (Correction to ADR-10)`) to maintain Unbound's strict zero-network privacy guarantee (`connect-src 'self'`). Users convert web content by saving pages locally as `.html` files and dropping them into Unbound.
+  - All non-functional requirements (WCAG AA accessibility, 360×640 / 390×844 responsive mobile targets with ≥ 44px touch targets, < 256 KB initial JS bundle budget, and comprehensive edge cases) are verified by automated unit, coverage, and end-to-end tests across Chromium, Mobile Chromium, and Mobile WebKit.
