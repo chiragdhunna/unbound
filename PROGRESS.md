@@ -750,3 +750,25 @@ Current runnable evidence (2026-10-25, M6 completion): **252 of 252 unit tests p
   - All 21 document formats (P0, P1, P2) across text, documents, spreadsheets, presentations, PDFs, OCR images, and composite archives/folders are implemented with zero server dependencies and zero runtime network requests.
   - URL fetching was removed per the 2026-10-27 ADR (`Removal of URL Fetching to Preserve Zero-Network Privacy Guarantee (Correction to ADR-10)`) to maintain Unbound's strict zero-network privacy guarantee (`connect-src 'self'`). Users convert web content by saving pages locally as `.html` files and dropping them into Unbound.
   - All non-functional requirements (WCAG AA accessibility, 360×640 / 390×844 responsive mobile targets with ≥ 44px touch targets, < 256 KB initial JS bundle budget, and comprehensive edge cases) are verified by automated unit, coverage, and end-to-end tests across Chromium, Mobile Chromium, and Mobile WebKit.
+
+
+### 2026-11-01 — Project Logo Integration (README, Website Header, Favicon & Brand Assets)
+
+- **Branding & Visual Identity:**
+  - Integrated the official Unbound amber logo (`#ffb41f`) into the project:
+    - Generated clean, scalable vector SVG files (`public/logo.svg` and `public/favicon.svg`) with exact geometric bezier and arc paths.
+    - Replaced the placeholder favicon in `public/favicon.svg` with the official Unbound logo mark; added Apple touch icon reference in `index.html`.
+    - Generated high-resolution transparent PNG assets (`public/logo.png`, `public/logo-192.png`, and `public/logo-horizontal.png`).
+    - Added the logo to `README.md` header.
+    - Archived the master brand sheet in `docs/brand/unbound-brand-sheet.jpg`.
+  - Integrated the logo into the web application header (`src/app/AppShell.tsx` and `src/styles/base.css`) with responsive styling and accessibility guards (`alt="" aria-hidden="true"`).
+- **Verification Evidence:**
+  - `npm run verify` passed (exit code 0):
+    - Absolute path guard: clean.
+    - ESLint: 0 errors / 0 warnings.
+    - TypeScript: 0 errors.
+    - Unit tests: 413 of 413 passed across 40 test files (100%).
+    - Code coverage: 95.13% line coverage (gate ≥ 85%).
+    - Bundle budget: initial JS gzip 71,721 bytes / 256,000 bytes budget (28.0%).
+    - Playwright E2E: 219 passed across Chromium, Mobile Chromium, and Mobile WebKit (including axe-core accessibility scans with 0 violations).
+    - Traceability & hygiene checks: 100% clean.

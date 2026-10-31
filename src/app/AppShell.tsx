@@ -612,11 +612,21 @@ export function AppShell() {
     <main>
       <section className="shell" aria-label="Unbound app shell">
         <header className="topbar">
-          <div>
-            <h1>unbound_</h1>
-            <p className="tagline">
-              Turn files into paste-ready markdown or plain text.
-            </p>
+          <div className="brand">
+            <img
+              src="/logo.svg"
+              alt=""
+              aria-hidden="true"
+              className="brand-logo"
+              width="40"
+              height="40"
+            />
+            <div>
+              <h1>unbound_</h1>
+              <p className="tagline">
+                Turn files into paste-ready markdown or plain text.
+              </p>
+            </div>
           </div>
           <div className="status-pill" role="status" aria-live="polite">
             {(() => {

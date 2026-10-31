@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 376 310" fill="none" aria-hidden="true">
+  <path fill="#ffb41f" fill-rule="evenodd" clip-rule="evenodd" d="
+    M 20,10
+    C 14,10 10,14 10,21
+    L 10,181
+    A 127,119 0 0,0 264,181
+    L 264,142
+    L 240,142
+    L 240,181
+    A 103,95 0 0,1 34,181
+    L 34,34
+    L 65,34
+    L 65,181
+    A 72,64 0 0,0 209,181
+    L 209,34
+    L 264,34
+    L 264,13
+    C 264,11 262,10 259,10
+    L 194,10
+    C 188,10 185,14 185,21
+    L 185,181
+    A 48,40 0 0,1 89,181
+    L 89,21
+    C 89,14 86,10 80,10
+    Z
+  "/>
+  <rect x="284" y="10" width="82" height="24" rx="2" fill="#ffb41f"/>
+  <rect x="240" y="54" width="101" height="24" rx="2" fill="#ffb41f"/>
+  <rect x="240" y="98" width="67" height="24" rx="2" fill="#ffb41f"/>
+</svg>

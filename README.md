@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.png" alt="Unbound Logo" width="120" />
+</p>
+
 # Unbound
 
 > Turn any document into clean, paste-ready markdown in your browser — bypassing LLM attachment limits.
@@ -55,25 +59,25 @@ Unbound detects file types via **magic bytes, MIME type, and extension** (`src/c
 
 ### Supported File Types
 
-| Format | Extension(s) | Processing Method | Notes |
-|:-------|:-------------|:------------------|:------|
-| **Plain Text** | `.txt` | Pure client decoder | Auto-detects UTF-8, UTF-16, and Windows-1252 encodings. |
-| **Markdown** | `.md`, `.markdown` | Pass-through | Preserves headers, lists, code fences, and formatting. |
-| **JSON** | `.json` | Formatter | Pretty-printed with 2-space indentation in a syntax-highlighted code fence. |
-| **XML** | `.xml` | Pass-through | Wrapped in an XML-tagged fenced code block. |
-| **Code** | `.js`, `.ts`, `.tsx`, `.jsx`, `.py`, `.go`, `.rs`, `.java`, `.c`, `.cpp`, `.cs`, `.rb`, `.php`, `.swift`, `.kt`, `.sql`, `.sh`, `.yaml`, `.yml` | Syntax fence | Tagged with appropriate language identifier; handles nested backtick runs safely. |
-| **CSV / TSV** | `.csv`, `.tsv` | Custom RFC-4180 parser | Sniffs delimiters (`,`, `;`, `\t`), strips BOMs, preserves exact literal cell text (leading zeros, exponent notation, quoted spacing). |
-| **Rich Text (RTF)** | `.rtf` | Zero-dependency streaming tokenizer | Tokenizes control words and groups; decodes Unicode (`\uN`) and Windows-1252 hex (`\'hh`); maps `\b`, `\i`, `\bullet`, `\par`; skips non-text destinations (`\fonttbl`, `\colortbl`, `\pict`, metadata); emits clean Markdown. |
-| **HTML** | `.html`, `.htm` | Inert DOM + Mozilla Readability + Turndown | Safely parses detached DOM via `DOMParser` (scripts never run); extracts article title, byline, and body via `@mozilla/readability`; falls back to cleaned `<body>` with boilerplate stripped (`<nav>`, `<header>`, `<footer>`, `<aside>`); renders GFM tables and code blocks. |
-| **DOCX** | `.docx` | Mammoth.js + Turndown | Converts headings, lists, tables, and links to markdown; counts and warns about omitted embedded images. |
-| **PowerPoint** | `.pptx` | JSZip + fast-xml-parser | Preserves presentation slide order (`sldIdLst`), titles (`###`), nested bullet levels (`-`), tables (GFM), speaker notes (`**Notes:**`), hidden slides (`## Slide N (hidden)`), and warns about omitted images and charts (`PPTX_NON_TEXT_OMITTED`). |
-| **XLSX / XLS / XLSM** | `.xlsx`, `.xls`, `.xlsm` | Vendored SheetJS (0.20.3) | Emits `## Sheet: <name>` sections, GFM tables, ISO formatted dates, replicates merged top-left cells, and flags hidden sheets. |
-| **PDF (Text)** | `.pdf` | `pdfjs-dist` legacy build | Strips running headers/footers (≥ 60% pages) and bare page numbers; classifies font sizes into `#`, `##`, `###` headings; de-hyphenates words across line breaks. |
-| **PDF (Scanned & Mixed)** | `.pdf` | Per-page OCR routing | Evaluates each page: pages with `< 25` characters and graphics operators route automatically to self-hosted OCR. |
-| **Images** | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif` | Self-hosted Tesseract.js | Decoded locally via Canvas/ImageBitmap; scaled to bounded dimensions; OCR recognized to structured text. |
-| **EPUB** | `.epub` | JSZip + fast-xml-parser + Turndown | Follows OPF spine order (never manifest or alphabetical); extracts `dc:title`/`dc:creator` metadata; shifts chapter heading hierarchy down one level (`##` per chapter); warns on omitted images (`EPUB_IMAGES_OMITTED`). |
-| **ZIP Archives** | `.zip` | JSZip + recursive sub-pipeline | Recurses nested archives up to depth 3; sanitizes paths against zip-slip; generates an indented ASCII file tree (`## Files`); converts each supported entry via `# File: <path>` boundaries; isolates per-file failures (`> ⚠ <path>: <reason>`). |
-| **Folders** | Directory drop / file picker | `webkitdirectory` + pipeline | Labels files by `webkitRelativePath` to disambiguate identical basenames across directories; filters junk and developer artifacts; supports Separate or Combined batch modes. |
+| Format                    | Extension(s)                                                                                                                                    | Processing Method                          | Notes                                                                                                                                                                                                                                                                           |
+| :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Plain Text**            | `.txt`                                                                                                                                          | Pure client decoder                        | Auto-detects UTF-8, UTF-16, and Windows-1252 encodings.                                                                                                                                                                                                                         |
+| **Markdown**              | `.md`, `.markdown`                                                                                                                              | Pass-through                               | Preserves headers, lists, code fences, and formatting.                                                                                                                                                                                                                          |
+| **JSON**                  | `.json`                                                                                                                                         | Formatter                                  | Pretty-printed with 2-space indentation in a syntax-highlighted code fence.                                                                                                                                                                                                     |
+| **XML**                   | `.xml`                                                                                                                                          | Pass-through                               | Wrapped in an XML-tagged fenced code block.                                                                                                                                                                                                                                     |
+| **Code**                  | `.js`, `.ts`, `.tsx`, `.jsx`, `.py`, `.go`, `.rs`, `.java`, `.c`, `.cpp`, `.cs`, `.rb`, `.php`, `.swift`, `.kt`, `.sql`, `.sh`, `.yaml`, `.yml` | Syntax fence                               | Tagged with appropriate language identifier; handles nested backtick runs safely.                                                                                                                                                                                               |
+| **CSV / TSV**             | `.csv`, `.tsv`                                                                                                                                  | Custom RFC-4180 parser                     | Sniffs delimiters (`,`, `;`, `\t`), strips BOMs, preserves exact literal cell text (leading zeros, exponent notation, quoted spacing).                                                                                                                                          |
+| **Rich Text (RTF)**       | `.rtf`                                                                                                                                          | Zero-dependency streaming tokenizer        | Tokenizes control words and groups; decodes Unicode (`\uN`) and Windows-1252 hex (`\'hh`); maps `\b`, `\i`, `\bullet`, `\par`; skips non-text destinations (`\fonttbl`, `\colortbl`, `\pict`, metadata); emits clean Markdown.                                                  |
+| **HTML**                  | `.html`, `.htm`                                                                                                                                 | Inert DOM + Mozilla Readability + Turndown | Safely parses detached DOM via `DOMParser` (scripts never run); extracts article title, byline, and body via `@mozilla/readability`; falls back to cleaned `<body>` with boilerplate stripped (`<nav>`, `<header>`, `<footer>`, `<aside>`); renders GFM tables and code blocks. |
+| **DOCX**                  | `.docx`                                                                                                                                         | Mammoth.js + Turndown                      | Converts headings, lists, tables, and links to markdown; counts and warns about omitted embedded images.                                                                                                                                                                        |
+| **PowerPoint**            | `.pptx`                                                                                                                                         | JSZip + fast-xml-parser                    | Preserves presentation slide order (`sldIdLst`), titles (`###`), nested bullet levels (`-`), tables (GFM), speaker notes (`**Notes:**`), hidden slides (`## Slide N (hidden)`), and warns about omitted images and charts (`PPTX_NON_TEXT_OMITTED`).                            |
+| **XLSX / XLS / XLSM**     | `.xlsx`, `.xls`, `.xlsm`                                                                                                                        | Vendored SheetJS (0.20.3)                  | Emits `## Sheet: <name>` sections, GFM tables, ISO formatted dates, replicates merged top-left cells, and flags hidden sheets.                                                                                                                                                  |
+| **PDF (Text)**            | `.pdf`                                                                                                                                          | `pdfjs-dist` legacy build                  | Strips running headers/footers (≥ 60% pages) and bare page numbers; classifies font sizes into `#`, `##`, `###` headings; de-hyphenates words across line breaks.                                                                                                               |
+| **PDF (Scanned & Mixed)** | `.pdf`                                                                                                                                          | Per-page OCR routing                       | Evaluates each page: pages with `< 25` characters and graphics operators route automatically to self-hosted OCR.                                                                                                                                                                |
+| **Images**                | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif`                                                                                                | Self-hosted Tesseract.js                   | Decoded locally via Canvas/ImageBitmap; scaled to bounded dimensions; OCR recognized to structured text.                                                                                                                                                                        |
+| **EPUB**                  | `.epub`                                                                                                                                         | JSZip + fast-xml-parser + Turndown         | Follows OPF spine order (never manifest or alphabetical); extracts `dc:title`/`dc:creator` metadata; shifts chapter heading hierarchy down one level (`##` per chapter); warns on omitted images (`EPUB_IMAGES_OMITTED`).                                                       |
+| **ZIP Archives**          | `.zip`                                                                                                                                          | JSZip + recursive sub-pipeline             | Recurses nested archives up to depth 3; sanitizes paths against zip-slip; generates an indented ASCII file tree (`## Files`); converts each supported entry via `# File: <path>` boundaries; isolates per-file failures (`> ⚠ <path>: <reason>`).                               |
+| **Folders**               | Directory drop / file picker                                                                                                                    | `webkitdirectory` + pipeline               | Labels files by `webkitRelativePath` to disambiguate identical basenames across directories; filters junk and developer artifacts; supports Separate or Combined batch modes.                                                                                                   |
 
 ### Converting Web Pages
 
@@ -83,33 +87,33 @@ To convert a web page or online article, save it locally in your browser as an H
 
 To ensure responsive in-browser performance and prevent decompression bombs or tab freezing, archives and directory uploads enforce strict resource bounds:
 
-| Limit | Value | Scope | Action on Limit |
-|:------|:------|:------|:----------------|
-| **Max Converted Files** | 500 entries | ZIP & Folder | Returns partial conversion of processed files + `ZIP_LIMIT_REACHED` warning / UI limit banner |
-| **Max Uncompressed Bytes** | 200 MB | ZIP | Checked on declared sizes before inflation and tracked during inflation; stops cleanly |
-| **Max Per-File Bytes** | 50 MB | ZIP | Skips oversized entry + emits warning; continues converting remainder |
-| **Max Output Characters** | 2,000,000 chars | ZIP | Caps output length to avoid browser DOM lockup; returns partial output |
-| **Max Archive Recursion** | 3 levels | ZIP | Recurses into nested `.zip` archives up to depth 3; deeper archives skipped |
-| **Junk / Artifact Filter** | Automatic | ZIP & Folder | Filters `__MACOSX`, `.DS_Store`, `Thumbs.db`, `.git`, `node_modules`, `.idea`, `.vscode`, `dist`, `build`, `__pycache__`, `*.pyc`, `*.class`, `*.lock`, and lockfiles |
+| Limit                      | Value           | Scope        | Action on Limit                                                                                                                                                       |
+| :------------------------- | :-------------- | :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Max Converted Files**    | 500 entries     | ZIP & Folder | Returns partial conversion of processed files + `ZIP_LIMIT_REACHED` warning / UI limit banner                                                                         |
+| **Max Uncompressed Bytes** | 200 MB          | ZIP          | Checked on declared sizes before inflation and tracked during inflation; stops cleanly                                                                                |
+| **Max Per-File Bytes**     | 50 MB           | ZIP          | Skips oversized entry + emits warning; continues converting remainder                                                                                                 |
+| **Max Output Characters**  | 2,000,000 chars | ZIP          | Caps output length to avoid browser DOM lockup; returns partial output                                                                                                |
+| **Max Archive Recursion**  | 3 levels        | ZIP          | Recurses into nested `.zip` archives up to depth 3; deeper archives skipped                                                                                           |
+| **Junk / Artifact Filter** | Automatic       | ZIP & Folder | Filters `__MACOSX`, `.DS_Store`, `Thumbs.db`, `.git`, `node_modules`, `.idea`, `.vscode`, `dist`, `build`, `__pycache__`, `*.pyc`, `*.class`, `*.lock`, and lockfiles |
 
 ### Unsupported File Types & Explicit Error Messages
 
 When an unsupported or restricted file is uploaded, Unbound throws a typed error displaying an actionable message:
 
-| File Type / Condition | Error Category | Actionable Error Message |
-|:----------------------|:---------------|:-------------------------|
-| **Legacy PowerPoint (`.ppt`, OLE2)** | `LegacyDocError` | `"Legacy .ppt files are not supported. Save as .pptx and try again."` |
-| **Password-Protected PPTX** | `PasswordRequiredError` | `"This PowerPoint is password-protected. Save a copy without a password and try again."` |
-| **DRM-Protected EPUB** | `PasswordRequiredError` | `"This EPUB is DRM-protected and can't be converted."` |
-| **Password-Protected ZIP** | `PasswordRequiredError` | `"This ZIP is password-protected. Extract it with a password and drop the files instead."` |
-| **Unsupported format** | `UnsupportedFormatError` | `"Unsupported format for now (<kind>). Supported: txt, md, json, xml, code, pdf, docx, pptx, rtf, html, epub, zip, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files."` |
-| **Legacy DOC (`.doc`, OLE2)** | `LegacyDocError` | `"Legacy .doc files are not supported. Please save as .docx and try again."` |
-| **Legacy XLS (`.xls`, OLE2)** | `LegacyDocError` | `"Legacy .xls format is not supported. Please save as .xlsx or .csv."` |
-| **Password-Protected DOCX** | `PasswordRequiredError` | `"This file is password-protected. Please remove the password and try again."` |
-| **Password-Protected XLSX** | `PasswordRequiredError` | `"Password-protected spreadsheets cannot be converted. Please remove the password and re-upload."` |
-| **Password-Protected PDF** | `PasswordRequiredError` | `"This PDF is password-protected. Please remove the password to convert."` |
-| **Corrupted Binary File** | `CorruptFileError` | `"File appears corrupted or truncated. Please re-export and try again."` |
-| **Zero Extractable Text** | `NoTextFoundError` | `"No text found in this PDF. Try a file with selectable text or enable OCR."` |
+| File Type / Condition                | Error Category           | Actionable Error Message                                                                                                                                                                    |
+| :----------------------------------- | :----------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Legacy PowerPoint (`.ppt`, OLE2)** | `LegacyDocError`         | `"Legacy .ppt files are not supported. Save as .pptx and try again."`                                                                                                                       |
+| **Password-Protected PPTX**          | `PasswordRequiredError`  | `"This PowerPoint is password-protected. Save a copy without a password and try again."`                                                                                                    |
+| **DRM-Protected EPUB**               | `PasswordRequiredError`  | `"This EPUB is DRM-protected and can't be converted."`                                                                                                                                      |
+| **Password-Protected ZIP**           | `PasswordRequiredError`  | `"This ZIP is password-protected. Extract it with a password and drop the files instead."`                                                                                                  |
+| **Unsupported format**               | `UnsupportedFormatError` | `"Unsupported format for now (<kind>). Supported: txt, md, json, xml, code, pdf, docx, pptx, rtf, html, epub, zip, xlsx, xls, xlsm, csv, tsv, and image (png, jpg, webp, bmp, gif) files."` |
+| **Legacy DOC (`.doc`, OLE2)**        | `LegacyDocError`         | `"Legacy .doc files are not supported. Please save as .docx and try again."`                                                                                                                |
+| **Legacy XLS (`.xls`, OLE2)**        | `LegacyDocError`         | `"Legacy .xls format is not supported. Please save as .xlsx or .csv."`                                                                                                                      |
+| **Password-Protected DOCX**          | `PasswordRequiredError`  | `"This file is password-protected. Please remove the password and try again."`                                                                                                              |
+| **Password-Protected XLSX**          | `PasswordRequiredError`  | `"Password-protected spreadsheets cannot be converted. Please remove the password and re-upload."`                                                                                          |
+| **Password-Protected PDF**           | `PasswordRequiredError`  | `"This PDF is password-protected. Please remove the password to convert."`                                                                                                                  |
+| **Corrupted Binary File**            | `CorruptFileError`       | `"File appears corrupted or truncated. Please re-export and try again."`                                                                                                                    |
+| **Zero Extractable Text**            | `NoTextFoundError`       | `"No text found in this PDF. Try a file with selectable text or enable OCR."`                                                                                                               |
 
 ---
 
@@ -171,42 +175,42 @@ Unbound runs on modern evergreen browsers supporting ES2022, WebAssembly (`wasm-
 
 ## Limits & Performance
 
-| Dimension | Measured Value | Implementation & Enforcement |
-|:----------|:---------------|:-----------------------------|
-| **Initial JS Bundle** | **~71.7 KB gzip** | Strictly enforced under 256,000 B budget (`scripts/check-bundle.mjs`). Heavy dependencies (pdfjs, SheetJS, tesseract.js) live in 27 lazy-loaded chunks. |
-| **Output Preview Cap** | **200,000 characters** | UI preview caps display at 200,000 chars (`MAX_PREVIEW_CHARS`) to maintain 60fps rendering. The **Copy** and **Download** actions always operate on the full uncapped output. |
-| **Large Document Warning** | **300 pages** | Documents exceeding 300 pages (`LARGE_PDF_PAGE_THRESHOLD`) display an advisory note. Page loops yield to the browser UI thread via macrotask yields (`setTimeout(0)`). |
-| **OCR Memory Ceiling** | **≤ 3000 px max edge** | Canvas buffers are capped at a 3000px long edge (`MAX_CANVAS_LONG_EDGE`, ~36 MB uncompressed RGBA) and zeroed out upon job completion. |
-| **Image Detection Bound** | **First 20 text pages** | Bounded via `MAX_TEXT_PAGES_FOR_IMAGE_DETECTION = 20`. Keeps operator list overhead to 0% for pages 21+. |
-| **Cancel Response Time** | **< 1 second** | Worker termination occurs in `< 1` second on both desktop and mobile viewports (`tesseractEngine.terminateWorker()`). |
-| **Archive Max Converted Files** | **500 entries** | Capped at 500 entries (`ZIP_MAX_CONVERTED_FILES = 500`, `FOLDER_MAX_FILES = 500`) to prevent tab freezing; returns partial output + warning. |
-| **Archive Max Total Size** | **200 MB uncompressed** | Enforced at 200 MB (`ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES = 200 * 1024 * 1024`) before inflation and tracked continuously. |
-| **Archive Max Per-File Size** | **50 MB** | Enforced at 50 MB (`ZIP_MAX_FILE_BYTES = 50 * 1024 * 1024`); skips oversized entries and continues archive processing. |
-| **Archive Max Output Length** | **2,000,000 chars** | Capped at 2,000,000 characters (`ZIP_MAX_OUTPUT_CHARS = 2_000_000`) to prevent memory exhaustion. |
-| **Archive Recursion Depth** | **3 nested levels** | Recurses nested `.zip` archives up to depth 3 (`ZIP_MAX_RECURSION_DEPTH = 3`). |
+| Dimension                       | Measured Value          | Implementation & Enforcement                                                                                                                                                  |
+| :------------------------------ | :---------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Initial JS Bundle**           | **~71.7 KB gzip**       | Strictly enforced under 256,000 B budget (`scripts/check-bundle.mjs`). Heavy dependencies (pdfjs, SheetJS, tesseract.js) live in 27 lazy-loaded chunks.                       |
+| **Output Preview Cap**          | **200,000 characters**  | UI preview caps display at 200,000 chars (`MAX_PREVIEW_CHARS`) to maintain 60fps rendering. The **Copy** and **Download** actions always operate on the full uncapped output. |
+| **Large Document Warning**      | **300 pages**           | Documents exceeding 300 pages (`LARGE_PDF_PAGE_THRESHOLD`) display an advisory note. Page loops yield to the browser UI thread via macrotask yields (`setTimeout(0)`).        |
+| **OCR Memory Ceiling**          | **≤ 3000 px max edge**  | Canvas buffers are capped at a 3000px long edge (`MAX_CANVAS_LONG_EDGE`, ~36 MB uncompressed RGBA) and zeroed out upon job completion.                                        |
+| **Image Detection Bound**       | **First 20 text pages** | Bounded via `MAX_TEXT_PAGES_FOR_IMAGE_DETECTION = 20`. Keeps operator list overhead to 0% for pages 21+.                                                                      |
+| **Cancel Response Time**        | **< 1 second**          | Worker termination occurs in `< 1` second on both desktop and mobile viewports (`tesseractEngine.terminateWorker()`).                                                         |
+| **Archive Max Converted Files** | **500 entries**         | Capped at 500 entries (`ZIP_MAX_CONVERTED_FILES = 500`, `FOLDER_MAX_FILES = 500`) to prevent tab freezing; returns partial output + warning.                                  |
+| **Archive Max Total Size**      | **200 MB uncompressed** | Enforced at 200 MB (`ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES = 200 * 1024 * 1024`) before inflation and tracked continuously.                                                        |
+| **Archive Max Per-File Size**   | **50 MB**               | Enforced at 50 MB (`ZIP_MAX_FILE_BYTES = 50 * 1024 * 1024`); skips oversized entries and continues archive processing.                                                        |
+| **Archive Max Output Length**   | **2,000,000 chars**     | Capped at 2,000,000 characters (`ZIP_MAX_OUTPUT_CHARS = 2_000_000`) to prevent memory exhaustion.                                                                             |
+| **Archive Recursion Depth**     | **3 nested levels**     | Recurses nested `.zip` archives up to depth 3 (`ZIP_MAX_RECURSION_DEPTH = 3`).                                                                                                |
 
 ### Performance Benchmark Suite (Verified in `tests/unit/perf.test.ts`)
 
-| Scenario | Performance Budget | Verified Benchmark |
-|:---------|:------------------:|:------------------:|
-| **Typical 20-Page PDF** | < 5.0 s | **190 ms** |
-| **Typical DOCX (50 sections)** | < 5.0 s | **112 ms** |
-| **Typical XLSX (3 sheets, 300 rows)** | < 5.0 s | **42 ms** |
-| **Typical PPTX (10 slides)** | < 5.0 s | **36 ms** |
-| **Large 320-Page PDF** | < 60.0 s | **772 ms** |
-| **ZIP Archive (50 small files)** | < 10.0 s | **88 ms** |
-| **EPUB eBook (200 chapters)** | < 5.0 s | **392 ms** |
+| Scenario                              | Performance Budget | Verified Benchmark |
+| :------------------------------------ | :----------------: | :----------------: |
+| **Typical 20-Page PDF**               |      < 5.0 s       |     **190 ms**     |
+| **Typical DOCX (50 sections)**        |      < 5.0 s       |     **112 ms**     |
+| **Typical XLSX (3 sheets, 300 rows)** |      < 5.0 s       |     **42 ms**      |
+| **Typical PPTX (10 slides)**          |      < 5.0 s       |     **36 ms**      |
+| **Large 320-Page PDF**                |      < 60.0 s      |     **772 ms**     |
+| **ZIP Archive (50 small files)**      |      < 10.0 s      |     **88 ms**      |
+| **EPUB eBook (200 chapters)**         |      < 5.0 s       |     **392 ms**     |
 
 ### Embedded-image detection cost
 
 Measured median conversion times (`pdfConverter.convert`) across 3 runs on 300-page benchmark documents:
 
-| Test Fixture (300 Pages) | Detection OFF | Detection ON | Overhead (%) | Overhead Ratio |
-|:-------------------------|:-------------:|:------------:|:------------:|:--------------:|
-| **Pure Text PDF** | 575.5 ms | 710.8 ms | +23.5% | 1.235× |
-| **Mixed PDF (every 10th page image)** | 554.7 ms | 667.8 ms | +20.4% | 1.204× |
+| Test Fixture (300 Pages)              | Detection OFF | Detection ON | Overhead (%) | Overhead Ratio |
+| :------------------------------------ | :-----------: | :----------: | :----------: | :------------: |
+| **Pure Text PDF**                     |   575.5 ms    |   710.8 ms   |    +23.5%    |     1.235×     |
+| **Mixed PDF (every 10th page image)** |   554.7 ms    |   667.8 ms   |    +20.4%    |     1.204×     |
 
-*Decision:* Because detection overhead exceeded the 15% threshold (+23.5% and +20.4%), detection was capped to the first 20 text pages. Low-text OCR routing remains active on every page.
+_Decision:_ Because detection overhead exceeded the 15% threshold (+23.5% and +20.4%), detection was capped to the first 20 text pages. Low-text OCR routing remains active on every page.
 
 ---
 
@@ -241,13 +245,13 @@ Designed mobile-first with verified responsiveness on narrow screens:
 
 Unbound features a terminal-inspired interface built on CSS custom properties (`src/styles/tokens.css`):
 
-| Feature | Light Theme | Dark Theme |
-|:--------|:------------|:-----------|
-| **Theme Aesthetic** | High-contrast warm paper | Dark terminal console |
-| **Accent & Brand** | Warm amber (`#8a4800`, 5.8:1 contrast) | Bright terminal amber (`#ffb41f`, 9.5:1 contrast) |
-| **Typography** | `JetBrains Mono` & `IBM Plex Mono` | `JetBrains Mono` & `IBM Plex Mono` |
-| **Contrast Compliance** | Strict WCAG AA (≥ 4.5:1 text, ≥ 3:1 UI) | Strict WCAG AA (≥ 4.5:1 text, ≥ 3:1 UI) |
-| **Accessibility** | 0 axe-core violations | 0 axe-core violations |
+| Feature                 | Light Theme                             | Dark Theme                                        |
+| :---------------------- | :-------------------------------------- | :------------------------------------------------ |
+| **Theme Aesthetic**     | High-contrast warm paper                | Dark terminal console                             |
+| **Accent & Brand**      | Warm amber (`#8a4800`, 5.8:1 contrast)  | Bright terminal amber (`#ffb41f`, 9.5:1 contrast) |
+| **Typography**          | `JetBrains Mono` & `IBM Plex Mono`      | `JetBrains Mono` & `IBM Plex Mono`                |
+| **Contrast Compliance** | Strict WCAG AA (≥ 4.5:1 text, ≥ 3:1 UI) | Strict WCAG AA (≥ 4.5:1 text, ≥ 3:1 UI)           |
+| **Accessibility**       | 0 axe-core violations                   | 0 axe-core violations                             |
 
 ```carousel
 ![Terminal Dark Theme DropZone Hero](docs/screenshots/home-dark.png)
@@ -288,14 +292,14 @@ Unbound features a terminal-inspired interface built on CSS custom properties (`
 
 ## Documentation
 
-| Document | Description |
-|:---------|:------------|
-| [`PLAN.md`](PLAN.md) | Implementation blueprint, milestone definitions, and acceptance criteria. |
-| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | Authoritative scope, format support requirements, and design constraints. |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Detailed module architecture, pipeline flow, and Mermaid sequence diagrams. |
-| [`PROGRESS.md`](PROGRESS.md) | Append-only milestone progress log, verification records, and audit history. |
-| [`DECISIONS.md`](DECISIONS.md) | Architectural decision records (ADRs) with rationale and consequences. |
-| [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) | Requirement-to-test mapping matrix verified by automated gate script. |
+| Document                                       | Description                                                                  |
+| :--------------------------------------------- | :--------------------------------------------------------------------------- |
+| [`PLAN.md`](PLAN.md)                           | Implementation blueprint, milestone definitions, and acceptance criteria.    |
+| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | Authoritative scope, format support requirements, and design constraints.    |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Detailed module architecture, pipeline flow, and Mermaid sequence diagrams.  |
+| [`PROGRESS.md`](PROGRESS.md)                   | Append-only milestone progress log, verification records, and audit history. |
+| [`DECISIONS.md`](DECISIONS.md)                 | Architectural decision records (ADRs) with rationale and consequences.       |
+| [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) | Requirement-to-test mapping matrix verified by automated gate script.        |
 
 ---
 
@@ -351,17 +355,17 @@ node scripts/check-traceability.mjs
 
 ## Tech Stack
 
-| Component | Technology | Description |
-|:----------|:-----------|:------------|
-| **UI Framework** | React 18 | Declarative component UI with zero component library dependencies. |
-| **Language** | TypeScript (Strict) | Strict typing across all core modules and converter interfaces. |
-| **Build & Bundler** | Vite 6 | Lightning-fast HMR and optimized Rollup code splitting. |
-| **PDF Extraction** | `pdfjs-dist` (6.4.299) | Legacy build for cross-browser parsing and canvas rendering. |
-| **OCR Engine** | `tesseract.js` (7.0.0) | Local WASM LSTM neural net engine with self-hosted assets. |
-| **DOCX Parsing** | Mammoth.js (1.8.0) | Semantic HTML extraction from Word documents. |
-| **Spreadsheet Parsing** | SheetJS (0.20.3) | Vendored tarball parsing `.xlsx`, `.xls`, `.xlsm` workbooks. |
-| **Markdown Conversion**| Turndown + GFM plugin | Clean HTML-to-ATX markdown transformation. |
-| **Testing** | Vitest & Playwright | Fast unit tests with V8 coverage; cross-browser E2E testing with `axe-core`. |
+| Component               | Technology             | Description                                                                  |
+| :---------------------- | :--------------------- | :--------------------------------------------------------------------------- |
+| **UI Framework**        | React 18               | Declarative component UI with zero component library dependencies.           |
+| **Language**            | TypeScript (Strict)    | Strict typing across all core modules and converter interfaces.              |
+| **Build & Bundler**     | Vite 6                 | Lightning-fast HMR and optimized Rollup code splitting.                      |
+| **PDF Extraction**      | `pdfjs-dist` (6.4.299) | Legacy build for cross-browser parsing and canvas rendering.                 |
+| **OCR Engine**          | `tesseract.js` (7.0.0) | Local WASM LSTM neural net engine with self-hosted assets.                   |
+| **DOCX Parsing**        | Mammoth.js (1.8.0)     | Semantic HTML extraction from Word documents.                                |
+| **Spreadsheet Parsing** | SheetJS (0.20.3)       | Vendored tarball parsing `.xlsx`, `.xls`, `.xlsm` workbooks.                 |
+| **Markdown Conversion** | Turndown + GFM plugin  | Clean HTML-to-ATX markdown transformation.                                   |
+| **Testing**             | Vitest & Playwright    | Fast unit tests with V8 coverage; cross-browser E2E testing with `axe-core`. |
 
 ---
 

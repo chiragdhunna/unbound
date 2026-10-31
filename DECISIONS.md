@@ -433,3 +433,18 @@ Dependabot was configured to run on a weekly schedule (Mondays at 5:00 AM IST) a
 3. **Verification:**
    - Commit `c0ad15e` on `main` passed GitHub Actions CI `verify` (`conclusion: success`, id `122302291586`) and Dependabot schema validation (`conclusion: success`, id `122302305427`).
    - Dependabot automatically generated consolidated PR #22 (`chore(deps-dev): bump the all-dependencies group across 1 directory with 4 updates`) upgrading `docx`, `prettier`, `typescript-eslint`, and `vite` without peer dependency conflicts; its CI `verify` run completed with `conclusion: success` (id `122303342789`).
+
+
+### 2026-11-01 — Project Logo Integration (Vector SVG, Favicon, Website Header & Documentation)
+
+- **Context:**
+  The project received official branding featuring a stylized geometric "U" monogram with trailing speed/wing strokes in amber (`#ffb41f`), matching Unbound's warm terminal design system.
+- **Decision:**
+  1. **Vector SVG & Raster Assets:** Extracted mathematical vector coordinates for the geometric mark to produce scalable, zero-dependency vector SVGs (`public/logo.svg` and `public/favicon.svg`), as well as high-resolution transparent PNG assets (`public/logo.png`, `public/logo-192.png`, `public/logo-horizontal.png`).
+  2. **Favicon Replacement:** Replaced the legacy placeholder SVG favicon in `public/favicon.svg` with the official amber logo mark, and added an apple-touch-icon link in `index.html`.
+  3. **Website Header:** Updated `src/app/AppShell.tsx` and `src/styles/base.css` to display the logo mark alongside the `unbound_` terminal header with `alt="" aria-hidden="true"`, ensuring accessible headings (`getByRole('heading', { name: 'unbound_' })`) and axe-core compliance remain preserved without regressing any unit, e2e, or accessibility tests.
+  4. **Documentation:** Added the brand logo to `README.md` and archived the master brand sheet in `docs/brand/unbound-brand-sheet.jpg`.
+- **Consequences:**
+  - Preserved strict Content Security Policy (`img-src 'self' data: blob:`).
+  - Zero JS bundle size impact (initial JS gzip 71,721 bytes / 256,000 bytes budget).
+  - All 413 unit tests, 219 Playwright E2E tests, and axe-core accessibility checks pass with zero errors.
