@@ -50,7 +50,7 @@
 | ADR-7 | **Open Question #1 (batch default):** separate outputs by default, with a "Combine all" toggle that concatenates with `# File: name` headers. | Matches requirement leaning. |
 | ADR-8 | **Open Question #2 (chunk size):** chunk by **estimated tokens** (default 12k tokens ≈ 50k chars), with a chars/tokens unit switch. Token estimate is heuristic (script-aware chars/token), always displayed with "≈". | Users manage token limits; chars alone misleads for CJK/code. |
 | ADR-9 | **Open Question #4 (quick-paste mode):** implement as a settings toggle. Because browsers require a **user gesture** for clipboard writes (Safari especially), auto-copy after async conversion may be rejected → **fallback:** show a prominent "Copied?/Tap to copy" toast button. Never silently fail. | Real browser constraint; must be handled, not ignored. |
-| ADR-10 | **URL input (P1) limitation:** browsers block cross-origin fetches (CORS). Implement direct `fetch`; on CORS/network failure show actionable guidance (save page as HTML → drop it in, or paste HTML). Optional user-configured proxy via `VITE_FETCH_PROXY_URL` (off by default, clearly labelled as *not* private). Ship a documented sample proxy in `docs/optional-proxy/` (not deployed). | Honest handling of a hard platform constraint. |
+| ADR-10 | **URL input (P1) limitation:** browsers block cross-origin fetches (CORS). Implement direct `fetch`; on CORS/network failure show actionable guidance (save page as HTML → drop it in, or paste HTML). Optional user-configured proxy via `VITE_FETCH_PROXY_URL` (off by default, clearly labelled as *not* private). Ship a documented sample proxy in `docs/optional-proxy/` (not deployed). *(Note: URL input was removed; see DECISIONS.md 2026-10-27).* | Honest handling of a hard platform constraint. *(Note: URL input was removed; see DECISIONS.md 2026-10-27).* |
 | ADR-11 | **SheetJS supply chain:** the `xlsx` package on the npm registry is stale/vulnerable. Install the current release from the official SheetJS CDN tarball (`https://cdn.sheetjs.com/`). If the sandbox cannot reach it, fall back to `exceljs` (+ `papaparse` for CSV) and log the decision. | Security hygiene. |
 | ADR-12 | **State:** Zustand store for job queue/settings; settings persisted in `localStorage` (never file contents). | Small, testable, no provider boilerplate. |
 | ADR-13 | **Styling:** plain CSS with design tokens (CSS variables) — no UI framework. Fonts self-hosted via `@fontsource/jetbrains-mono` and `@fontsource/ibm-plex-mono`. | No external font requests (privacy), tiny bundle. |
@@ -221,7 +221,7 @@ Client-side tokenizer (no pandoc): handle groups, skip destinations (`fonttbl`, 
 ### 7.8 HTML file & URL (P1)
 - Parse → `@mozilla/readability` → turndown(GFM). If Readability fails (non-article page), fall back to `<body>` minus `nav/header/footer/aside/script/style/noscript`.
 - Never insert parsed HTML into the live DOM; scripts never execute.
-- URL input: see ADR-10. Use `AbortController` with a 15 s timeout. Resolve relative links against the page URL; keep link text + href as `[text](url)`.
+- URL input: see ADR-10. Use `AbortController` with a 15 s timeout. Resolve relative links against the page URL; keep link text + href as `[text](url)`. *(Note: URL input was removed; see DECISIONS.md 2026-10-27).*
 
 ### 7.9 JSON / XML / code (P2)
 - Fenced code block with language tag from extension. JSON: valid → pretty-print (2 spaces) with a toggle to keep original; invalid → raw with info warning. XML: pass through.
@@ -283,7 +283,7 @@ Verify text/background contrast ≥ 4.5:1 (amber-on-bg and muted-on-bg included)
 
 **Layout (single screen, no routing):**
 1. Header: wordmark `unbound_` (blinking cursor, disabled under `prefers-reduced-motion`) + tagline.
-2. **DropZone:** large, dashed amber border, click/drag/paste-files support, keyboard operable (Enter/Space opens picker), "Choose files" and "Choose folder" buttons, optional URL field (P1).
+2. **DropZone:** large, dashed amber border, click/drag/paste-files support, keyboard operable (Enter/Space opens picker), "Choose files" and "Choose folder" buttons, optional URL field (P1) *(Note: URL input was removed; see DECISIONS.md 2026-10-27)*.
 3. **Options bar:** Markdown | Plain · Separate | Combined · Quick paste · Page markers · OCR language · Chunk threshold. Persist in `localStorage`.
 4. **Job list:** per file — name, detected type badge, size, status (queued / converting / done / error), progress bar with phase text, warnings (collapsible), cancel/retry/remove.
 5. **Output panel:** toolbar (Copy, Download, counts), scrollable monospace read-only text with an **Edit** toggle. **Preview cap:** if output > 1M chars, render the first 200k chars with a notice ("showing first 200,000 of N characters — Copy and Download use the full text"). Copy/Download always use the full string.
@@ -334,7 +334,7 @@ Enforce size budgets in `check-bundle.mjs`; enforce time budgets in a `tests/per
 
 **Unit tests (Vitest):** every converter (golden markdown comparisons + targeted assertions), detection matrix, encoding fallback, normalizer, plain-text renderer, tokens, chunker (**property-based** invariants), combine, queue (concurrency, cancel, failure isolation), errors → UI message map. Coverage gate: ≥ 85 % lines on `src/core` and `src/converters`.
 
-**E2E (Playwright, Chromium + WebKit mobile emulation):** happy path per format; batch separate/combined; chunking and sequential copy; plain toggle; download contents; password flow (wrong → right → cancel); OCR progress + cancel; low-confidence warning; unsupported/corrupt/empty files; quick-paste + gesture fallback; URL CORS failure guidance; folder/zip; keyboard-only flow; axe scans on every major state; privacy network test; perf budgets.
+**E2E (Playwright, Chromium + WebKit mobile emulation):** happy path per format; batch separate/combined; chunking and sequential copy; plain toggle; download contents; password flow (wrong → right → cancel); OCR progress + cancel; low-confidence warning; unsupported/corrupt/empty files; quick-paste + gesture fallback; URL CORS failure guidance *(Note: URL input was removed; see DECISIONS.md 2026-10-27)*; folder/zip; keyboard-only flow; axe scans on every major state; privacy network test; perf budgets.
 
 **Manual-equivalent checks the agent must automate or script:** mobile viewport screenshot review (store under `tests/e2e/__screenshots__`), Lighthouse CI accessibility ≥ 95.
 
@@ -380,7 +380,7 @@ Enforce size budgets in `check-bundle.mjs`; enforce time budgets in a `tests/per
 
 ### [x] M8 — P1 formats: RTF, HTML file, URL
 - Implement 7.7, 7.8, ADR-10 (incl. docs for optional proxy).
-- **Accept:** fixtures pass; URL CORS-failure guidance e2e passes.
+- **Accept:** fixtures pass; URL CORS-failure guidance e2e passes *(Note: URL input was removed; see DECISIONS.md 2026-10-27)*.
 
 ### [x] M9 — P2 formats: EPUB, ZIP/folders
 - Implement 7.10, 7.11 with limits and file tree.
