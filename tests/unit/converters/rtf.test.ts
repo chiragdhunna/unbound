@@ -31,7 +31,9 @@ describe('rtfConverter', () => {
     const rtf =
       "{\\rtf1\\ansi\\deff0\\fs24 Smart \\'93quotes\\'94 and em\\'97dash and ellipsis\\'85 and bullet\\'95done.}"
     const result = parseRtfToMarkdown(rtf)
-    expect(result).toContain('Smart “quotes” and em—dash and ellipsis… and bullet•done.')
+    expect(result).toContain(
+      'Smart “quotes” and em—dash and ellipsis… and bullet•done.'
+    )
   })
 
   it('skips header and metadata destinations completely', () => {
@@ -83,14 +85,16 @@ describe('rtfConverter', () => {
   })
 
   it('handles non-breaking spaces, hyphens, and section breaks', () => {
-    const rtf = '{\\rtf1\\ansi\\deff0 First\\~word\\_hyphen\\sect Second section.}'
+    const rtf =
+      '{\\rtf1\\ansi\\deff0 First\\~word\\_hyphen\\sect Second section.}'
     const result = parseRtfToMarkdown(rtf)
     expect(result).toContain('First word-hyphen')
     expect(result).toContain('Second section.')
   })
 
   it('handles custom uc skip counts and hex replacement chars', () => {
-    const rtf = "{\\rtf1\\ansi\\deff0\\uc2\\u8212\\'3f\\'3f emdash\\uc1\\u8212\\'3f emdash2}"
+    const rtf =
+      "{\\rtf1\\ansi\\deff0\\uc2\\u8212\\'3f\\'3f emdash\\uc1\\u8212\\'3f emdash2}"
     const result = parseRtfToMarkdown(rtf)
     expect(result).toContain('— emdash— emdash2')
   })
@@ -117,19 +121,21 @@ describe('rtfConverter', () => {
   })
 
   it('handles escaped braces and backslashes', () => {
-    const rtf = '{\\rtf1\\ansi\\deff0 Escaped \\{left brace\\} and \\\\backslash.}'
+    const rtf =
+      '{\\rtf1\\ansi\\deff0 Escaped \\{left brace\\} and \\\\backslash.}'
     const result = parseRtfToMarkdown(rtf)
     expect(result).toContain('Escaped {left brace} and \\backslash.')
   })
 
   it('throws CorruptFileError if input is not valid RTF', () => {
-    expect(() => parseRtfToMarkdown('This is just plain text without RTF header.')).toThrow(
-      CorruptFileError
-    )
+    expect(() =>
+      parseRtfToMarkdown('This is just plain text without RTF header.')
+    ).toThrow(CorruptFileError)
   })
 
   it('throws NoTextFoundError if RTF contains no body text', () => {
-    const emptyRtf = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}{\\colortbl;\\red0\\green0\\blue0;}}'
+    const emptyRtf =
+      '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}{\\colortbl;\\red0\\green0\\blue0;}}'
     expect(() => parseRtfToMarkdown(emptyRtf)).toThrow(NoTextFoundError)
   })
 
@@ -137,7 +143,9 @@ describe('rtfConverter', () => {
     const controller = new AbortController()
     controller.abort()
     const rtf = '{\\rtf1\\ansi\\deff0 Text content}'
-    expect(() => parseRtfToMarkdown(rtf, controller.signal)).toThrow('The operation was aborted.')
+    expect(() => parseRtfToMarkdown(rtf, controller.signal)).toThrow(
+      'The operation was aborted.'
+    )
   })
 
   it('converts through converter interface and reports progress', async () => {
@@ -158,6 +166,8 @@ describe('rtfConverter', () => {
       ctx
     )
     expect(result.markdown).toBe('Converted via converter interface.\n')
-    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ phase: 'complete', percent: 100 }))
+    expect(onProgress).toHaveBeenCalledWith(
+      expect.objectContaining({ phase: 'complete', percent: 100 })
+    )
   })
 })

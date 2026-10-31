@@ -34,7 +34,11 @@ test('self-hosted OCR recognizes text in the page with zero external requests', 
   page.on('request', (request) => {
     const url = new URL(request.url())
     requested.push(url.pathname)
-    if (url.protocol !== 'blob:' && url.protocol !== 'data:' && url.origin !== pageOrigin) {
+    if (
+      url.protocol !== 'blob:' &&
+      url.protocol !== 'data:' &&
+      url.origin !== pageOrigin
+    ) {
       crossOrigin.push(request.url())
     }
   })
@@ -57,7 +61,8 @@ test('self-hosted OCR recognizes text in the page with zero external requests', 
   await page.addScriptTag({ url: '/ocr/tesseract.js' })
 
   const run = await page.evaluate(async (): Promise<OcrRun> => {
-    const tesseract = (window as unknown as { Tesseract: TesseractGlobal }).Tesseract
+    const tesseract = (window as unknown as { Tesseract: TesseractGlobal })
+      .Tesseract
 
     const canvas = document.createElement('canvas')
     canvas.width = 640
@@ -113,9 +118,11 @@ test('self-hosted OCR recognizes text in the page with zero external requests', 
   // The self-hosted files were what the worker actually used.
   expect(requested).toContain('/ocr/worker.min.js')
   expect(requested).toContain('/ocr/lang/eng.traineddata')
-  expect(requested.some((path) => /^\/ocr\/core\/tesseract-core-.*\.wasm\.js$/.test(path))).toBe(
-    true
-  )
+  expect(
+    requested.some((path) =>
+      /^\/ocr\/core\/tesseract-core-.*\.wasm\.js$/.test(path)
+    )
+  ).toBe(true)
 
   // Nothing left the origin, and the CSP was never violated.
   expect(crossOrigin, crossOrigin.join('\n')).toEqual([])

@@ -12,7 +12,9 @@ describe('App shell', () => {
   it('renders the unbound shell headline', () => {
     render(<App />)
 
-    expect(screen.getByRole('heading', { level: 1, name: 'unbound_' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'unbound_' })
+    ).toBeInTheDocument()
   })
 
   it('displays the English-only OCR language notice in the UI', () => {
@@ -75,7 +77,9 @@ describe('App shell', () => {
 
     // Warning is displayed in the job card
     expect(
-      screen.getByText('This PDF contains embedded images that may contain text.')
+      screen.getByText(
+        'This PDF contains embedded images that may contain text.'
+      )
     ).toBeInTheDocument()
 
     // "Run OCR on this PDF" action button is visible
@@ -134,7 +138,9 @@ describe('App shell', () => {
       ).toBeInTheDocument()
     })
 
-    expect(screen.queryByRole('button', { name: /\.DS_Store/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /\.DS_Store/ })
+    ).not.toBeInTheDocument()
   })
 
   it('auto-copies markdown and announces "Quick paste copied" toast when quickPaste setting is enabled', async () => {
@@ -144,7 +150,10 @@ describe('App shell', () => {
       value: { writeText: writeTextMock },
       configurable: true
     })
-    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      configurable: true
+    })
 
     render(<App />)
 
@@ -153,7 +162,9 @@ describe('App shell', () => {
     await user.click(quickPasteCheckbox)
 
     const input = screen.getByLabelText('Choose file')
-    const file = new File(['quick paste content'], 'quick.txt', { type: 'text/plain' })
+    const file = new File(['quick paste content'], 'quick.txt', {
+      type: 'text/plain'
+    })
 
     await user.upload(input, file)
 
@@ -165,13 +176,18 @@ describe('App shell', () => {
 
   it('falls back to "Quick paste ready — tap Copy" toast when clipboard write fails in quickPaste mode', async () => {
     const user = userEvent.setup()
-    const writeTextMock = vi.fn().mockRejectedValue(new Error('Permission denied'))
+    const writeTextMock = vi
+      .fn()
+      .mockRejectedValue(new Error('Permission denied'))
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: writeTextMock },
       configurable: true
     })
     document.execCommand = vi.fn().mockReturnValue(false)
-    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      configurable: true
+    })
 
     render(<App />)
 
@@ -180,12 +196,16 @@ describe('App shell', () => {
     await user.click(quickPasteCheckbox)
 
     const input = screen.getByLabelText('Choose file')
-    const file = new File(['quick paste fallback'], 'quick2.txt', { type: 'text/plain' })
+    const file = new File(['quick paste fallback'], 'quick2.txt', {
+      type: 'text/plain'
+    })
 
     await user.upload(input, file)
 
     await waitFor(() => {
-      expect(screen.getByText('Quick paste ready — tap Copy')).toBeInTheDocument()
+      expect(
+        screen.getByText('Quick paste ready — tap Copy')
+      ).toBeInTheDocument()
     })
   })
 })

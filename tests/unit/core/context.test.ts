@@ -14,7 +14,9 @@ describe('createConvertContext', () => {
 
   it('provides a callable default onProgress handler', () => {
     const ctx = createConvertContext()
-    expect(() => ctx.onProgress({ phase: 'test', current: 1, total: 1 })).not.toThrow()
+    expect(() =>
+      ctx.onProgress({ phase: 'test', current: 1, total: 1 })
+    ).not.toThrow()
   })
 
   it('provides a default requestPassword handler that resolves to null', async () => {

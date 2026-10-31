@@ -136,10 +136,12 @@ export async function renderPdfPageToCanvas(
         canvas instanceof HTMLCanvasElement
           ? canvas
           : null,
-      canvasContext:
-        canvasContext as unknown as Parameters<PDFPageProxy['render']>[0]['canvasContext'],
-      viewport:
-        viewport as unknown as Parameters<PDFPageProxy['render']>[0]['viewport']
+      canvasContext: canvasContext as unknown as Parameters<
+        PDFPageProxy['render']
+      >[0]['canvasContext'],
+      viewport: viewport as unknown as Parameters<
+        PDFPageProxy['render']
+      >[0]['viewport']
     })
     await renderTask.promise
 
@@ -212,9 +214,7 @@ export async function decodeImageToCanvas(
     const canvas = createCanvas(width, height)
     const canvasContext = canvas.getContext('2d')
     if (!canvasContext) {
-      throw new OcrFailedError(
-        'Failed to obtain 2D canvas context for image.'
-      )
+      throw new OcrFailedError('Failed to obtain 2D canvas context for image.')
     }
 
     canvasContext.drawImage(imageSource, 0, 0, width, height)

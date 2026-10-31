@@ -189,10 +189,20 @@ describe('epubConverter', () => {
     expect(result.markdown).toContain('## Loomings')
     expect(result.markdown).toContain('Call me Ishmael.')
     expect(result.markdown).toContain('## The Carpet-Bag')
-    expect(result.markdown).toContain('I stuffed a shirt or two into my old carpet-bag.')
+    expect(result.markdown).toContain(
+      'I stuffed a shirt or two into my old carpet-bag.'
+    )
     expect(result.stats.pages).toBe(2)
-    expect(ctx.onProgress).toHaveBeenCalledWith({ phase: 'epub', current: 1, total: 2 })
-    expect(ctx.onProgress).toHaveBeenCalledWith({ phase: 'epub', current: 2, total: 2 })
+    expect(ctx.onProgress).toHaveBeenCalledWith({
+      phase: 'epub',
+      current: 1,
+      total: 2
+    })
+    expect(ctx.onProgress).toHaveBeenCalledWith({
+      phase: 'epub',
+      current: 2,
+      total: 2
+    })
   })
 
   it('respects spine reading order even when manifest or files are ordered differently', async () => {
@@ -242,7 +252,9 @@ describe('epubConverter', () => {
     )
 
     expect(result.markdown).toContain('## Chapter 1')
-    expect(result.markdown).toContain('Just raw paragraph text without any heading.')
+    expect(result.markdown).toContain(
+      'Just raw paragraph text without any heading.'
+    )
   })
 
   it('resolves nested hrefs containing ../ correctly', async () => {
@@ -304,7 +316,11 @@ describe('epubConverter', () => {
     const rightsBytes = await buildEpubBuffer({ drm: 'rights' })
     await expect(
       epubConverter.convert(
-        { name: 'rights.epub', mime: 'application/epub+zip', bytes: rightsBytes },
+        {
+          name: 'rights.epub',
+          mime: 'application/epub+zip',
+          bytes: rightsBytes
+        },
         makeContext()
       )
     ).rejects.toThrow(PasswordRequiredError)
@@ -336,7 +352,11 @@ describe('epubConverter', () => {
     const corruptBytes = new Uint8Array([1, 2, 3, 4, 5]).buffer
     await expect(
       epubConverter.convert(
-        { name: 'corrupt.epub', mime: 'application/epub+zip', bytes: corruptBytes },
+        {
+          name: 'corrupt.epub',
+          mime: 'application/epub+zip',
+          bytes: corruptBytes
+        },
         makeContext()
       )
     ).rejects.toThrow(CorruptFileError)
@@ -344,7 +364,11 @@ describe('epubConverter', () => {
     const noContainerBytes = await buildEpubBuffer({ skipContainer: true })
     await expect(
       epubConverter.convert(
-        { name: 'no-container.epub', mime: 'application/epub+zip', bytes: noContainerBytes },
+        {
+          name: 'no-container.epub',
+          mime: 'application/epub+zip',
+          bytes: noContainerBytes
+        },
         makeContext()
       )
     ).rejects.toThrow(CorruptFileError)
@@ -384,7 +408,9 @@ describe('epubConverter', () => {
 
   it('guards against oversized entries (zip-bomb guard)', async () => {
     const bytes = await buildEpubBuffer({
-      chapters: [{ id: 'ch1', href: 'ch1.xhtml', content: '<p>normal text</p>' }]
+      chapters: [
+        { id: 'ch1', href: 'ch1.xhtml', content: '<p>normal text</p>' }
+      ]
     })
 
     const loadedZip = await JSZip.loadAsync(bytes)
@@ -413,7 +439,8 @@ describe('epubConverter', () => {
           id: 'c1',
           href: 'links.xhtml',
           title: 'Link Chapter',
-          content: '<p>Visit <a href="https://example.com/info">External Site</a> for details.</p>'
+          content:
+            '<p>Visit <a href="https://example.com/info">External Site</a> for details.</p>'
         }
       ]
     })
@@ -423,6 +450,8 @@ describe('epubConverter', () => {
       makeContext()
     )
 
-    expect(result.markdown).toContain('[External Site](https://example.com/info)')
+    expect(result.markdown).toContain(
+      '[External Site](https://example.com/info)'
+    )
   })
 })

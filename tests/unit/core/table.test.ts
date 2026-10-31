@@ -37,32 +37,60 @@ describe('table utilities', () => {
 
   describe('processHeaderRow', () => {
     it('should convert empty header cells to Column N', () => {
-      expect(processHeaderRow(['', 'Name', ''])).toEqual(['Column 1', 'Name', 'Column 3'])
+      expect(processHeaderRow(['', 'Name', ''])).toEqual([
+        'Column 1',
+        'Name',
+        'Column 3'
+      ])
     })
 
     it('should preserve non-empty header cells', () => {
-      expect(processHeaderRow(['ID', 'Name', 'Age'])).toEqual(['ID', 'Name', 'Age'])
+      expect(processHeaderRow(['ID', 'Name', 'Age'])).toEqual([
+        'ID',
+        'Name',
+        'Age'
+      ])
     })
 
     it('should handle mixed empty and non-empty cells', () => {
-      expect(processHeaderRow(['', '', 'Data', '', ''])).toEqual(['Column 1', 'Column 2', 'Data', 'Column 4', 'Column 5'])
+      expect(processHeaderRow(['', '', 'Data', '', ''])).toEqual([
+        'Column 1',
+        'Column 2',
+        'Data',
+        'Column 4',
+        'Column 5'
+      ])
     })
 
     it('should handle whitespace-only cells as empty', () => {
-      expect(processHeaderRow([' ', '  \t  ', 'Name'])).toEqual(['Column 1', 'Column 2', 'Name'])
+      expect(processHeaderRow([' ', '  \t  ', 'Name'])).toEqual([
+        'Column 1',
+        'Column 2',
+        'Name'
+      ])
     })
   })
 
   describe('padRowsToEqualLength', () => {
     it('should pad shorter rows with empty strings', () => {
-      expect(padRowsToEqualLength([['a', 'b'], ['x', 'y', 'z']])).toEqual([
+      expect(
+        padRowsToEqualLength([
+          ['a', 'b'],
+          ['x', 'y', 'z']
+        ])
+      ).toEqual([
         ['a', 'b', ''],
         ['x', 'y', 'z']
       ])
     })
 
     it('should not modify rows that are already equal length', () => {
-      expect(padRowsToEqualLength([['a', 'b'], ['x', 'y']])).toEqual([
+      expect(
+        padRowsToEqualLength([
+          ['a', 'b'],
+          ['x', 'y']
+        ])
+      ).toEqual([
         ['a', 'b'],
         ['x', 'y']
       ])
@@ -73,7 +101,9 @@ describe('table utilities', () => {
     })
 
     it('should handle rows of varying lengths', () => {
-      expect(padRowsToEqualLength([['a'], ['b', 'c'], ['d', 'e', 'f']])).toEqual([
+      expect(
+        padRowsToEqualLength([['a'], ['b', 'c'], ['d', 'e', 'f']])
+      ).toEqual([
         ['a', '', ''],
         ['b', 'c', ''],
         ['d', 'e', 'f']
@@ -83,61 +113,86 @@ describe('table utilities', () => {
 
   describe('findFirstNonEmptyRowIndex', () => {
     it('should find the first row with non-empty cells', () => {
-      expect(findFirstNonEmptyRowIndex([['', ''], ['', 'data'], ['more', '']])).toBe(1)
+      expect(
+        findFirstNonEmptyRowIndex([
+          ['', ''],
+          ['', 'data'],
+          ['more', '']
+        ])
+      ).toBe(1)
     })
 
     it('should return -1 when all rows are empty', () => {
-      expect(findFirstNonEmptyRowIndex([['', ''], ['', '']])).toBe(-1)
+      expect(
+        findFirstNonEmptyRowIndex([
+          ['', ''],
+          ['', '']
+        ])
+      ).toBe(-1)
     })
 
     it('should handle whitespace-only cells as empty', () => {
-      expect(findFirstNonEmptyRowIndex([['   ', '\t\t'], ['', 'data']])).toBe(1)
+      expect(
+        findFirstNonEmptyRowIndex([
+          ['   ', '\t\t'],
+          ['', 'data']
+        ])
+      ).toBe(1)
     })
 
     it('should return 0 when first row has data', () => {
-      expect(findFirstNonEmptyRowIndex([['data', ''], ['', '']])).toBe(0)
+      expect(
+        findFirstNonEmptyRowIndex([
+          ['data', ''],
+          ['', '']
+        ])
+      ).toBe(0)
     })
   })
 
   describe('trimBlankRowsAndColumns', () => {
     it('should trim blank trailing rows and columns', () => {
-      expect(trimBlankRowsAndColumns([
-        ['a', 'b', ''],
-        ['c', 'd', ''],
-        ['', '', '']
-      ])).toEqual([
+      expect(
+        trimBlankRowsAndColumns([
+          ['a', 'b', ''],
+          ['c', 'd', ''],
+          ['', '', '']
+        ])
+      ).toEqual([
         ['a', 'b'],
         ['c', 'd']
       ])
     })
 
     it('should handle all blank rows', () => {
-      expect(trimBlankRowsAndColumns([
-        ['', ''],
-        ['', '']
-      ])).toEqual([])
+      expect(
+        trimBlankRowsAndColumns([
+          ['', ''],
+          ['', '']
+        ])
+      ).toEqual([])
     })
 
     it('should preserve non-blank data', () => {
-      expect(trimBlankRowsAndColumns([
-        ['a', 'b'],
-        ['c', 'd']
-      ])).toEqual([
+      expect(
+        trimBlankRowsAndColumns([
+          ['a', 'b'],
+          ['c', 'd']
+        ])
+      ).toEqual([
         ['a', 'b'],
         ['c', 'd']
       ])
     })
 
     it('should handle mixed blank and non-blank columns', () => {
-      expect(trimBlankRowsAndColumns([
-        ['', 'a', ''],
-        ['', 'b', ''],
-        ['', 'c', '']
-      ])).toEqual([
-        ['a'],
-        ['b'],
-        ['c']
-      ])
+      expect(
+        trimBlankRowsAndColumns([
+          ['', 'a', ''],
+          ['', 'b', ''],
+          ['', 'c', '']
+        ])
+      ).toEqual([['a'], ['b'], ['c']])
     })
   })
 
@@ -169,9 +224,7 @@ describe('table utilities', () => {
 
     it('should handle single row data', () => {
       const data = [['Name', 'Value']]
-      expect(buildMarkdownTable(data)).toBe(
-        '| Name | Value |\n| --- | --- |'
-      )
+      expect(buildMarkdownTable(data)).toBe('| Name | Value |\n| --- | --- |')
     })
   })
 })

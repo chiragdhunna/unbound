@@ -9,7 +9,11 @@ import {
   TooLargeError
 } from '../core/errors'
 import { normalizeMarkdown } from '../core/markdown'
-import { buildMarkdownTable, escapeCellValue, padRowsToEqualLength } from '../core/table'
+import {
+  buildMarkdownTable,
+  escapeCellValue,
+  padRowsToEqualLength
+} from '../core/table'
 import {
   type Converter,
   type ConvertContext,
@@ -59,7 +63,10 @@ function getNodeChildren(node: XmlNode): XmlNode[] {
   return []
 }
 
-function findDescendantNode(nodes: XmlNode[], expectedLocalName: string): XmlNode | null {
+function findDescendantNode(
+  nodes: XmlNode[],
+  expectedLocalName: string
+): XmlNode | null {
   for (const node of nodes) {
     const tag = getNodeTag(node)
     if (tag && getLocalName(tag) === expectedLocalName) {
@@ -72,7 +79,10 @@ function findDescendantNode(nodes: XmlNode[], expectedLocalName: string): XmlNod
   return null
 }
 
-function findChildNodes(parentNode: XmlNode, expectedLocalName?: string): XmlNode[] {
+function findChildNodes(
+  parentNode: XmlNode,
+  expectedLocalName?: string
+): XmlNode[] {
   const children = getNodeChildren(parentNode)
   if (!expectedLocalName) return children
   return children.filter((child) => {
@@ -101,7 +111,9 @@ function normalizeZipPath(baseDir: string, target: string): string {
   return resolved.join('/')
 }
 
-function parseRels(relsXmlText: string): Map<string, { target: string; type: string }> {
+function parseRels(
+  relsXmlText: string
+): Map<string, { target: string; type: string }> {
   const relsMap = new Map<string, { target: string; type: string }>()
   try {
     const parsed = xmlParser.parse(relsXmlText) as XmlNode[]
@@ -175,7 +187,7 @@ function parseParagraphsFromTxBody(txBodyNode: XmlNode): string[] {
       hasBuAutoNum = Boolean(findDescendantNode(pPrChildren, 'buAutoNum'))
       hasBuChar = Boolean(
         findDescendantNode(pPrChildren, 'buChar') ||
-          findDescendantNode(pPrChildren, 'buBlip')
+        findDescendantNode(pPrChildren, 'buBlip')
       )
     }
 
@@ -216,7 +228,9 @@ function parseTableFromGraphicFrame(gfNode: XmlNode): string | null {
         continue
       }
       const pNodes = findChildNodes(txBody, 'p')
-      const pTexts = pNodes.map(extractTextFromParagraph).filter((t) => t.length > 0)
+      const pTexts = pNodes
+        .map(extractTextFromParagraph)
+        .filter((t) => t.length > 0)
       const cellText = pTexts.join('\n')
       rowCells.push(escapeCellValue(cellText))
     }
@@ -259,14 +273,19 @@ function extractShapes(shapeNodes: XmlNode[]): ShapeExtractionResult {
     const tag = getNodeTag(node)
     if (tag && getLocalName(tag) === 'sp') {
       const nvSpPr = findDescendantNode(getNodeChildren(node), 'nvSpPr')
-      const ph = nvSpPr ? findDescendantNode(getNodeChildren(nvSpPr), 'ph') : null
+      const ph = nvSpPr
+        ? findDescendantNode(getNodeChildren(nvSpPr), 'ph')
+        : null
       if (ph) {
         const phType = getNodeAttributes(ph)['@_type']
         if (phType === 'title' || phType === 'ctrTitle') {
           const txBody = findDescendantNode(getNodeChildren(node), 'txBody')
           if (txBody) {
             const paras = findChildNodes(txBody, 'p')
-            const fullTitle = paras.map(extractTextFromParagraph).join(' ').trim()
+            const fullTitle = paras
+              .map(extractTextFromParagraph)
+              .join(' ')
+              .trim()
             if (fullTitle) {
               titleText = fullTitle
               titleShapeNode = node
@@ -292,7 +311,9 @@ function extractShapes(shapeNodes: XmlNode[]): ShapeExtractionResult {
       if (node === titleShapeNode) return
 
       const nvSpPr = findDescendantNode(getNodeChildren(node), 'nvSpPr')
-      const ph = nvSpPr ? findDescendantNode(getNodeChildren(nvSpPr), 'ph') : null
+      const ph = nvSpPr
+        ? findDescendantNode(getNodeChildren(nvSpPr), 'ph')
+        : null
       if (ph) {
         const phType = getNodeAttributes(ph)['@_type']
         if (phType && ['sldNum', 'dt', 'ftr', 'sldImg'].includes(phType)) {
@@ -350,7 +371,10 @@ function joinBodyItems(items: string[]): string {
 
 export const pptxConverter: Converter = {
   kind: 'pptx',
-  async convert(input: ConverterInput, ctx: ConvertContext): Promise<ConvertResult> {
+  async convert(
+    input: ConverterInput,
+    ctx: ConvertContext
+  ): Promise<ConvertResult> {
     const bytes = new Uint8Array(input.bytes)
     if (hasOle2Signature(bytes)) {
       if (input.name.toLowerCase().endsWith('.ppt')) {
@@ -414,7 +438,9 @@ export const pptxConverter: Converter = {
 
     const presFile = zip.file('ppt/presentation.xml')
     if (!presFile) {
-      throw new CorruptFileError('ppt/presentation.xml not found in PPTX archive.')
+      throw new CorruptFileError(
+        'ppt/presentation.xml not found in PPTX archive.'
+      )
     }
     const presXmlText = await readZipText(presFile)
 
@@ -475,12 +501,15 @@ export const pptxConverter: Converter = {
       }
 
       const slideNum = i + 1
-      const heading = isHidden ? `## Slide ${slideNum} (hidden)` : `## Slide ${slideNum}`
+      const heading = isHidden
+        ? `## Slide ${slideNum} (hidden)`
+        : `## Slide ${slideNum}`
 
       const spTree = findDescendantNode(slideParsed, 'spTree')
       const shapes = spTree ? getNodeChildren(spTree) : []
 
-      const { titleText, bodyItems, imageCount, chartCount } = extractShapes(shapes)
+      const { titleText, bodyItems, imageCount, chartCount } =
+        extractShapes(shapes)
       totalImages += imageCount
       totalCharts += chartCount
 
@@ -492,7 +521,10 @@ export const pptxConverter: Converter = {
         const slideRelsText = await readZipText(slideRelsFile)
         const slideRelsMap = parseRels(slideRelsText)
         for (const [, rel] of slideRelsMap.entries()) {
-          if (rel.type.endsWith('/notesSlide') || rel.type.includes('notesSlide')) {
+          if (
+            rel.type.endsWith('/notesSlide') ||
+            rel.type.includes('notesSlide')
+          ) {
             const notesPath = normalizeZipPath('ppt/slides', rel.target)
             const notesFile = zip.file(notesPath)
             if (notesFile) {
@@ -503,7 +535,9 @@ export const pptxConverter: Converter = {
               const noteParas: string[] = []
               for (const sp of noteShapes) {
                 const nvSpPr = findDescendantNode(getNodeChildren(sp), 'nvSpPr')
-                const ph = nvSpPr ? findDescendantNode(getNodeChildren(nvSpPr), 'ph') : null
+                const ph = nvSpPr
+                  ? findDescendantNode(getNodeChildren(nvSpPr), 'ph')
+                  : null
                 if (ph) {
                   const phType = getNodeAttributes(ph)['@_type']
                   if (phType && ['sldImg', 'sldNum'].includes(phType)) continue

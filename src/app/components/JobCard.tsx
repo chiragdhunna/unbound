@@ -71,10 +71,7 @@ export function JobCard({
           aria-label={`Progress for ${job.name}`}
           className="job-progress"
         >
-          <div
-            className="progress-fill"
-            style={{ width: `${valuenow}%` }}
-          />
+          <div className="progress-fill" style={{ width: `${valuenow}%` }} />
           <span className="progress-text">{progressText}</span>
         </div>
       ) : null}

@@ -1,9 +1,5 @@
 import { normalizeMarkdown } from '../core/markdown'
-import {
-  type Converter,
-  type ConvertStats,
-  type Warning
-} from '../core/types'
+import { type Converter, type ConvertStats, type Warning } from '../core/types'
 import {
   CancelledError,
   CorruptFileError,
@@ -53,7 +49,9 @@ export const imageConverter: Converter = {
           error instanceof TypeError ||
           error instanceof ReferenceError ||
           (error instanceof Error &&
-            /not a function|not defined|is not supported|missing feature/i.test(error.message))
+            /not a function|not defined|is not supported|missing feature/i.test(
+              error.message
+            ))
         ) {
           throw new OcrFailedError(
             `Your browser is missing a feature required to process this image (${error instanceof Error ? error.message : String(error)}). Please update your browser.`
@@ -81,14 +79,19 @@ export const imageConverter: Converter = {
           }
         })
       } catch (error) {
-        if (error instanceof CancelledError || error instanceof OcrFailedError) {
+        if (
+          error instanceof CancelledError ||
+          error instanceof OcrFailedError
+        ) {
           throw error
         }
         if (
           error instanceof TypeError ||
           error instanceof ReferenceError ||
           (error instanceof Error &&
-            /not a function|not defined|is not supported|missing feature/i.test(error.message))
+            /not a function|not defined|is not supported|missing feature/i.test(
+              error.message
+            ))
         ) {
           throw new OcrFailedError(
             `Your browser is missing a feature required to OCR this image (${error instanceof Error ? error.message : String(error)}). Please update your browser.`

@@ -3,7 +3,8 @@ import { markdownToPlain } from '../../../src/core/plain'
 
 describe('markdownToPlain', () => {
   it('removes markdown formatting while keeping readable text', () => {
-    const text = '# Heading\n\n- first item\n- second item\n\n[docs](https://example.com)\n\n```ts\nconst value = 1\n```'
+    const text =
+      '# Heading\n\n- first item\n- second item\n\n[docs](https://example.com)\n\n```ts\nconst value = 1\n```'
 
     const plain = markdownToPlain(text)
 

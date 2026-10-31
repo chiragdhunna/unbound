@@ -36,7 +36,9 @@ test.describe('Negative guard: zero uncaught page errors on invalid inputs', () 
         )
       )
     await page.locator('.job-error').last().waitFor()
-    await expect(page.locator('.job-error').last()).toContainText(/Unsupported format/)
+    await expect(page.locator('.job-error').last()).toContainText(
+      /Unsupported format/
+    )
     expect(pageErrors).toHaveLength(0)
 
     // 3. Corrupted PDF
@@ -50,7 +52,9 @@ test.describe('Negative guard: zero uncaught page errors on invalid inputs', () 
         )
       )
     await page.locator('.job-error').last().waitFor()
-    await expect(page.locator('.job-error').last()).toContainText(/corrupted|could not be read/i)
+    await expect(page.locator('.job-error').last()).toContainText(
+      /corrupted|could not be read/i
+    )
     expect(pageErrors).toHaveLength(0)
 
     // 4. Corrupted ZIP
@@ -64,7 +68,9 @@ test.describe('Negative guard: zero uncaught page errors on invalid inputs', () 
         )
       )
     await page.locator('.job-error').last().waitFor()
-    await expect(page.locator('.job-error').last()).toContainText(/corrupted|Failed to read/i)
+    await expect(page.locator('.job-error').last()).toContainText(
+      /corrupted|Failed to read/i
+    )
     expect(pageErrors).toHaveLength(0)
 
     // 5. Zero-byte binary file
@@ -74,7 +80,9 @@ test.describe('Negative guard: zero uncaught page errors on invalid inputs', () 
         bufferFile('empty.bin', 'application/octet-stream', Buffer.from(''))
       )
     await page.locator('.job-error').last().waitFor()
-    await expect(page.locator('.job-error').last()).toContainText(/Unsupported format|Choose another copy/i)
+    await expect(page.locator('.job-error').last()).toContainText(
+      /Unsupported format|Choose another copy/i
+    )
     expect(pageErrors).toHaveLength(0)
 
     // 6. Healthy recovery: valid file converts cleanly after negative attempts

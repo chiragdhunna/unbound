@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { htmlConverter, parseHtmlToMarkdown } from '../../../src/converters/html'
+import {
+  htmlConverter,
+  parseHtmlToMarkdown
+} from '../../../src/converters/html'
 import { NoTextFoundError } from '../../../src/core/errors'
 
 describe('htmlConverter and parseHtmlToMarkdown', () => {
@@ -52,7 +55,9 @@ describe('htmlConverter and parseHtmlToMarkdown', () => {
     `
     const { markdown } = parseHtmlToMarkdown(html)
     expect(markdown).toContain('# Simple Page')
-    expect(markdown).toContain('Direct paragraph content in body without article tags.')
+    expect(markdown).toContain(
+      'Direct paragraph content in body without article tags.'
+    )
     expect(markdown).not.toContain('badScript')
     expect(markdown).not.toContain('Navigation links')
     expect(markdown).not.toContain('Site Header')
@@ -124,14 +129,15 @@ describe('htmlConverter and parseHtmlToMarkdown', () => {
     const controller = new AbortController()
     controller.abort()
     const html = '<html><body><p>Hello world</p></body></html>'
-    expect(() => parseHtmlToMarkdown(html, { signal: controller.signal })).toThrow(
-      'The operation was aborted.'
-    )
+    expect(() =>
+      parseHtmlToMarkdown(html, { signal: controller.signal })
+    ).toThrow('The operation was aborted.')
   })
 
   it('reports progress stages', () => {
     const onProgress = vi.fn()
-    const html = '<html><head><title>Progress</title></head><body><p>Progress text</p></body></html>'
+    const html =
+      '<html><head><title>Progress</title></head><body><p>Progress text</p></body></html>'
     parseHtmlToMarkdown(html, { onProgress })
     expect(onProgress).toHaveBeenCalledWith(30)
     expect(onProgress).toHaveBeenCalledWith(60)
@@ -139,7 +145,8 @@ describe('htmlConverter and parseHtmlToMarkdown', () => {
   })
 
   it('finds title in h1 when doc.title is missing in fallback mode', () => {
-    const html = '<body><h1>Fallback Heading</h1><p>Body text without head title tag.</p></body>'
+    const html =
+      '<body><h1>Fallback Heading</h1><p>Body text without head title tag.</p></body>'
     const { markdown } = parseHtmlToMarkdown(html)
     expect(markdown).toContain('Fallback Heading')
     expect(markdown).toContain('Body text without head title tag.')
@@ -151,7 +158,8 @@ describe('htmlConverter and parseHtmlToMarkdown', () => {
   })
 
   it('converts through converter interface with byte input', async () => {
-    const html = '<!DOCTYPE html><html><head><title>Converter Spec</title></head><body><h1>Spec Header</h1><p>Paragraph text.</p></body></html>'
+    const html =
+      '<!DOCTYPE html><html><head><title>Converter Spec</title></head><body><h1>Spec Header</h1><p>Paragraph text.</p></body></html>'
     const bytes = new TextEncoder().encode(html).buffer
     const result = await htmlConverter.convert(
       {

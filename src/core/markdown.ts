@@ -2,7 +2,9 @@ const zeroWidthChars = /[\u200B-\u200D\uFEFF]/g
 const trailingWhitespace = /[ \t]+$/gm
 
 export function normalizeMarkdown(input: string): string {
-  const normalizedLineEndings = input.replace(/\r\n?/g, '\n').replace(zeroWidthChars, '')
+  const normalizedLineEndings = input
+    .replace(/\r\n?/g, '\n')
+    .replace(zeroWidthChars, '')
   const lines = normalizedLineEndings.split('\n')
 
   let insideFence = false

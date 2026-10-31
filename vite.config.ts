@@ -8,7 +8,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         chunkFileNames: (chunkInfo) => {
-          const name = chunkInfo.name.replace(/turndown-plugin-gfm/g, 'gfm-plugin')
+          const name = chunkInfo.name.replace(
+            /turndown-plugin-gfm/g,
+            'gfm-plugin'
+          )
           return `assets/${name}-[hash].js`
         }
       }

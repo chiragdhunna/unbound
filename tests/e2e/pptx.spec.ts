@@ -80,8 +80,12 @@ test('uploads a generated pptx and renders markdown output with correct order, n
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(filePath)
 
   const output = page.getByRole('textbox', { name: 'Converted output' })
-  await expect(output).toContainText('First Presentation Slide', { timeout: 30_000 })
-  await expect(output).toContainText('Second Presentation Slide', { timeout: 30_000 })
+  await expect(output).toContainText('First Presentation Slide', {
+    timeout: 30_000
+  })
+  await expect(output).toContainText('Second Presentation Slide', {
+    timeout: 30_000
+  })
   await expect(output).toContainText('Notes on slide one for speaker.')
   await expect(output).toContainText('Notes on slide two for speaker.')
 

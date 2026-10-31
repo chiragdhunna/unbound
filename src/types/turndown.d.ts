@@ -1,7 +1,14 @@
 declare module 'turndown' {
   export interface TurndownRule {
-    filter: string | string[] | ((node: HTMLElement, options: Record<string, unknown>) => boolean)
-    replacement: (content: string, node: HTMLElement, options: Record<string, unknown>) => string
+    filter:
+      | string
+      | string[]
+      | ((node: HTMLElement, options: Record<string, unknown>) => boolean)
+    replacement: (
+      content: string,
+      node: HTMLElement,
+      options: Record<string, unknown>
+    ) => string
   }
 
   export default class TurndownService {

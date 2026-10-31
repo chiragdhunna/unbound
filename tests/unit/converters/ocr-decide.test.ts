@@ -5,7 +5,11 @@ import { decideOcrPages } from '../../../src/converters/ocr/decide'
 
 describe('decideOcrPages', () => {
   // 28 non-whitespace chars - above default threshold of 25
-  const textPage = { items: [{ str: 'Hello World this is text content' }], hasImageOps: false, height: 0 }
+  const textPage = {
+    items: [{ str: 'Hello World this is text content' }],
+    hasImageOps: false,
+    height: 0
+  }
 
   // 0 chars, has image ops → image-only
   const imageOnlyPage = { items: [{ str: '' }], hasImageOps: true, height: 0 }
@@ -14,16 +18,32 @@ describe('decideOcrPages', () => {
   const emptyPage = { items: [{ str: '' }], hasImageOps: false, height: 0 }
 
   // mixed: some text + image ops → image-only (chars < 25 and hasImageOps)
-  const mixedPage = { items: [{ str: 'Some text' }], hasImageOps: true, height: 0 }
+  const mixedPage = {
+    items: [{ str: 'Some text' }],
+    hasImageOps: true,
+    height: 0
+  }
 
   // 30 non-whitespace chars - clearly text
-  const longTextPage = { items: [{ str: 'A'.repeat(30) }], hasImageOps: false, height: 0 }
+  const longTextPage = {
+    items: [{ str: 'A'.repeat(30) }],
+    hasImageOps: false,
+    height: 0
+  }
 
   // 24 non-whitespace chars - just below threshold
-  const twentyFourCharsPage = { items: [{ str: 'a'.repeat(24) }], hasImageOps: false, height: 0 }
+  const twentyFourCharsPage = {
+    items: [{ str: 'a'.repeat(24) }],
+    hasImageOps: false,
+    height: 0
+  }
 
   // 25 non-whitespace chars - exactly at threshold
-  const twentyFiveCharsPage = { items: [{ str: 'a'.repeat(25) }], hasImageOps: false, height: 0 }
+  const twentyFiveCharsPage = {
+    items: [{ str: 'a'.repeat(25) }],
+    hasImageOps: false,
+    height: 0
+  }
 
   it('classifies a text page as "text" when char count >= threshold', () => {
     const result = decideOcrPages([textPage])
@@ -46,7 +66,9 @@ describe('decideOcrPages', () => {
   })
 
   it('respects forceOcr and sends every page to "forced"', () => {
-    const result = decideOcrPages([textPage, imageOnlyPage, emptyPage], { forceOcr: true })
+    const result = decideOcrPages([textPage, imageOnlyPage, emptyPage], {
+      forceOcr: true
+    })
     expect(result).toEqual([
       { pageNumber: 1, reason: 'forced' },
       { pageNumber: 2, reason: 'forced' },
@@ -91,7 +113,11 @@ describe('decideOcrPages', () => {
   })
 
   it('classifies whitespace-only text as "empty"', () => {
-    const whitespacePage = { items: [{ str: '   ' }], hasImageOps: false, height: 0 }
+    const whitespacePage = {
+      items: [{ str: '   ' }],
+      hasImageOps: false,
+      height: 0
+    }
     const result = decideOcrPages([whitespacePage])
     expect(result).toEqual([{ pageNumber: 1, reason: 'empty' }])
   })

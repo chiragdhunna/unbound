@@ -174,12 +174,14 @@ describe('ocr render helpers (M6.3b)', () => {
       vi.clearAllMocks()
     })
 
-    function createMockPdfPage(overrides: {
-      width?: number
-      height?: number
-      renderRejects?: Error
-      renderThrowsSync?: boolean
-    } = {}): {
+    function createMockPdfPage(
+      overrides: {
+        width?: number
+        height?: number
+        renderRejects?: Error
+        renderThrowsSync?: boolean
+      } = {}
+    ): {
       page: PDFPageProxy
       getViewport: ReturnType<typeof vi.fn>
       render: ReturnType<typeof vi.fn>
@@ -327,8 +329,12 @@ describe('ocr render helpers (M6.3b)', () => {
         height: 250,
         close: mockClose
       }
-      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
-      ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockResolvedValue(fakeBitmap)
+      const originalCreateBitmap = (
+        globalThis as unknown as { createImageBitmap?: unknown }
+      ).createImageBitmap
+      ;(
+        globalThis as unknown as { createImageBitmap: unknown }
+      ).createImageBitmap = vi.fn().mockResolvedValue(fakeBitmap)
 
       try {
         const bytes = new Uint8Array([1, 2, 3, 4]).buffer
@@ -340,21 +346,29 @@ describe('ocr render helpers (M6.3b)', () => {
         expect(mockClose).toHaveBeenCalledTimes(1)
         expect(mockContext).toBeDefined()
       } finally {
-        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = originalCreateBitmap
+        ;(
+          globalThis as unknown as { createImageBitmap: unknown }
+        ).createImageBitmap = originalCreateBitmap
       }
     })
 
     it('throws CorruptFileError when createImageBitmap fails', async () => {
-      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
-      ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockRejectedValue(new Error('Corrupt data'))
+      const originalCreateBitmap = (
+        globalThis as unknown as { createImageBitmap?: unknown }
+      ).createImageBitmap
+      ;(
+        globalThis as unknown as { createImageBitmap: unknown }
+      ).createImageBitmap = vi.fn().mockRejectedValue(new Error('Corrupt data'))
 
       try {
         const bytes = new Uint8Array([1, 2, 3, 4]).buffer
-        await expect(decodeImageToCanvas(bytes, 'image/png')).rejects.toBeInstanceOf(
-          CorruptFileError
-        )
+        await expect(
+          decodeImageToCanvas(bytes, 'image/png')
+        ).rejects.toBeInstanceOf(CorruptFileError)
       } finally {
-        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = originalCreateBitmap
+        ;(
+          globalThis as unknown as { createImageBitmap: unknown }
+        ).createImageBitmap = originalCreateBitmap
       }
     })
 
@@ -365,17 +379,23 @@ describe('ocr render helpers (M6.3b)', () => {
         height: 0,
         close: mockClose
       }
-      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
-      ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockResolvedValue(fakeBitmap)
+      const originalCreateBitmap = (
+        globalThis as unknown as { createImageBitmap?: unknown }
+      ).createImageBitmap
+      ;(
+        globalThis as unknown as { createImageBitmap: unknown }
+      ).createImageBitmap = vi.fn().mockResolvedValue(fakeBitmap)
 
       try {
         const bytes = new Uint8Array([1, 2, 3, 4]).buffer
-        await expect(decodeImageToCanvas(bytes, 'image/png')).rejects.toBeInstanceOf(
-          CorruptFileError
-        )
+        await expect(
+          decodeImageToCanvas(bytes, 'image/png')
+        ).rejects.toBeInstanceOf(CorruptFileError)
         expect(mockClose).toHaveBeenCalledTimes(1)
       } finally {
-        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = originalCreateBitmap
+        ;(
+          globalThis as unknown as { createImageBitmap: unknown }
+        ).createImageBitmap = originalCreateBitmap
       }
     })
 
@@ -387,22 +407,30 @@ describe('ocr render helpers (M6.3b)', () => {
         height: 300,
         close: mockClose
       }
-      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
-      ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockResolvedValue(fakeBitmap)
+      const originalCreateBitmap = (
+        globalThis as unknown as { createImageBitmap?: unknown }
+      ).createImageBitmap
+      ;(
+        globalThis as unknown as { createImageBitmap: unknown }
+      ).createImageBitmap = vi.fn().mockResolvedValue(fakeBitmap)
 
       try {
         const bytes = new Uint8Array([1, 2, 3, 4]).buffer
-        await expect(decodeImageToCanvas(bytes, 'image/png')).rejects.toBeInstanceOf(
-          OcrFailedError
-        )
+        await expect(
+          decodeImageToCanvas(bytes, 'image/png')
+        ).rejects.toBeInstanceOf(OcrFailedError)
         expect(mockClose).toHaveBeenCalledTimes(1)
       } finally {
-        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = originalCreateBitmap
+        ;(
+          globalThis as unknown as { createImageBitmap: unknown }
+        ).createImageBitmap = originalCreateBitmap
       }
     })
 
     it('uses HTMLImageElement fallback when createImageBitmap is not available', async () => {
-      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
+      const originalCreateBitmap = (
+        globalThis as unknown as { createImageBitmap?: unknown }
+      ).createImageBitmap
       // @ts-expect-error removing createImageBitmap to test fallback
       delete globalThis.createImageBitmap
 
@@ -435,7 +463,8 @@ describe('ocr render helpers (M6.3b)', () => {
         expect(revokeSpy).toHaveBeenCalledWith('blob:mock-img-url')
       } finally {
         if (originalCreateBitmap) {
-          globalThis.createImageBitmap = originalCreateBitmap as typeof createImageBitmap
+          globalThis.createImageBitmap =
+            originalCreateBitmap as typeof createImageBitmap
         }
         URL.revokeObjectURL = origRevoke
         URL.createObjectURL = origCreateUrl
@@ -444,7 +473,9 @@ describe('ocr render helpers (M6.3b)', () => {
     })
 
     it('throws CorruptFileError and revokes object URL when HTMLImageElement onerror fires', async () => {
-      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
+      const originalCreateBitmap = (
+        globalThis as unknown as { createImageBitmap?: unknown }
+      ).createImageBitmap
       // @ts-expect-error removing createImageBitmap
       delete globalThis.createImageBitmap
 
@@ -467,11 +498,14 @@ describe('ocr render helpers (M6.3b)', () => {
 
       try {
         const bytes = new Uint8Array([1, 2, 3]).buffer
-        await expect(decodeImageToCanvas(bytes, 'image/png')).rejects.toBeInstanceOf(CorruptFileError)
+        await expect(
+          decodeImageToCanvas(bytes, 'image/png')
+        ).rejects.toBeInstanceOf(CorruptFileError)
         expect(revokeSpy).toHaveBeenCalledWith('blob:mock-bad-img')
       } finally {
         if (originalCreateBitmap) {
-          globalThis.createImageBitmap = originalCreateBitmap as typeof createImageBitmap
+          globalThis.createImageBitmap =
+            originalCreateBitmap as typeof createImageBitmap
         }
         URL.revokeObjectURL = origRevoke
         URL.createObjectURL = origCreateUrl
@@ -480,7 +514,9 @@ describe('ocr render helpers (M6.3b)', () => {
     })
 
     it('throws OcrFailedError when neither createImageBitmap nor Image is supported', async () => {
-      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
+      const originalCreateBitmap = (
+        globalThis as unknown as { createImageBitmap?: unknown }
+      ).createImageBitmap
       const origImage = globalThis.Image
       // @ts-expect-error removing createImageBitmap
       delete globalThis.createImageBitmap
@@ -489,10 +525,13 @@ describe('ocr render helpers (M6.3b)', () => {
 
       try {
         const bytes = new Uint8Array([1, 2, 3]).buffer
-        await expect(decodeImageToCanvas(bytes, 'image/png')).rejects.toBeInstanceOf(OcrFailedError)
+        await expect(
+          decodeImageToCanvas(bytes, 'image/png')
+        ).rejects.toBeInstanceOf(OcrFailedError)
       } finally {
         if (originalCreateBitmap) {
-          globalThis.createImageBitmap = originalCreateBitmap as typeof createImageBitmap
+          globalThis.createImageBitmap =
+            originalCreateBitmap as typeof createImageBitmap
         }
         globalThis.Image = origImage
       }
@@ -500,43 +539,62 @@ describe('ocr render helpers (M6.3b)', () => {
 
     it('applies scaling branches correctly: small (upscale 2x), normal (1x), large (downscale to 3000px)', async () => {
       const mockClose = vi.fn()
-      const originalCreateBitmap = (globalThis as unknown as { createImageBitmap?: unknown }).createImageBitmap
+      const originalCreateBitmap = (
+        globalThis as unknown as { createImageBitmap?: unknown }
+      ).createImageBitmap
 
       try {
         // Small image: 400x300 -> scale 2.0 -> 800x600
-        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockResolvedValue({
+        ;(
+          globalThis as unknown as { createImageBitmap: unknown }
+        ).createImageBitmap = vi.fn().mockResolvedValue({
           width: 400,
           height: 300,
           close: mockClose
         })
-        const smallRes = await decodeImageToCanvas(new Uint8Array(1).buffer, 'image/png')
+        const smallRes = await decodeImageToCanvas(
+          new Uint8Array(1).buffer,
+          'image/png'
+        )
         expect(smallRes.scale).toBe(2.0)
         expect(smallRes.width).toBe(800)
         expect(smallRes.height).toBe(600)
 
         // Normal image: 1200x800 -> scale 1.0 -> 1200x800
-        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockResolvedValue({
+        ;(
+          globalThis as unknown as { createImageBitmap: unknown }
+        ).createImageBitmap = vi.fn().mockResolvedValue({
           width: 1200,
           height: 800,
           close: mockClose
         })
-        const normalRes = await decodeImageToCanvas(new Uint8Array(1).buffer, 'image/png')
+        const normalRes = await decodeImageToCanvas(
+          new Uint8Array(1).buffer,
+          'image/png'
+        )
         expect(normalRes.scale).toBe(1.0)
         expect(normalRes.width).toBe(1200)
         expect(normalRes.height).toBe(800)
 
         // Large image: 4000x2000 -> scale 0.75 -> 3000x1500
-        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = vi.fn().mockResolvedValue({
+        ;(
+          globalThis as unknown as { createImageBitmap: unknown }
+        ).createImageBitmap = vi.fn().mockResolvedValue({
           width: 4000,
           height: 2000,
           close: mockClose
         })
-        const largeRes = await decodeImageToCanvas(new Uint8Array(1).buffer, 'image/png')
+        const largeRes = await decodeImageToCanvas(
+          new Uint8Array(1).buffer,
+          'image/png'
+        )
         expect(largeRes.scale).toBe(0.75)
         expect(largeRes.width).toBe(3000)
         expect(largeRes.height).toBe(1500)
       } finally {
-        ;(globalThis as unknown as { createImageBitmap: unknown }).createImageBitmap = originalCreateBitmap
+        ;(
+          globalThis as unknown as { createImageBitmap: unknown }
+        ).createImageBitmap = originalCreateBitmap
       }
     })
   })

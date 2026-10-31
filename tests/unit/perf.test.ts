@@ -48,9 +48,20 @@ describe('Performance budgets (E5)', () => {
     const font = await doc.embedFont(StandardFonts.Helvetica)
     for (let i = 0; i < 20; i++) {
       const page = doc.addPage([612, 792])
-      page.drawText(`Chapter ${i + 1}: Overview of Section ${i + 1}`, { x: 50, y: 700, size: 18, font })
-      page.drawText('This is a typical body paragraph spanning multiple lines in a document.', { x: 50, y: 650, size: 12, font })
-      page.drawText('Second line with some key metrics: item count = 42, latency = 12ms.', { x: 50, y: 630, size: 12, font })
+      page.drawText(`Chapter ${i + 1}: Overview of Section ${i + 1}`, {
+        x: 50,
+        y: 700,
+        size: 18,
+        font
+      })
+      page.drawText(
+        'This is a typical body paragraph spanning multiple lines in a document.',
+        { x: 50, y: 650, size: 12, font }
+      )
+      page.drawText(
+        'Second line with some key metrics: item count = 42, latency = 12ms.',
+        { x: 50, y: 630, size: 12, font }
+      )
     }
     const pdfBytes = await doc.save()
 
@@ -74,11 +85,20 @@ describe('Performance budgets (E5)', () => {
     const paragraphs: Paragraph[] = []
     for (let i = 0; i < 50; i++) {
       paragraphs.push(
-        new Paragraph({ text: `Section Heading ${i + 1}`, heading: HeadingLevel.HEADING_2 }),
-        new Paragraph({ children: [new TextRun(`Detailed content paragraph ${i + 1} with text data.`)] })
+        new Paragraph({
+          text: `Section Heading ${i + 1}`,
+          heading: HeadingLevel.HEADING_2
+        }),
+        new Paragraph({
+          children: [
+            new TextRun(`Detailed content paragraph ${i + 1} with text data.`)
+          ]
+        })
       )
     }
-    const doc = new Document({ sections: [{ properties: {}, children: paragraphs }] })
+    const doc = new Document({
+      sections: [{ properties: {}, children: paragraphs }]
+    })
     const buffer = await Packer.toBuffer(doc)
     const bytes = new Uint8Array(buffer)
 
@@ -107,7 +127,10 @@ describe('Performance budgets (E5)', () => {
       const ws = XLSX.utils.aoa_to_sheet(data)
       XLSX.utils.book_append_sheet(wb, ws, `Sheet${s}`)
     }
-    const wbBuf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
+    const wbBuf = XLSX.write(wb, {
+      type: 'array',
+      bookType: 'xlsx'
+    }) as ArrayBuffer
 
     const start = performance.now()
     const result = await xlsxConverter.convert(
@@ -130,7 +153,10 @@ describe('Performance budgets (E5)', () => {
     for (let i = 1; i <= 10; i++) {
       const slide = pptx.addSlide()
       slide.addText(`Slide ${i} Title`, { x: 1, y: 1, fontSize: 20 })
-      slide.addText(`Slide ${i} key points and bullet points describing the topic.`, { x: 1, y: 2, fontSize: 14 })
+      slide.addText(
+        `Slide ${i} key points and bullet points describing the topic.`,
+        { x: 1, y: 2, fontSize: 14 }
+      )
     }
     const buf = (await pptx.write({ outputType: 'nodebuffer' })) as Buffer
 
@@ -154,8 +180,18 @@ describe('Performance budgets (E5)', () => {
     const font = await doc.embedFont(StandardFonts.Helvetica)
     for (let i = 0; i < 320; i++) {
       const page = doc.addPage([612, 792])
-      page.drawText(`Page ${i + 1} heading summary`, { x: 50, y: 700, size: 14, font })
-      page.drawText(`Body text line on page ${i + 1} with analytical data.`, { x: 50, y: 660, size: 11, font })
+      page.drawText(`Page ${i + 1} heading summary`, {
+        x: 50,
+        y: 700,
+        size: 14,
+        font
+      })
+      page.drawText(`Body text line on page ${i + 1} with analytical data.`, {
+        x: 50,
+        y: 660,
+        size: 11,
+        font
+      })
     }
     const pdfBytes = await doc.save()
 
@@ -178,7 +214,10 @@ describe('Performance budgets (E5)', () => {
   it('converts a ZIP of 50 small files in < 10 seconds', async () => {
     const zip = new JSZip()
     for (let i = 1; i <= 50; i++) {
-      zip.file(`folder/file_${i}.txt`, `File ${i} contents line 1.\nFile ${i} contents line 2.\n`)
+      zip.file(
+        `folder/file_${i}.txt`,
+        `File ${i} contents line 1.\nFile ${i} contents line 2.\n`
+      )
     }
     const buf = (await zip.generateAsync({ type: 'nodebuffer' })) as Buffer
 

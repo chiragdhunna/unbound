@@ -7,7 +7,11 @@ import {
   findFirstNonEmptyRowIndex,
   buildMarkdownTable
 } from '../core/table'
-import { PasswordRequiredError, CorruptFileError, NoTextFoundError } from '../core/errors'
+import {
+  PasswordRequiredError,
+  CorruptFileError,
+  NoTextFoundError
+} from '../core/errors'
 
 function hasOle2Signature(bytes: ArrayBuffer): boolean {
   const view = new Uint8Array(bytes.slice(0, 8))
@@ -25,10 +29,15 @@ export const xlsxConverter: Converter = {
   async convert(input, ctx) {
     // Check for empty input
     if (input.bytes.byteLength === 0) {
-      throw new CorruptFileError('This spreadsheet could not be read; it may be corrupted.')
+      throw new CorruptFileError(
+        'This spreadsheet could not be read; it may be corrupted.'
+      )
     }
 
-    if (input.name.toLowerCase().endsWith('.xlsx') && hasOle2Signature(input.bytes)) {
+    if (
+      input.name.toLowerCase().endsWith('.xlsx') &&
+      hasOle2Signature(input.bytes)
+    ) {
       throw new PasswordRequiredError(
         'This XLSX is password protected or saved with an Office encryption wrapper. Save it without a password and try again.'
       )
@@ -40,8 +49,10 @@ export const xlsxConverter: Converter = {
       const XLSXModule = await import('xlsx')
       XLSX = XLSXModule.default
     } catch (_err) {
-      void _err; // Mark as intentionally used
-      throw new CorruptFileError('This spreadsheet could not be read; it may be corrupted.')
+      void _err // Mark as intentionally used
+      throw new CorruptFileError(
+        'This spreadsheet could not be read; it may be corrupted.'
+      )
     }
 
     try {
@@ -56,7 +67,11 @@ export const xlsxConverter: Converter = {
       })
 
       const markdownParts: string[] = []
-      const warnings: { code: string; message: string; severity: 'info' | 'warn' }[] = []
+      const warnings: {
+        code: string
+        message: string
+        severity: 'info' | 'warn'
+      }[] = []
       let hasAnyData = false
 
       // Process each sheet in workbook order
@@ -64,7 +79,9 @@ export const xlsxConverter: Converter = {
         const worksheet = workbook.Sheets[sheetName]
 
         // Check if sheet is hidden
-        const isHidden = workbook.Workbook?.Sheets?.[workbook.SheetNames.indexOf(sheetName)]?.Hidden
+        const isHidden =
+          workbook.Workbook?.Sheets?.[workbook.SheetNames.indexOf(sheetName)]
+            ?.Hidden
 
         // Check if sheet is completely empty (all cells blank after trimming)
         if (!worksheet || Object.keys(worksheet).length === 0) {
@@ -102,7 +119,8 @@ export const xlsxConverter: Converter = {
 
             let cellValue = ''
             if (cell) {
-              if (cell.t === 'd') { // Date cell
+              if (cell.t === 'd') {
+                // Date cell
                 // Format as ISO YYYY-MM-DD or YYYY-MM-DDTHH:mm if time part
                 const date = cell.v as Date
                 const isoString = date.toISOString()
@@ -112,7 +130,8 @@ export const xlsxConverter: Converter = {
                 } else {
                   cellValue = isoString.replace('Z', '') // Keep time part, remove Z
                 }
-              } else if (cell.w !== undefined) { // Formatted text available
+              } else if (cell.w !== undefined) {
+                // Formatted text available
                 cellValue = cell.w
               } else {
                 cellValue = String(cell.v)
@@ -127,7 +146,9 @@ export const xlsxConverter: Converter = {
         }
 
         // Check if sheet is completely empty (all cells blank after trimming)
-        const isEmptySheet = rows.every(row => row.every(cell => cell.trim() === ''))
+        const isEmptySheet = rows.every((row) =>
+          row.every((cell) => cell.trim() === '')
+        )
         if (isEmptySheet) {
           warnings.push({
             code: 'EMPTY_SHEET',
@@ -158,7 +179,8 @@ export const xlsxConverter: Converter = {
 
           let mergeValue = ''
           if (topLeftCell) {
-            if (topLeftCell.t === 'd') { // Date cell
+            if (topLeftCell.t === 'd') {
+              // Date cell
               const date = topLeftCell.v as Date
               const isoString = date.toISOString()
               if (isoString.endsWith('T00:00:00.000Z')) {
@@ -205,7 +227,8 @@ export const xlsxConverter: Converter = {
               const cell = worksheet[cellRef]
               let cellValue = ''
               if (cell) {
-                if (cell.t === 'd') { // Date cell
+                if (cell.t === 'd') {
+                  // Date cell
                   const date = cell.v as Date
                   const isoString = date.toISOString()
                   if (isoString.endsWith('T00:00:00.000Z')) {
@@ -249,8 +272,9 @@ export const xlsxConverter: Converter = {
         // Extract header (first non-empty row after trimming)
         // Need to adjust headerRowIndex based on trimming
         const dataWithoutEmptyRows = tableData.slice(0, headerRowIndex)
-        const emptyRowsCountAtTop = dataWithoutEmptyRows.filter(row =>
-          row.every(cell => cell.trim() === '')).length
+        const emptyRowsCountAtTop = dataWithoutEmptyRows.filter((row) =>
+          row.every((cell) => cell.trim() === '')
+        ).length
         const adjustedHeaderIndex = headerRowIndex - emptyRowsCountAtTop
 
         const headerRow = paddedData[adjustedHeaderIndex]!
@@ -266,7 +290,11 @@ export const xlsxConverter: Converter = {
       let hasMergesInWorkbook = false
       for (const sheetName of workbook.SheetNames) {
         const worksheet = workbook.Sheets[sheetName]
-        if (worksheet && worksheet['!merges'] && worksheet['!merges'].length > 0) {
+        if (
+          worksheet &&
+          worksheet['!merges'] &&
+          worksheet['!merges'].length > 0
+        ) {
           hasMergesInWorkbook = true
           break
         }
@@ -275,7 +303,8 @@ export const xlsxConverter: Converter = {
       if (hasMergesInWorkbook) {
         warnings.push({
           code: 'MERGED_CELLS',
-          message: 'Merged cells were found; values appear only in the top-left cell.',
+          message:
+            'Merged cells were found; values appear only in the top-left cell.',
           severity: 'warn'
         })
       }
@@ -292,21 +321,34 @@ export const xlsxConverter: Converter = {
       const markdown = normalizeMarkdown(markdownParts.join('\n'))
 
       return {
-        markdown: markdown || '# Spreadsheet\n\nNo readable text was found in this spreadsheet.',
+        markdown:
+          markdown ||
+          '# Spreadsheet\n\nNo readable text was found in this spreadsheet.',
         warnings,
         stats: { sheets: workbook.SheetNames.length }
       }
     } catch (err) {
-      if (err instanceof PasswordRequiredError || err instanceof NoTextFoundError || err instanceof CorruptFileError) {
+      if (
+        err instanceof PasswordRequiredError ||
+        err instanceof NoTextFoundError ||
+        err instanceof CorruptFileError
+      ) {
         throw err
       }
 
       // Check if it's a password/encryption error
-      if ((err as Error).message && (/password|encrypt/i.test((err as Error).message))) {
-        throw new PasswordRequiredError('This spreadsheet is password protected. Save it without a password and try again.')
+      if (
+        (err as Error).message &&
+        /password|encrypt/i.test((err as Error).message)
+      ) {
+        throw new PasswordRequiredError(
+          'This spreadsheet is password protected. Save it without a password and try again.'
+        )
       }
 
-      throw new CorruptFileError('This spreadsheet could not be read; it may be corrupted.')
+      throw new CorruptFileError(
+        'This spreadsheet could not be read; it may be corrupted.'
+      )
     }
   }
 }

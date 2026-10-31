@@ -3,7 +3,7 @@ import { type Converter } from '../core/types'
 import { decodeText } from '../core/encoding'
 
 function detectLanguage(name: string): string {
-  const ext = name.includes('.') ? name.split('.').at(-1) ?? '' : ''
+  const ext = name.includes('.') ? (name.split('.').at(-1) ?? '') : ''
   return ext.toLowerCase()
 }
 
@@ -13,7 +13,9 @@ export const codeConverter: Converter = {
     const decoded = decodeText(input.bytes)
     const raw = decoded.text
     const language = detectLanguage(input.name)
-    const longestBacktickRun = Math.max(...(raw.match(/`+/g) ?? ['']).map((run) => run.length))
+    const longestBacktickRun = Math.max(
+      ...(raw.match(/`+/g) ?? ['']).map((run) => run.length)
+    )
     const fence = '`'.repeat(Math.max(3, longestBacktickRun + 1))
 
     return {

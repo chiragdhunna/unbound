@@ -1,9 +1,5 @@
 import { normalizeMarkdown } from '../core/markdown'
-import {
-  type Converter,
-  type ConvertStats,
-  type Warning
-} from '../core/types'
+import { type Converter, type ConvertStats, type Warning } from '../core/types'
 import {
   CancelledError,
   CorruptFileError,
@@ -48,7 +44,9 @@ export const pdfConverter: Converter = {
         error instanceof TypeError ||
         error instanceof ReferenceError ||
         (error instanceof Error &&
-          /not a function|not defined|is not supported|missing feature/i.test(error.message))
+          /not a function|not defined|is not supported|missing feature/i.test(
+            error.message
+          ))
       ) {
         throw new OcrFailedError(
           `Your browser is missing a feature required to process this PDF (${error instanceof Error ? error.message : String(error)}). Please update your browser.`
@@ -116,7 +114,8 @@ export const pdfConverter: Converter = {
 
     // OCR-path: one or more pages require OCR (scanned or mixed PDF)
     const { createOcrEngine } = await import('./ocr/engine')
-    const { renderPdfPageToCanvas, releaseCanvas } = await import('./ocr/render')
+    const { renderPdfPageToCanvas, releaseCanvas } =
+      await import('./ocr/render')
 
     const layoutRes = layoutPages(
       pages.map((page) => page.items),
@@ -177,7 +176,9 @@ export const pdfConverter: Converter = {
             error instanceof TypeError ||
             error instanceof ReferenceError ||
             (error instanceof Error &&
-              /not a function|not defined|is not supported|missing feature/i.test(error.message))
+              /not a function|not defined|is not supported|missing feature/i.test(
+                error.message
+              ))
           ) {
             throw new OcrFailedError(
               `Your browser is missing a feature required to render or OCR page ${pageNumber} (${error instanceof Error ? error.message : String(error)}). Please update your browser.`

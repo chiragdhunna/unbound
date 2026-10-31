@@ -3,7 +3,11 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 
-const testFolder = path.resolve(tmpdir(), 'unbound-fixtures', 'test-folder-upload')
+const testFolder = path.resolve(
+  tmpdir(),
+  'unbound-fixtures',
+  'test-folder-upload'
+)
 
 async function setupFolderFixture() {
   await fs.rm(testFolder, { recursive: true, force: true })
@@ -18,7 +22,10 @@ async function setupFolderFixture() {
   await fs.writeFile(fileA, 'Alpha content from subfolder A')
   await fs.writeFile(fileB, 'Beta content from subfolder B')
   await fs.writeFile(junk, 'macos junk')
-  await fs.writeFile(rootNote, '# Guide in root folder\n\nWelcome to unbound folder test.')
+  await fs.writeFile(
+    rootNote,
+    '# Guide in root folder\n\nWelcome to unbound folder test.'
+  )
 
   return { testFolder, fileA, fileB, junk, rootNote }
 }

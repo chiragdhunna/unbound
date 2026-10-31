@@ -69,18 +69,41 @@ describe('zipConverter and zip helpers', () => {
 
   it('detects encrypted zip entries with bit 0 set', () => {
     const encryptedBytes = new Uint8Array([
-      0x50, 0x4b, 0x03, 0x04, // signature
-      0x14, 0x00,             // version
-      0x01, 0x00,             // general purpose bit flag (bit 0 set)
-      0x00, 0x00,             // compression
-      0x00, 0x00, 0x00, 0x00, // time/date
-      0x00, 0x00, 0x00, 0x00, // crc
-      0x04, 0x00, 0x00, 0x00, // csize
-      0x04, 0x00, 0x00, 0x00, // usize
-      0x04, 0x00,             // name length (4)
-      0x00, 0x00,             // extra length
+      0x50,
+      0x4b,
+      0x03,
+      0x04, // signature
+      0x14,
+      0x00, // version
+      0x01,
+      0x00, // general purpose bit flag (bit 0 set)
+      0x00,
+      0x00, // compression
+      0x00,
+      0x00,
+      0x00,
+      0x00, // time/date
+      0x00,
+      0x00,
+      0x00,
+      0x00, // crc
+      0x04,
+      0x00,
+      0x00,
+      0x00, // csize
+      0x04,
+      0x00,
+      0x00,
+      0x00, // usize
+      0x04,
+      0x00, // name length (4)
+      0x00,
+      0x00, // extra length
       ...new TextEncoder().encode('file'),
-      0x00, 0x00, 0x00, 0x00
+      0x00,
+      0x00,
+      0x00,
+      0x00
     ]).buffer
 
     expect(isZipEncrypted(encryptedBytes)).toBe(true)
@@ -105,8 +128,16 @@ describe('zipConverter and zip helpers', () => {
     expect(result.markdown).toContain('# File: docs/guide.txt')
     expect(result.markdown).toContain('Step 1: Install.')
     expect(result.stats.files).toBe(2)
-    expect(ctx.onProgress).toHaveBeenCalledWith({ phase: 'zip', current: 1, total: 2 })
-    expect(ctx.onProgress).toHaveBeenCalledWith({ phase: 'zip', current: 2, total: 2 })
+    expect(ctx.onProgress).toHaveBeenCalledWith({
+      phase: 'zip',
+      current: 1,
+      total: 2
+    })
+    expect(ctx.onProgress).toHaveBeenCalledWith({
+      phase: 'zip',
+      current: 2,
+      total: 2
+    })
   })
 
   it('filters out junk files and OS metadata', async () => {
@@ -159,7 +190,9 @@ describe('zipConverter and zip helpers', () => {
 
     expect(result.markdown).toContain('# File: level1.txt')
     expect(result.markdown).toContain('# File: nested1.zip/level2.txt')
-    expect(result.markdown).toContain('# File: nested1.zip/nested2.zip/level3.txt')
+    expect(result.markdown).toContain(
+      '# File: nested1.zip/nested2.zip/level3.txt'
+    )
     expect(result.markdown).not.toContain('level4.txt')
     expect(result.stats.files).toBe(3)
   })
@@ -196,7 +229,9 @@ describe('zipConverter and zip helpers', () => {
     expect(result.markdown).toContain('> ⚠ corrupt.docx:')
     expect(result.markdown).toContain('# File: good2.txt')
     expect(result.markdown).toContain('Second good file.')
-    expect(result.warnings.some((w) => w.code === 'ZIP_ENTRIES_FAILED')).toBe(true)
+    expect(result.warnings.some((w) => w.code === 'ZIP_ENTRIES_FAILED')).toBe(
+      true
+    )
   })
 
   it('caps at ZIP_MAX_ENTRIES and emits ZIP_LIMIT_REACHED warning', async () => {
@@ -213,7 +248,9 @@ describe('zipConverter and zip helpers', () => {
 
     expect(result.stats.files).toBe(ZIP_MAX_ENTRIES)
     expect(result.stats.truncated).toBe(true)
-    expect(result.warnings.some((w) => w.code === 'ZIP_LIMIT_REACHED')).toBe(true)
+    expect(result.warnings.some((w) => w.code === 'ZIP_LIMIT_REACHED')).toBe(
+      true
+    )
   })
 
   it('rejects declared-size zip-bomb entries before inflating', async () => {
@@ -227,7 +264,10 @@ describe('zipConverter and zip helpers', () => {
     vi.spyOn(JSZip, 'loadAsync').mockResolvedValueOnce(loadedZip)
 
     await expect(
-      zipConverter.convert({ name: 'bomb.zip', mime: 'application/zip', bytes }, makeContext())
+      zipConverter.convert(
+        { name: 'bomb.zip', mime: 'application/zip', bytes },
+        makeContext()
+      )
     ).rejects.toThrow(TooLargeError)
 
     vi.restoreAllMocks()
@@ -235,18 +275,41 @@ describe('zipConverter and zip helpers', () => {
 
   it('throws PasswordRequiredError when zip is encrypted', async () => {
     const encryptedBytes = new Uint8Array([
-      0x50, 0x4b, 0x03, 0x04,
-      0x14, 0x00,
-      0x01, 0x00, // bit 0 set
-      0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00,
-      0x04, 0x00, 0x00, 0x00,
-      0x04, 0x00, 0x00, 0x00,
-      0x04, 0x00,
-      0x00, 0x00,
+      0x50,
+      0x4b,
+      0x03,
+      0x04,
+      0x14,
+      0x00,
+      0x01,
+      0x00, // bit 0 set
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x04,
+      0x00,
+      0x00,
+      0x00,
+      0x04,
+      0x00,
+      0x00,
+      0x00,
+      0x04,
+      0x00,
+      0x00,
+      0x00,
       ...new TextEncoder().encode('file'),
-      0x00, 0x00, 0x00, 0x00
+      0x00,
+      0x00,
+      0x00,
+      0x00
     ]).buffer
 
     await expect(
@@ -321,7 +384,9 @@ describe('zipConverter and zip helpers', () => {
     })
     const loadedZip = await JSZip.loadAsync(bytes)
     const bigEntry = loadedZip.file('big.txt')!
-    vi.spyOn(bigEntry, 'async').mockResolvedValue(new ArrayBuffer(ZIP_MAX_FILE_BYTES + 10))
+    vi.spyOn(bigEntry, 'async').mockResolvedValue(
+      new ArrayBuffer(ZIP_MAX_FILE_BYTES + 10)
+    )
 
     vi.spyOn(JSZip, 'loadAsync').mockResolvedValueOnce(loadedZip)
 
@@ -330,7 +395,9 @@ describe('zipConverter and zip helpers', () => {
       makeContext()
     )
 
-    expect(result.warnings.some((w) => w.code === 'ZIP_LIMIT_REACHED')).toBe(true)
+    expect(result.warnings.some((w) => w.code === 'ZIP_LIMIT_REACHED')).toBe(
+      true
+    )
     expect(result.markdown).toContain('# File: file1.txt')
     expect(result.markdown).not.toContain('# File: big.txt')
 
@@ -362,7 +429,9 @@ describe('zipConverter and zip helpers', () => {
       makeContext()
     )
 
-    expect(result.warnings.some((w) => w.code === 'ZIP_LIMIT_REACHED')).toBe(true)
+    expect(result.warnings.some((w) => w.code === 'ZIP_LIMIT_REACHED')).toBe(
+      true
+    )
     expect(result.markdown).toContain('# File: a.txt')
     expect(result.markdown).not.toContain('# File: f.txt')
 
@@ -380,7 +449,9 @@ describe('zipConverter and zip helpers', () => {
       makeContext()
     )
 
-    expect(result.warnings.some((w) => w.code === 'ZIP_LIMIT_REACHED')).toBe(true)
+    expect(result.warnings.some((w) => w.code === 'ZIP_LIMIT_REACHED')).toBe(
+      true
+    )
     expect(result.markdown).toContain('# File: a.txt')
     expect(result.markdown).not.toContain('# File: b.txt')
   })
@@ -404,7 +475,10 @@ describe('zipConverter and zip helpers', () => {
     })
 
     await expect(
-      zipConverter.convert({ name: 'cancel_mid.zip', mime: 'application/zip', bytes }, ctx)
+      zipConverter.convert(
+        { name: 'cancel_mid.zip', mime: 'application/zip', bytes },
+        ctx
+      )
     ).rejects.toThrow(CancelledError)
   })
 })

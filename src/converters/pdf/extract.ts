@@ -11,7 +11,10 @@ type RawItem = {
 
 export type PdfPageLike = {
   getTextContent(): Promise<{ items: unknown[] }>
-  getOperatorList(): Promise<{ fnArray: ArrayLike<number>; argsArray?: unknown[] }>
+  getOperatorList(): Promise<{
+    fnArray: ArrayLike<number>
+    argsArray?: unknown[]
+  }>
   cleanup(): void
   /** pdfjs exposes `view` as [x0, y0, x1, y1]; y1 - y0 is height, x1 - x0 is width. */
   view?: number[]

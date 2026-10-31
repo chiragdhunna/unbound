@@ -30,14 +30,7 @@ const imageMimes = new Set([
   'image/bmp'
 ])
 
-const imageExtensions = new Set([
-  'png',
-  'jpg',
-  'jpeg',
-  'webp',
-  'gif',
-  'bmp'
-])
+const imageExtensions = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'])
 
 function getExtension(name: string): string {
   const dotIndex = name.lastIndexOf('.')
@@ -196,8 +189,7 @@ export function detectFileKindWithWarnings(input: {
     }
   } else if (startsWith(sample, [0x50, 0x4b, 0x03, 0x04]))
     kind = zipKind(bytes, extension)
-  else if (startsWith(sample, [0x7b, 0x5c, 0x72, 0x74, 0x66]))
-    kind = 'rtf'
+  else if (startsWith(sample, [0x7b, 0x5c, 0x72, 0x74, 0x66])) kind = 'rtf'
   else if (
     startsWith(sample, [0x89, 0x50, 0x4e, 0x47]) ||
     startsWith(sample, [0xff, 0xd8, 0xff]) ||
@@ -248,9 +240,13 @@ export function detectFileKindWithWarnings(input: {
                 ? 'epub'
                 : extension === 'zip'
                   ? 'zip'
-                  : extension === 'xlsx' || extension === 'xls' || extension === 'xlsm'
+                  : extension === 'xlsx' ||
+                      extension === 'xls' ||
+                      extension === 'xlsm'
                     ? 'xlsx'
-                    : extension === 'txt' || extension === 'text' || extension === 'log'
+                    : extension === 'txt' ||
+                        extension === 'text' ||
+                        extension === 'log'
                       ? 'text'
                       : extension === 'md' || extension === 'markdown'
                         ? 'markdown'

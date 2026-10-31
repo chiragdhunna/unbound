@@ -9,7 +9,8 @@ const textFile = (name: string, content: string) => ({
 async function installClipboard(page: Page) {
   await page.evaluate(() => {
     const writes: string[] = []
-    ;(window as unknown as { __clipboardWrites: string[] }).__clipboardWrites = writes
+    ;(window as unknown as { __clipboardWrites: string[] }).__clipboardWrites =
+      writes
     Object.defineProperty(navigator, 'clipboard', {
       value: {
         writeText: (value: string) => {
@@ -63,7 +64,9 @@ test.describe('Keyboard-only flow & accessibility standards (E3)', () => {
     const chooserPromise = page.waitForEvent('filechooser')
     await chooseBtn.press('Enter')
     const chooser = await chooserPromise
-    await chooser.setFiles(textFile('keyboard-test.txt', 'Keyboard accessible text.'))
+    await chooser.setFiles(
+      textFile('keyboard-test.txt', 'Keyboard accessible text.')
+    )
 
     // 4. Output panel appears
     const output = page.getByRole('textbox', { name: 'Converted output' })
@@ -119,7 +122,9 @@ test.describe('Keyboard-only flow & accessibility standards (E3)', () => {
       mimeType: 'application/octet-stream',
       buffer: Buffer.from([0x00, 0x01, 0x02, 0x03])
     }
-    await page.getByLabel('Choose file', { exact: true }).setInputFiles(unsupported)
+    await page
+      .getByLabel('Choose file', { exact: true })
+      .setInputFiles(unsupported)
 
     // Expect job error element with role="alert" and aria-live="assertive"
     const errorAlert = page.locator('.job-error')
@@ -128,7 +133,9 @@ test.describe('Keyboard-only flow & accessibility standards (E3)', () => {
     await expect(errorAlert).toHaveAttribute('aria-live', 'assertive')
   })
 
-  test('batch progress announcer in status-pill aria-live region', async ({ page }) => {
+  test('batch progress announcer in status-pill aria-live region', async ({
+    page
+  }) => {
     await page.goto('/')
     await page.waitForSelector('h1')
 

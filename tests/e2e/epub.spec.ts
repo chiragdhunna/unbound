@@ -101,12 +101,18 @@ test('uploads a generated epub and renders markdown output with chapter order an
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(filePath)
 
   const output = page.getByRole('textbox', { name: 'Converted output' })
-  await expect(output).toContainText('Unbound EPUB Odyssey', { timeout: 30_000 })
+  await expect(output).toContainText('Unbound EPUB Odyssey', {
+    timeout: 30_000
+  })
   await expect(output).toContainText('Test Author', { timeout: 30_000 })
   await expect(output).toContainText('First Chapter Title')
   await expect(output).toContainText('Second Chapter Title')
-  await expect(output).toContainText('Opening paragraph of the first chapter in EPUB test.')
-  await expect(output).toContainText('Continuing paragraph in second chapter sequence.')
+  await expect(output).toContainText(
+    'Opening paragraph of the first chapter in EPUB test.'
+  )
+  await expect(output).toContainText(
+    'Continuing paragraph in second chapter sequence.'
+  )
 
   const text = await output.inputValue()
   const firstIndex = text.indexOf('First Chapter Title')

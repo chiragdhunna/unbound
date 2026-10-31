@@ -199,7 +199,13 @@ describe('layoutPages', () => {
   }
 
   const fivePages = [1, 2, 3, 4, 5].map(headerFooterPage)
-  const fiveHeights = [PAGE_HEIGHT, PAGE_HEIGHT, PAGE_HEIGHT, PAGE_HEIGHT, PAGE_HEIGHT]
+  const fiveHeights = [
+    PAGE_HEIGHT,
+    PAGE_HEIGHT,
+    PAGE_HEIGHT,
+    PAGE_HEIGHT,
+    PAGE_HEIGHT
+  ]
 
   it('removes repeated headers, footers and counts them', () => {
     const result = layoutPages(fivePages, { pageHeights: fiveHeights })
@@ -214,9 +220,7 @@ describe('layoutPages', () => {
 
   it('keeps a header that appears on fewer than 60% of pages', () => {
     const pages = fivePages.map((page, index) =>
-      index < 2
-        ? [item('Only on two pages', 72, 770, 9, 120), ...page]
-        : page
+      index < 2 ? [item('Only on two pages', 72, 770, 9, 120), ...page] : page
     )
 
     const result = layoutPages(pages, { pageHeights: fiveHeights })
@@ -238,8 +242,16 @@ describe('layoutPages', () => {
 
   it('keeps a header on a 2-page document but still drops a bare page number', () => {
     const twoPages = [
-      [item('Report title', 72, 770, 9, 100), item('Body one.', 72, 700, 12, 80), item('2', 396, 30, 9, 10)],
-      [item('Report title', 72, 770, 9, 100), item('Body two.', 72, 700, 12, 80), item('3', 396, 30, 9, 10)]
+      [
+        item('Report title', 72, 770, 9, 100),
+        item('Body one.', 72, 700, 12, 80),
+        item('2', 396, 30, 9, 10)
+      ],
+      [
+        item('Report title', 72, 770, 9, 100),
+        item('Body two.', 72, 700, 12, 80),
+        item('3', 396, 30, 9, 10)
+      ]
     ]
 
     const result = layoutPages(twoPages, {

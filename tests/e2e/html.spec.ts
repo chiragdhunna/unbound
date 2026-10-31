@@ -74,8 +74,12 @@ test('uploads an HTML file and renders markdown output with zero external reques
   await page.getByLabel('Choose file', { exact: true }).setInputFiles(filePath)
 
   const output = page.getByRole('textbox', { name: 'Converted output' })
-  await expect(output).toContainText('E2E HTML Converted Article', { timeout: 30_000 })
-  await expect(output).toContainText('This is an end-to-end integration test', { timeout: 30_000 })
+  await expect(output).toContainText('E2E HTML Converted Article', {
+    timeout: 30_000
+  })
+  await expect(output).toContainText('This is an end-to-end integration test', {
+    timeout: 30_000
+  })
 
   const text = await output.inputValue()
   expect(text).toContain('**strongly emphasized text**')
@@ -132,11 +136,14 @@ test('asserts no Fetch URL control exists and dropping an HTML file works with z
 
   // 3. Verify conversion output
   const output = page.getByRole('textbox', { name: 'Converted output' })
-  await expect(output).toContainText('E2E HTML Converted Article', { timeout: 30_000 })
-  await expect(output).toContainText('This is an end-to-end integration test', { timeout: 30_000 })
+  await expect(output).toContainText('E2E HTML Converted Article', {
+    timeout: 30_000
+  })
+  await expect(output).toContainText('This is an end-to-end integration test', {
+    timeout: 30_000
+  })
 
   // 4. Assert zero cross-origin requests and zero CSP violations
   expect(crossOrigin, crossOrigin.join('\n')).toEqual([])
   expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
 })
-

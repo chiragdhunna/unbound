@@ -13,27 +13,40 @@ test.describe('Mobile viewports & responsive hardening (E4)', () => {
   ]
 
   for (const vp of viewports) {
-    test(`no horizontal overflow at ${vp.name} in empty state`, async ({ page }) => {
+    test(`no horizontal overflow at ${vp.name} in empty state`, async ({
+      page
+    }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height })
       await page.goto('/')
       await page.waitForSelector('h1')
 
-      const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+      const scrollWidth = await page.evaluate(
+        () => document.documentElement.scrollWidth
+      )
       const innerWidth = await page.evaluate(() => window.innerWidth)
       expect(scrollWidth).toBeLessThanOrEqual(innerWidth)
     })
 
-    test(`no horizontal overflow at ${vp.name} in converted state`, async ({ page }) => {
+    test(`no horizontal overflow at ${vp.name} in converted state`, async ({
+      page
+    }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height })
       await page.goto('/')
       await page.waitForSelector('h1')
 
       await page
         .getByLabel('Choose file', { exact: true })
-        .setInputFiles(textFile('doc.txt', 'Mobile responsive converted content.\n'.repeat(20)))
+        .setInputFiles(
+          textFile(
+            'doc.txt',
+            'Mobile responsive converted content.\n'.repeat(20)
+          )
+        )
       await page.getByRole('textbox', { name: 'Converted output' }).waitFor()
 
-      const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+      const scrollWidth = await page.evaluate(
+        () => document.documentElement.scrollWidth
+      )
       const innerWidth = await page.evaluate(() => window.innerWidth)
       expect(scrollWidth).toBeLessThanOrEqual(innerWidth)
     })
@@ -67,7 +80,9 @@ test.describe('Mobile viewports & responsive hardening (E4)', () => {
     }
   })
 
-  test('sticky Copy button has safe bottom padding on mobile', async ({ page }) => {
+  test('sticky Copy button has safe bottom padding on mobile', async ({
+    page
+  }) => {
     await page.setViewportSize({ width: 360, height: 640 })
     await page.goto('/')
     await page.waitForSelector('h1')
@@ -77,7 +92,9 @@ test.describe('Mobile viewports & responsive hardening (E4)', () => {
       .setInputFiles(textFile('long.txt', 'Line of text.\n'.repeat(60)))
     await page.getByRole('textbox', { name: 'Converted output' }).waitFor()
 
-    const copyBtn = page.getByRole('article', { name: 'Conversion output' }).getByRole('button', { name: 'Copy', exact: true })
+    const copyBtn = page
+      .getByRole('article', { name: 'Conversion output' })
+      .getByRole('button', { name: 'Copy', exact: true })
     await expect(copyBtn).toBeVisible()
 
     const styles = await copyBtn.evaluate((el) => {
@@ -92,7 +109,9 @@ test.describe('Mobile viewports & responsive hardening (E4)', () => {
     expect(parseFloat(styles.bottom)).toBeGreaterThanOrEqual(16) // at least 1rem (16px) bottom offset
   })
 
-  test('touch drag hint contains "Tap to choose" for touch / mobile users', async ({ page }) => {
+  test('touch drag hint contains "Tap to choose" for touch / mobile users', async ({
+    page
+  }) => {
     await page.setViewportSize({ width: 360, height: 640 })
     await page.goto('/')
     await page.waitForSelector('h1')

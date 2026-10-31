@@ -52,8 +52,8 @@ export function DropZone({
         Tap to choose, drop a file, folder, or paste a local file here.
       </p>
       <p className="supported-formats">
-        Supported formats: txt, md, json, xml, code files, pdf, docx, pptx,
-        rtf, html, epub, zip, xlsx, xls, xlsm, csv, tsv, png, jpg, webp, bmp, gif.
+        Supported formats: txt, md, json, xml, code files, pdf, docx, pptx, rtf,
+        html, epub, zip, xlsx, xls, xlsm, csv, tsv, png, jpg, webp, bmp, gif.
       </p>
       <p className="ocr-note">
         English-first in v1; other languages are not supported yet.
@@ -99,10 +99,7 @@ export function DropZone({
         ref={folderInputRef}
         type="file"
         multiple
-        {...({ webkitdirectory: '', directory: '' } as Record<
-          string,
-          string
-        >)}
+        {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
         onChange={onInputChange}
         aria-label="Choose folder"
         hidden

@@ -16,7 +16,9 @@ function flattenText(node: unknown): string[] {
   const record = node as Record<string, unknown>
 
   if (record.type === 'link') {
-    const label = Array.isArray(record.tokens) ? record.tokens.flatMap((item) => flattenText(item)).join('') : ''
+    const label = Array.isArray(record.tokens)
+      ? record.tokens.flatMap((item) => flattenText(item)).join('')
+      : ''
     const href = typeof record.href === 'string' ? record.href : ''
     return [href ? `${label} (${href})` : label]
   }
@@ -88,7 +90,9 @@ export function markdownToPlain(input: string): string {
         for (const row of [...header, ...rows]) {
           const cells = Array.isArray(row) ? row : []
           const text = cells
-            .map((cell) => flattenText(cell).join(' ').replace(/\s+/g, ' ').trim())
+            .map((cell) =>
+              flattenText(cell).join(' ').replace(/\s+/g, ' ').trim()
+            )
             .filter(Boolean)
             .join('\t')
           if (text) parts.push(text)
@@ -101,7 +105,10 @@ export function markdownToPlain(input: string): string {
         break
       }
       default: {
-        const fallback = flattenText(record).join(' ').replace(/\s+/g, ' ').trim()
+        const fallback = flattenText(record)
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim()
         if (fallback) parts.push(fallback)
       }
     }

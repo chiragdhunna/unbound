@@ -235,7 +235,9 @@ describe('pptxConverter', () => {
       ctx
     )
 
-    expect(result.markdown).toContain('Outer shape\n\nNested shape 1\n\nNested shape 2')
+    expect(result.markdown).toContain(
+      'Outer shape\n\nNested shape 1\n\nNested shape 2'
+    )
   })
 
   it('emits speaker notes as **Notes:**, skipping slide-number and empty notes', async () => {
@@ -329,7 +331,9 @@ describe('pptxConverter', () => {
       ctx
     )
 
-    expect(result.markdown).toContain('**Notes:**\n\nKey talking point for audience')
+    expect(result.markdown).toContain(
+      '**Notes:**\n\nKey talking point for audience'
+    )
     // Slide 2 has no notes
     const slide2Section = result.markdown.split('## Slide 2')[1]
     expect(slide2Section).not.toContain('**Notes:**')
@@ -464,26 +468,41 @@ describe('pptxConverter', () => {
   })
 
   it('throws CorruptFileError for corrupted zip bytes', async () => {
-    const corruptBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x01, 0x02, 0x03]).buffer
+    const corruptBytes = new Uint8Array([
+      0x50, 0x4b, 0x03, 0x04, 0x01, 0x02, 0x03
+    ]).buffer
     const ctx = createConvertContext()
     await expect(
-      pptxConverter.convert({ name: 'corrupted.pptx', bytes: corruptBytes, mime: '' }, ctx)
+      pptxConverter.convert(
+        { name: 'corrupted.pptx', bytes: corruptBytes, mime: '' },
+        ctx
+      )
     ).rejects.toBeInstanceOf(CorruptFileError)
   })
 
   it('throws PasswordRequiredError for encrypted OLE2 PPTX files', async () => {
-    const ole2Bytes = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xaa, 0xbb, 0xcc, 0xdd]).buffer
+    const ole2Bytes = new Uint8Array([
+      0xd0, 0xcf, 0x11, 0xe0, 0xaa, 0xbb, 0xcc, 0xdd
+    ]).buffer
     const ctx = createConvertContext()
     await expect(
-      pptxConverter.convert({ name: 'locked.pptx', bytes: ole2Bytes, mime: '' }, ctx)
+      pptxConverter.convert(
+        { name: 'locked.pptx', bytes: ole2Bytes, mime: '' },
+        ctx
+      )
     ).rejects.toThrow(PasswordRequiredError)
   })
 
   it('throws LegacyDocError for legacy .ppt files', async () => {
-    const ole2Bytes = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0x00, 0x11, 0x22, 0x33]).buffer
+    const ole2Bytes = new Uint8Array([
+      0xd0, 0xcf, 0x11, 0xe0, 0x00, 0x11, 0x22, 0x33
+    ]).buffer
     const ctx = createConvertContext()
     await expect(
-      pptxConverter.convert({ name: 'old.ppt', bytes: ole2Bytes, mime: '' }, ctx)
+      pptxConverter.convert(
+        { name: 'old.ppt', bytes: ole2Bytes, mime: '' },
+        ctx
+      )
     ).rejects.toThrow(LegacyDocError)
   })
 

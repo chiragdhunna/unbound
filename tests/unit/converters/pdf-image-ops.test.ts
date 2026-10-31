@@ -27,7 +27,9 @@ const TEXT = 'This is a normal text page with plenty of characters.'
 async function buildThreePagePdf(): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
   const image = await doc.embedPng(PNG_1X1)
-  doc.addPage([612, 792]).drawImage(image, { x: 0, y: 0, width: 612, height: 792 })
+  doc
+    .addPage([612, 792])
+    .drawImage(image, { x: 0, y: 0, width: 612, height: 792 })
   const font = await doc.embedFont(StandardFonts.Helvetica)
   doc.addPage([612, 792]).drawText(TEXT, { x: 50, y: 700, size: 12, font })
   doc.addPage([612, 792])
@@ -50,10 +52,16 @@ describe('image operator codes', () => {
 
   it('treats generic form painting and unrelated ops as non-image', () => {
     const { OPS } = legacyPdfjs
-    expect(hasImageOpsFromOperatorList({ fnArray: [OPS.paintXObject, OPS.save, OPS.restore] })).toBe(
-      false
-    )
-    expect(hasImageOpsFromOperatorList({ fnArray: [OPS.save, OPS.paintImageXObject] })).toBe(true)
+    expect(
+      hasImageOpsFromOperatorList({
+        fnArray: [OPS.paintXObject, OPS.save, OPS.restore]
+      })
+    ).toBe(false)
+    expect(
+      hasImageOpsFromOperatorList({
+        fnArray: [OPS.save, OPS.paintImageXObject]
+      })
+    ).toBe(true)
     expect(hasImageOpsFromOperatorList({ fnArray: [] })).toBe(false)
   })
 })
@@ -67,7 +75,9 @@ describe('hasLargeImageFromOperatorList', () => {
       fnArray: [TRANSFORM_OPS.transform, OPS.paintImageXObject],
       argsArray: [[600, 0, 0, 400, 0, 0], []]
     }
-    expect(hasLargeImageFromOperatorList(operatorList, 600, 800, 0.3)).toBe(true)
+    expect(hasLargeImageFromOperatorList(operatorList, 600, 800, 0.3)).toBe(
+      true
+    )
   })
 
   it('returns false when an image occupies < 30% of page area', () => {
@@ -76,7 +86,9 @@ describe('hasLargeImageFromOperatorList', () => {
       fnArray: [TRANSFORM_OPS.transform, OPS.paintImageXObject],
       argsArray: [[100, 0, 0, 100, 0, 0], []]
     }
-    expect(hasLargeImageFromOperatorList(operatorList, 600, 800, 0.3)).toBe(false)
+    expect(hasLargeImageFromOperatorList(operatorList, 600, 800, 0.3)).toBe(
+      false
+    )
   })
 
   it('tracks transformation matrix stack with save and restore', () => {
@@ -85,20 +97,16 @@ describe('hasLargeImageFromOperatorList', () => {
       fnArray: [
         TRANSFORM_OPS.save,
         TRANSFORM_OPS.transform, // large: 500x500
-        TRANSFORM_OPS.restore,   // restores to 1x1
+        TRANSFORM_OPS.restore, // restores to 1x1
         TRANSFORM_OPS.transform, // small: 50x50
         OPS.paintImageXObject
       ],
-      argsArray: [
-        [],
-        [500, 0, 0, 500, 0, 0],
-        [],
-        [50, 0, 0, 50, 0, 0],
-        []
-      ]
+      argsArray: [[], [500, 0, 0, 500, 0, 0], [], [50, 0, 0, 50, 0, 0], []]
     }
     // 50x50 on 600x800 is < 30%
-    expect(hasLargeImageFromOperatorList(operatorList, 600, 800, 0.3)).toBe(false)
+    expect(hasLargeImageFromOperatorList(operatorList, 600, 800, 0.3)).toBe(
+      false
+    )
   })
 
   it('returns false when page width or height is 0', () => {
@@ -120,7 +128,10 @@ describe('hasLargeImageFromOperatorList', () => {
 
 describe('extractPages hasImageOps on real PDFs', () => {
   it('flags an image-only page, not a text page or a blank page', async () => {
-    const pages = await extractPages(legacyPdfjs as unknown as PdfjsLike, await buildThreePagePdf())
+    const pages = await extractPages(
+      legacyPdfjs as unknown as PdfjsLike,
+      await buildThreePagePdf()
+    )
 
     expect(pages).toHaveLength(3)
     expect(pages[0]?.items.length).toBe(0)
@@ -131,50 +142,66 @@ describe('extractPages hasImageOps on real PDFs', () => {
   })
 
   it('feeds decideOcrPages so a scanned page is image-only, text is text, blank is empty', async () => {
-    const pages = await extractPages(legacyPdfjs as unknown as PdfjsLike, await buildThreePagePdf())
+    const pages = await extractPages(
+      legacyPdfjs as unknown as PdfjsLike,
+      await buildThreePagePdf()
+    )
 
     expect(decideOcrPages(pages).map((decision) => decision.reason)).toEqual([
       'image-only',
       'text',
       'empty'
     ])
-    expect(decideOcrPages(pages, { forceOcr: true }).map((decision) => decision.reason)).toEqual([
-      'forced',
-      'forced',
-      'forced'
-    ])
+    expect(
+      decideOcrPages(pages, { forceOcr: true }).map(
+        (decision) => decision.reason
+      )
+    ).toEqual(['forced', 'forced', 'forced'])
   })
 
   it('detects large embedded images on text pages when detectEmbeddedImages is enabled', async () => {
     const doc = await PDFDocument.create()
     const font = await doc.embedFont(StandardFonts.Helvetica)
     const page = doc.addPage([600, 800])
-    page.drawText('This is plenty of selectable text to make it a text-rich page.', {
-      x: 50,
-      y: 750,
-      size: 14,
-      font
-    })
+    page.drawText(
+      'This is plenty of selectable text to make it a text-rich page.',
+      {
+        x: 50,
+        y: 750,
+        size: 14,
+        font
+      }
+    )
     const img = await doc.embedPng(PNG_1X1)
     // 500x500 on 600x800 page = 250,000 / 480,000 = 52% >= 30%
     page.drawImage(img, { x: 50, y: 100, width: 500, height: 500 })
     const pdfBytes = await doc.save()
 
-    const withoutOption = await extractPages(legacyPdfjs as unknown as PdfjsLike, pdfBytes, {
-      detectEmbeddedImages: false
-    })
+    const withoutOption = await extractPages(
+      legacyPdfjs as unknown as PdfjsLike,
+      pdfBytes,
+      {
+        detectEmbeddedImages: false
+      }
+    )
     expect(withoutOption[0]?.hasLargeImage).toBeFalsy()
 
-    const withOption = await extractPages(legacyPdfjs as unknown as PdfjsLike, pdfBytes, {
-      detectEmbeddedImages: true
-    })
+    const withOption = await extractPages(
+      legacyPdfjs as unknown as PdfjsLike,
+      pdfBytes,
+      {
+        detectEmbeddedImages: true
+      }
+    )
     expect(withOption[0]?.hasLargeImage).toBe(true)
   })
 })
 
 describe('extractPages page handling', () => {
   function fakePdfjs(textPerPage: string[]) {
-    const getOperatorList = vi.fn(async () => ({ fnArray: [legacyPdfjs.OPS.paintImageXObject] }))
+    const getOperatorList = vi.fn(async () => ({
+      fnArray: [legacyPdfjs.OPS.paintImageXObject]
+    }))
     const cleanup = vi.fn()
     const pdfjs: PdfjsLike = {
       getDocument: () => ({
@@ -182,7 +209,12 @@ describe('extractPages page handling', () => {
           numPages: textPerPage.length,
           getPage: async (pageNumber: number) => ({
             getTextContent: async () => ({
-              items: [{ str: textPerPage[pageNumber - 1], transform: [1, 0, 0, 1, 0, 0] }]
+              items: [
+                {
+                  str: textPerPage[pageNumber - 1],
+                  transform: [1, 0, 0, 1, 0, 0]
+                }
+              ]
             }),
             getOperatorList,
             cleanup,
@@ -220,7 +252,11 @@ describe('extractPages page handling', () => {
   it('caps embedded image detection to MAX_TEXT_PAGES_FOR_IMAGE_DETECTION: page 20 detected, page 21 not', async () => {
     expect(MAX_TEXT_PAGES_FOR_IMAGE_DETECTION).toBe(20)
     // 25 text-rich pages
-    const textPages = Array.from({ length: 25 }, (_, i) => `Page ${i + 1} has plenty of selectable text to count as text-rich.`)
+    const textPages = Array.from(
+      { length: 25 },
+      (_, i) =>
+        `Page ${i + 1} has plenty of selectable text to count as text-rich.`
+    )
     const { pdfjs, getOperatorList } = fakePdfjs(textPages)
     const pages = await extractPages(pdfjs, new Uint8Array(1), {
       detectEmbeddedImages: true
@@ -240,7 +276,10 @@ describe('extractPages page handling', () => {
   it('preserves low-text page fail-open routing to OCR even after page 20', async () => {
     // 20 text-rich pages, then a low-text page at position 21, then a text page at 22
     const mixed = [
-      ...Array.from({ length: 20 }, (_, i) => `Page ${i + 1} has plenty of selectable text.`),
+      ...Array.from(
+        { length: 20 },
+        (_, i) => `Page ${i + 1} has plenty of selectable text.`
+      ),
       'scanned', // < 25 chars -> low-text page!
       'Page 22 has plenty of selectable text.'
     ]

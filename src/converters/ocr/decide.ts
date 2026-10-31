@@ -39,7 +39,10 @@ export function decideOcrPages(
     const pageNumber = index + 1
     if (forceOcr) return { pageNumber, reason: 'forced' }
 
-    const characters = page.items.reduce((total, item) => total + item.str.replace(/\s/g, '').length, 0)
+    const characters = page.items.reduce(
+      (total, item) => total + item.str.replace(/\s/g, '').length,
+      0
+    )
     if (characters >= minChars) return { pageNumber, reason: 'text' }
     return { pageNumber, reason: page.hasImageOps ? 'image-only' : 'empty' }
   })

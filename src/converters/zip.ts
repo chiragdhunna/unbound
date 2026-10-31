@@ -54,7 +54,11 @@ export function isZipEncrypted(bytes: ArrayBuffer): boolean {
   return false
 }
 
-export function buildAsciiFileTree(rootName: string, paths: string[], skippedCount = 0): string {
+export function buildAsciiFileTree(
+  rootName: string,
+  paths: string[],
+  skippedCount = 0
+): string {
   interface TreeNode {
     name: string
     isDir: boolean
@@ -127,7 +131,9 @@ async function collectZipEntries(
   try {
     zip = await JSZip.loadAsync(zipBytes)
   } catch {
-    throw new CorruptFileError('This file is not a valid ZIP archive or is corrupted.')
+    throw new CorruptFileError(
+      'This file is not a valid ZIP archive or is corrupted.'
+    )
   }
 
   for (const [rawName, file] of Object.entries(zip.files)) {
@@ -154,7 +160,9 @@ async function collectZipEntries(
       }
       stats.totalDeclared += uncompressed
       if (stats.totalDeclared > ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES) {
-        throw new TooLargeError('ZIP total uncompressed size exceeds maximum limit of 200MB.')
+        throw new TooLargeError(
+          'ZIP total uncompressed size exceeds maximum limit of 200MB.'
+        )
       }
     }
 
@@ -162,7 +170,13 @@ async function collectZipEntries(
     if (sanitized.toLowerCase().endsWith('.zip')) {
       if (depth < ZIP_MAX_NESTING_DEPTH) {
         const nestedBytes = await file.async('arraybuffer')
-        await collectZipEntries(nestedBytes, displayPath, depth + 1, collected, stats)
+        await collectZipEntries(
+          nestedBytes,
+          displayPath,
+          depth + 1,
+          collected,
+          stats
+        )
       } else {
         stats.skippedCount++
       }
@@ -174,7 +188,10 @@ async function collectZipEntries(
 
 export const zipConverter: Converter = {
   kind: 'zip',
-  async convert(input: ConverterInput, ctx: ConvertContext): Promise<ConvertResult> {
+  async convert(
+    input: ConverterInput,
+    ctx: ConvertContext
+  ): Promise<ConvertResult> {
     if (ctx.signal?.aborted) {
       throw new CancelledError()
     }
@@ -185,7 +202,9 @@ export const zipConverter: Converter = {
     await collectZipEntries(input.bytes, '', 1, collectedEntries, statsTracker)
 
     if (collectedEntries.length === 0) {
-      throw new NoTextFoundError('No convertible text files found in this ZIP archive.')
+      throw new NoTextFoundError(
+        'No convertible text files found in this ZIP archive.'
+      )
     }
 
     // Sort depth-first, alphabetical, stable
@@ -204,7 +223,10 @@ export const zipConverter: Converter = {
     let failedEntriesCount = 0
     let limitReached = false
 
-    const maxEntriesToProcess = Math.min(collectedEntries.length, ZIP_MAX_ENTRIES)
+    const maxEntriesToProcess = Math.min(
+      collectedEntries.length,
+      ZIP_MAX_ENTRIES
+    )
     if (collectedEntries.length > ZIP_MAX_ENTRIES) {
       limitReached = true
     }
@@ -306,7 +328,9 @@ export const zipConverter: Converter = {
     }
 
     if (convertedBlocks.length === 0) {
-      throw new NoTextFoundError('No convertible text files found in this ZIP archive.')
+      throw new NoTextFoundError(
+        'No convertible text files found in this ZIP archive.'
+      )
     }
 
     if (failedEntriesCount > 0) {
@@ -318,7 +342,11 @@ export const zipConverter: Converter = {
     }
 
     const rootName = input.name || 'archive.zip'
-    const treeText = buildAsciiFileTree(rootName, validPathsForTree, statsTracker.skippedCount)
+    const treeText = buildAsciiFileTree(
+      rootName,
+      validPathsForTree,
+      statsTracker.skippedCount
+    )
     const treeSection = `## Files\n\n\`\`\`\n${treeText}\n\`\`\``
 
     const finalMarkdown = `${treeSection}\n\n${convertedBlocks.join('\n\n')}`

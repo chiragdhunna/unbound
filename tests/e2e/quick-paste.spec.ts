@@ -9,8 +9,14 @@ const textFile = (name: string, content: string) => ({
 async function installClipboard(page: Page) {
   await page.evaluate(() => {
     const writes: string[] = []
-    Object.defineProperty(window, '__unboundWrites', { value: writes, writable: false })
-    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+    Object.defineProperty(window, '__unboundWrites', {
+      value: writes,
+      writable: false
+    })
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      configurable: true
+    })
     Object.defineProperty(navigator, 'clipboard', {
       value: {
         writeText: (value: string) => {
@@ -29,7 +35,9 @@ test.describe('Quick paste mode & clipboard fallback (E2 / R061)', () => {
     context
   }) => {
     // Grant clipboard permissions where supported (Chromium), catch in WebKit
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {})
+    await context
+      .grantPermissions(['clipboard-read', 'clipboard-write'])
+      .catch(() => {})
 
     await page.goto('/')
     await installClipboard(page)

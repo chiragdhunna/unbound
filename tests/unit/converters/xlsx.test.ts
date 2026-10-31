@@ -13,14 +13,18 @@ vi.mock('xlsx', async () => {
       }
     }
   }
-});
+})
 
 beforeEach(() => {
-  vi.clearAllMocks();
-});
+  vi.clearAllMocks()
+})
 
 import { xlsxConverter } from '../../../src/converters/xlsx'
-import { PasswordRequiredError, CorruptFileError, NoTextFoundError } from '../../../src/core/errors'
+import {
+  PasswordRequiredError,
+  CorruptFileError,
+  NoTextFoundError
+} from '../../../src/core/errors'
 
 // Structural types describing only the parts of SheetJS this test touches.
 type MockFn = {
@@ -50,19 +54,19 @@ describe('xlsxConverter', () => {
       SheetNames: ['Sheet1', 'Sheet2'],
       Sheets: {
         Sheet1: {
-          'A1': { v: 'Name', t: 's' },
-          'B1': { v: 'Age', t: 's' },
-          'A2': { v: 'John', t: 's' },
-          'B2': { v: 25, t: 'n' },
-          'A3': { v: 'Jane', t: 's' },
-          'B3': { v: 30, t: 'n' },
+          A1: { v: 'Name', t: 's' },
+          B1: { v: 'Age', t: 's' },
+          A2: { v: 'John', t: 's' },
+          B2: { v: 25, t: 'n' },
+          A3: { v: 'Jane', t: 's' },
+          B3: { v: 30, t: 'n' },
           '!ref': 'A1:B3'
         },
         Sheet2: {
-          'A1': { v: 'Product', t: 's' },
-          'B1': { v: 'Price', t: 's' },
-          'A2': { v: 'Apple', t: 's' },
-          'B2': { v: 1.5, t: 'n' },
+          A1: { v: 'Product', t: 's' },
+          B1: { v: 'Price', t: 's' },
+          A2: { v: 'Apple', t: 's' },
+          B2: { v: 1.5, t: 'n' },
           '!ref': 'A1:B2'
         }
       }
@@ -74,13 +78,15 @@ describe('xlsxConverter', () => {
     mockXLSX.utils.decode_range.mockImplementation((ref: string) => {
       if (ref === 'A1:B3') return { s: { c: 0, r: 0 }, e: { c: 1, r: 2 } }
       if (ref === 'A1:B2') return { s: { c: 0, r: 0 }, e: { c: 1, r: 1 } }
-      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 }}
+      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } }
     })
 
-    mockXLSX.utils.encode_cell.mockImplementation((cell: { c: number; r: number }) => {
-      const colChar = String.fromCharCode(65 + cell.c)
-      return `${colChar}${cell.r + 1}`
-    })
+    mockXLSX.utils.encode_cell.mockImplementation(
+      (cell: { c: number; r: number }) => {
+        const colChar = String.fromCharCode(65 + cell.c)
+        return `${colChar}${cell.r + 1}`
+      }
+    )
 
     const result = await xlsxConverter.convert(
       {
@@ -112,8 +118,8 @@ describe('xlsxConverter', () => {
       SheetNames: ['Sheet1'],
       Sheets: {
         Sheet1: {
-          'A1': { v: new Date('2026-01-15T10:30:00Z'), t: 'd' },
-          'A2': { v: new Date('2026-01-15T00:00:00Z'), t: 'd' },
+          A1: { v: new Date('2026-01-15T10:30:00Z'), t: 'd' },
+          A2: { v: new Date('2026-01-15T00:00:00Z'), t: 'd' },
           '!ref': 'A1:A2'
         }
       }
@@ -121,13 +127,15 @@ describe('xlsxConverter', () => {
 
     mockXLSX.utils.decode_range.mockImplementation((ref: string) => {
       if (ref === 'A1:A2') return { s: { c: 0, r: 0 }, e: { c: 0, r: 1 } }
-      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 }}
+      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } }
     })
 
-    mockXLSX.utils.encode_cell.mockImplementation((cell: { c: number; r: number }) => {
-      const colChar = String.fromCharCode(65 + cell.c)
-      return `${colChar}${cell.r + 1}`
-    })
+    mockXLSX.utils.encode_cell.mockImplementation(
+      (cell: { c: number; r: number }) => {
+        const colChar = String.fromCharCode(65 + cell.c)
+        return `${colChar}${cell.r + 1}`
+      }
+    )
 
     const result = await xlsxConverter.convert(
       {
@@ -157,8 +165,8 @@ describe('xlsxConverter', () => {
       SheetNames: ['Sheet1'],
       Sheets: {
         Sheet1: {
-          'A1': { v: 'Header', t: 's' },
-          'A2': { v: cellWithNewline, t: 's' },
+          A1: { v: 'Header', t: 's' },
+          A2: { v: cellWithNewline, t: 's' },
           '!ref': 'A1:A2'
         }
       }
@@ -166,13 +174,15 @@ describe('xlsxConverter', () => {
 
     mockXLSX.utils.decode_range.mockImplementation((ref: string) => {
       if (ref === 'A1:A2') return { s: { c: 0, r: 0 }, e: { c: 0, r: 1 } }
-      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 }}
+      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } }
     })
 
-    mockXLSX.utils.encode_cell.mockImplementation((cell: { c: number; r: number }) => {
-      const colChar = String.fromCharCode(65 + cell.c)
-      return `${colChar}${cell.r + 1}`
-    })
+    mockXLSX.utils.encode_cell.mockImplementation(
+      (cell: { c: number; r: number }) => {
+        const colChar = String.fromCharCode(65 + cell.c)
+        return `${colChar}${cell.r + 1}`
+      }
+    )
 
     const result = await xlsxConverter.convert(
       {
@@ -200,11 +210,11 @@ describe('xlsxConverter', () => {
       SheetNames: ['Sheet1'],
       Sheets: {
         Sheet1: {
-          'A1': { v: 'Merged Value', t: 's' },
-          'B1': { v: 'Other', t: 's' },
-          'A2': { v: 'Cell A2', t: 's' },
-          'B2': { v: 'Cell B2', t: 's' },
-          '!merges': [{ s: { c: 0, r: 0 }, e: { c: 1, r: 0 }}], // Merge A1:B1
+          A1: { v: 'Merged Value', t: 's' },
+          B1: { v: 'Other', t: 's' },
+          A2: { v: 'Cell A2', t: 's' },
+          B2: { v: 'Cell B2', t: 's' },
+          '!merges': [{ s: { c: 0, r: 0 }, e: { c: 1, r: 0 } }], // Merge A1:B1
           '!ref': 'A1:B2'
         }
       }
@@ -212,13 +222,15 @@ describe('xlsxConverter', () => {
 
     mockXLSX.utils.decode_range.mockImplementation((ref: string) => {
       if (ref === 'A1:B2') return { s: { c: 0, r: 0 }, e: { c: 1, r: 1 } }
-      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 }}
+      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } }
     })
 
-    mockXLSX.utils.encode_cell.mockImplementation((cell: { c: number; r: number }) => {
-      const colChar = String.fromCharCode(65 + cell.c)
-      return `${colChar}${cell.r + 1}`
-    })
+    mockXLSX.utils.encode_cell.mockImplementation(
+      (cell: { c: number; r: number }) => {
+        const colChar = String.fromCharCode(65 + cell.c)
+        return `${colChar}${cell.r + 1}`
+      }
+    )
 
     const result = await xlsxConverter.convert(
       {
@@ -240,7 +252,8 @@ describe('xlsxConverter', () => {
     expect(result.markdown).toContain('| Cell A2 | Cell B2 |')
     expect(result.warnings).toContainEqual({
       code: 'MERGED_CELLS',
-      message: 'Merged cells were found; values appear only in the top-left cell.',
+      message:
+        'Merged cells were found; values appear only in the top-left cell.',
       severity: 'warn'
     })
   })
@@ -251,7 +264,7 @@ describe('xlsxConverter', () => {
       SheetNames: ['Sheet1', 'Sheet2'],
       Sheets: {
         Sheet1: {
-          'A1': { v: 'Data', t: 's' },
+          A1: { v: 'Data', t: 's' },
           '!ref': 'A1:A1'
         },
         Sheet2: {} // Empty sheet
@@ -260,13 +273,15 @@ describe('xlsxConverter', () => {
 
     mockXLSX.utils.decode_range.mockImplementation((ref: string) => {
       if (ref === 'A1:A1') return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } }
-      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 }}
+      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } }
     })
 
-    mockXLSX.utils.encode_cell.mockImplementation((cell: { c: number; r: number }) => {
-      const colChar = String.fromCharCode(65 + cell.c)
-      return `${colChar}${cell.r + 1}`
-    })
+    mockXLSX.utils.encode_cell.mockImplementation(
+      (cell: { c: number; r: number }) => {
+        const colChar = String.fromCharCode(65 + cell.c)
+        return `${colChar}${cell.r + 1}`
+      }
+    )
 
     const result = await xlsxConverter.convert(
       {
@@ -298,17 +313,22 @@ describe('xlsxConverter', () => {
       SheetNames: ['Sheet1', 'Sheet2'],
       Sheets: {
         Sheet1: {}, // Empty sheet
-        Sheet2: {}  // Empty sheet
+        Sheet2: {} // Empty sheet
       }
     })
 
     // We need to mock the decode_range and encode_cell to avoid errors, but since the sheets are empty,
     // the range might be undefined. We'll mock them to return dummy values.
-    mockXLSX.utils.decode_range.mockReturnValue({ s: { c: 0, r: 0 }, e: { c: 0, r: 0 } })
-    mockXLSX.utils.encode_cell.mockImplementation((cell: { c: number; r: number }) => {
-      const colChar = String.fromCharCode(65 + cell.c)
-      return `${colChar}${cell.r + 1}`
+    mockXLSX.utils.decode_range.mockReturnValue({
+      s: { c: 0, r: 0 },
+      e: { c: 0, r: 0 }
     })
+    mockXLSX.utils.encode_cell.mockImplementation(
+      (cell: { c: number; r: number }) => {
+        const colChar = String.fromCharCode(65 + cell.c)
+        return `${colChar}${cell.r + 1}`
+      }
+    )
 
     await expect(
       xlsxConverter.convert(
@@ -333,10 +353,10 @@ describe('xlsxConverter', () => {
       SheetNames: ['Sheet1'],
       Sheets: {
         Sheet1: {
-          'A1': { v: '', t: 's' }, // Empty header
-          'B1': { v: 'Column B', t: 's' },
-          'A2': { v: 'Value A2', t: 's' },
-          'B2': { v: 'Value B2', t: 's' },
+          A1: { v: '', t: 's' }, // Empty header
+          B1: { v: 'Column B', t: 's' },
+          A2: { v: 'Value A2', t: 's' },
+          B2: { v: 'Value B2', t: 's' },
           '!ref': 'A1:B2'
         }
       }
@@ -344,13 +364,15 @@ describe('xlsxConverter', () => {
 
     mockXLSX.utils.decode_range.mockImplementation((ref: string) => {
       if (ref === 'A1:B2') return { s: { c: 0, r: 0 }, e: { c: 1, r: 1 } }
-      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 }}
+      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } }
     })
 
-    mockXLSX.utils.encode_cell.mockImplementation((cell: { c: number; r: number }) => {
-      const colChar = String.fromCharCode(65 + cell.c)
-      return `${colChar}${cell.r + 1}`
-    })
+    mockXLSX.utils.encode_cell.mockImplementation(
+      (cell: { c: number; r: number }) => {
+        const colChar = String.fromCharCode(65 + cell.c)
+        return `${colChar}${cell.r + 1}`
+      }
+    )
 
     const result = await xlsxConverter.convert(
       {
@@ -376,8 +398,8 @@ describe('xlsxConverter', () => {
       SheetNames: ['Sheet1'],
       Sheets: {
         Sheet1: {
-          'A1': { v: 'Name', t: 's' },
-          'B1': { v: 'Value', t: 's' },
+          A1: { v: 'Name', t: 's' },
+          B1: { v: 'Value', t: 's' },
           '!ref': 'A1:B1'
         }
       }
@@ -385,13 +407,15 @@ describe('xlsxConverter', () => {
 
     mockXLSX.utils.decode_range.mockImplementation((ref: string) => {
       if (ref === 'A1:B1') return { s: { c: 0, r: 0 }, e: { c: 1, r: 0 } }
-      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 }}
+      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } }
     })
 
-    mockXLSX.utils.encode_cell.mockImplementation((cell: { c: number; r: number }) => {
-      const colChar = String.fromCharCode(65 + cell.c)
-      return `${colChar}${cell.r + 1}`
-    })
+    mockXLSX.utils.encode_cell.mockImplementation(
+      (cell: { c: number; r: number }) => {
+        const colChar = String.fromCharCode(65 + cell.c)
+        return `${colChar}${cell.r + 1}`
+      }
+    )
 
     const result = await xlsxConverter.convert(
       {
@@ -417,31 +441,33 @@ describe('xlsxConverter', () => {
       SheetNames: ['Sheet1', 'Sheet2'],
       Sheets: {
         Sheet1: {
-          'A1': { v: 'Visible', t: 's' },
+          A1: { v: 'Visible', t: 's' },
           '!ref': 'A1:A1'
         },
         Sheet2: {
-          'A1': { v: 'Hidden', t: 's' },
+          A1: { v: 'Hidden', t: 's' },
           '!ref': 'A1:A1'
         }
       },
       Workbook: {
         Sheets: [
           { Hidden: 0 }, // Sheet1 visible
-          { Hidden: 1 }  // Sheet2 hidden
+          { Hidden: 1 } // Sheet2 hidden
         ]
       }
     })
 
     mockXLSX.utils.decode_range.mockImplementation((ref: string) => {
       if (ref === 'A1:A1') return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } }
-      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 }}
+      return { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } }
     })
 
-    mockXLSX.utils.encode_cell.mockImplementation((cell: { c: number; r: number }) => {
-      const colChar = String.fromCharCode(65 + cell.c)
-      return `${colChar}${cell.r + 1}`
-    })
+    mockXLSX.utils.encode_cell.mockImplementation(
+      (cell: { c: number; r: number }) => {
+        const colChar = String.fromCharCode(65 + cell.c)
+        return `${colChar}${cell.r + 1}`
+      }
+    )
 
     const result = await xlsxConverter.convert(
       {
@@ -535,7 +561,9 @@ describe('xlsxConverter', () => {
       xlsxConverter.convert(
         {
           name: 'test.xlsx',
-          bytes: new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).buffer, // PNG header
+          bytes: new Uint8Array([
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
+          ]).buffer, // PNG header
           mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         },
         {

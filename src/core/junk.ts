@@ -15,7 +15,9 @@ export function isJunkPath(path: string): boolean {
   const normalized = path.replace(/\\/g, '/').replace(/^\/+/, '')
   const segments = normalized.split('/')
   for (const segment of segments) {
-    if (JUNK_PATTERNS.some((p) => segment === p || segment.startsWith(p + '/'))) {
+    if (
+      JUNK_PATTERNS.some((p) => segment === p || segment.startsWith(p + '/'))
+    ) {
       return true
     }
     if (segment === '.DS_Store' || segment === 'Thumbs.db') {
@@ -82,4 +84,3 @@ export function filterFolderFiles<
 
   return { accepted, skippedJunkCount, limitReached }
 }
-

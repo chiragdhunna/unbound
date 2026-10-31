@@ -9,11 +9,17 @@ export interface QueueJob<T> {
 
 export class ConversionQueue<T> {
   private readonly jobs = new Map<string, QueueJob<T>>()
-  private readonly pending: Array<{ id: string; task: (signal: AbortSignal) => Promise<T> }> = []
+  private readonly pending: Array<{
+    id: string
+    task: (signal: AbortSignal) => Promise<T>
+  }> = []
   private active = 0
   private sequence = 0
 
-  constructor(private readonly concurrency = 2, private readonly onChange: (job: QueueJob<T>) => void = () => undefined) {}
+  constructor(
+    private readonly concurrency = 2,
+    private readonly onChange: (job: QueueJob<T>) => void = () => undefined
+  ) {}
 
   enqueue(task: (signal: AbortSignal) => Promise<T>): string {
     const id = `job-${++this.sequence}`
@@ -27,7 +33,13 @@ export class ConversionQueue<T> {
 
   cancel(id: string): boolean {
     const job = this.jobs.get(id)
-    if (!job || job.status === 'done' || job.status === 'failed' || job.status === 'cancelled') return false
+    if (
+      !job ||
+      job.status === 'done' ||
+      job.status === 'failed' ||
+      job.status === 'cancelled'
+    )
+      return false
     job.status = 'cancelled'
     this.onChange(job)
     return true

@@ -6,9 +6,17 @@ const bytes = (value: string) => new TextEncoder().encode(value).buffer
 describe('decodeText', () => {
   it('decodes UTF-8, UTF-8 BOM, and UTF-16 BOMs', () => {
     expect(decodeText(bytes('hello')).text).toBe('hello')
-    expect(decodeText(new Uint8Array([0xef, 0xbb, 0xbf, 0x68, 0x69]).buffer).text).toBe('hi')
-    expect(decodeText(new Uint8Array([0xff, 0xfe, 0x68, 0x00, 0x69, 0x00]).buffer).text).toBe('hi')
-    expect(decodeText(new Uint8Array([0xfe, 0xff, 0x00, 0x68, 0x00, 0x69]).buffer).text).toBe('hi')
+    expect(
+      decodeText(new Uint8Array([0xef, 0xbb, 0xbf, 0x68, 0x69]).buffer).text
+    ).toBe('hi')
+    expect(
+      decodeText(new Uint8Array([0xff, 0xfe, 0x68, 0x00, 0x69, 0x00]).buffer)
+        .text
+    ).toBe('hi')
+    expect(
+      decodeText(new Uint8Array([0xfe, 0xff, 0x00, 0x68, 0x00, 0x69]).buffer)
+        .text
+    ).toBe('hi')
   })
 
   it('falls back to windows-1252 with an info warning', () => {
@@ -30,12 +38,12 @@ describe('windows-1252 fallback', () => {
     [0x87, '‡'], // ‡
     [0x88, 'ˆ'], // ˆ
     [0x89, '‰'], // ‰
-    [0x8A, 'Š'], // Š
-    [0x8B, '‹'], // ‹
-    [0x8C, 'Œ'], // Œ
-    [0x8D, '\u008D'], // undefined
-    [0x8E, 'Ž'], // Ž
-    [0x8F, '\u008F'], // undefined
+    [0x8a, 'Š'], // Š
+    [0x8b, '‹'], // ‹
+    [0x8c, 'Œ'], // Œ
+    [0x8d, '\u008D'], // undefined
+    [0x8e, 'Ž'], // Ž
+    [0x8f, '\u008F'], // undefined
     [0x90, '\u0090'], // undefined
     [0x91, '‘'], // ‘
     [0x92, '’'], // ’
@@ -46,12 +54,12 @@ describe('windows-1252 fallback', () => {
     [0x97, '—'], // —
     [0x98, '˜'], // ˜
     [0x99, '™'], // ™
-    [0x9A, 'š'], // š
-    [0x9B, '›'], // ›
-    [0x9C, 'œ'], // œ
-    [0x9D, '\u009D'], // undefined
-    [0x9E, 'ž'], // ž
-    [0x9F, 'Ÿ'], // Ÿ
+    [0x9a, 'š'], // š
+    [0x9b, '›'], // ›
+    [0x9c, 'œ'], // œ
+    [0x9d, '\u009D'], // undefined
+    [0x9e, 'ž'], // ž
+    [0x9f, 'Ÿ'] // Ÿ
   ])('maps byte %i to %o', (byte, expected) => {
     const result = decodeText(new Uint8Array([byte]).buffer)
     expect(result.text).toBe(expected)
@@ -61,10 +69,10 @@ describe('windows-1252 fallback', () => {
   it('passes through 0xA0-0xFF unchanged', () => {
     // Test a few representative bytes
     const samples: [number, string][] = [
-      [0xA0, ' '], // non-breaking space
-      [0xE9, 'é'], // e acute
-      [0xF1, 'ñ'], // n tilde
-      [0xFF, 'ÿ'], // y diaeresis
+      [0xa0, ' '], // non-breaking space
+      [0xe9, 'é'], // e acute
+      [0xf1, 'ñ'], // n tilde
+      [0xff, 'ÿ'] // y diaeresis
     ]
     for (const [byte, expected] of samples) {
       const result = decodeText(new Uint8Array([byte]).buffer)

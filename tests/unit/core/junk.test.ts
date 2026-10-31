@@ -71,14 +71,20 @@ describe('isJunkPath and JUNK_PATTERNS', () => {
       const files = [
         { name: 'doc.txt', webkitRelativePath: 'project/doc.txt' },
         { name: '.DS_Store', webkitRelativePath: 'project/.DS_Store' },
-        { name: 'config.pyc', webkitRelativePath: 'project/__pycache__/config.pyc' },
+        {
+          name: 'config.pyc',
+          webkitRelativePath: 'project/__pycache__/config.pyc'
+        },
         { name: 'readme.md', webkitRelativePath: 'project/readme.md' }
       ]
       const result = filterFolderFiles(files)
       expect(result.accepted).toHaveLength(2)
       expect(result.skippedJunkCount).toBe(2)
       expect(result.limitReached).toBe(false)
-      expect(result.accepted.map((f) => f.name)).toEqual(['doc.txt', 'readme.md'])
+      expect(result.accepted.map((f) => f.name)).toEqual([
+        'doc.txt',
+        'readme.md'
+      ])
     })
 
     it('caps at maxFiles and sets limitReached to true', () => {

@@ -13,7 +13,11 @@ function isFence(line: string): boolean {
 }
 
 function isTable(lines: string[]): boolean {
-  return lines.length >= 2 && /^\s*\|/.test(lines[0] ?? '') && /^\s*\|?\s*:?-{3,}/.test(lines[1] ?? '')
+  return (
+    lines.length >= 2 &&
+    /^\s*\|/.test(lines[0] ?? '') &&
+    /^\s*\|?\s*:?-{3,}/.test(lines[1] ?? '')
+  )
 }
 
 function splitUnits(input: string): string[] {
@@ -35,7 +39,10 @@ function splitUnits(input: string): string[] {
   return units.length ? units : ['']
 }
 
-function splitTable(unit: string, maxChars: number): { chunks: string[]; warnings: string[] } {
+function splitTable(
+  unit: string,
+  maxChars: number
+): { chunks: string[]; warnings: string[] } {
   const trailingNewline = unit.endsWith('\n') ? '\n' : ''
   const lines = unit.replace(/\n$/, '').split('\n')
   const header = lines.slice(0, 2).join('\n')
@@ -46,7 +53,10 @@ function splitTable(unit: string, maxChars: number): { chunks: string[]; warning
 
   for (const row of rows) {
     const candidate = `${current}\n${row}`
-    if (candidate.length <= maxChars || current === header && !chunks.length) {
+    if (
+      candidate.length <= maxChars ||
+      (current === header && !chunks.length)
+    ) {
       current = candidate
       continue
     }
@@ -56,26 +66,43 @@ function splitTable(unit: string, maxChars: number): { chunks: string[]; warning
 
   if (current) chunks.push(`${current}${trailingNewline}`)
   for (const chunk of chunks) {
-    if (chunk.length > maxChars) warnings.push('A table row or header is larger than the configured chunk limit.')
+    if (chunk.length > maxChars)
+      warnings.push(
+        'A table row or header is larger than the configured chunk limit.'
+      )
   }
   return { chunks, warnings }
 }
 
-function splitOversizeUnit(unit: string, maxChars: number): { chunks: string[]; warnings: string[] } {
+function splitOversizeUnit(
+  unit: string,
+  maxChars: number
+): { chunks: string[]; warnings: string[] } {
   if (unit.length <= maxChars) return { chunks: [unit], warnings: [] }
   const lines = unit.split('\n')
   const fenced = lines.some(isFence)
-  if (fenced) return { chunks: [unit], warnings: ['A code fence is larger than the configured chunk limit and was kept intact.'] }
+  if (fenced)
+    return {
+      chunks: [unit],
+      warnings: [
+        'A code fence is larger than the configured chunk limit and was kept intact.'
+      ]
+    }
 
   const chunks: string[] = []
-  for (let offset = 0; offset < unit.length; offset += maxChars) chunks.push(unit.slice(offset, offset + maxChars))
+  for (let offset = 0; offset < unit.length; offset += maxChars)
+    chunks.push(unit.slice(offset, offset + maxChars))
   return { chunks, warnings: [] }
 }
 
-export function chunkMarkdownWithWarnings(input: string, options: ChunkOptions = {}): ChunkResult {
+export function chunkMarkdownWithWarnings(
+  input: string,
+  options: ChunkOptions = {}
+): ChunkResult {
   const { maxChars = 12000, label = false } = options
   const normalized = input.replace(/\r\n/g, '\n')
-  if (normalized.length <= maxChars) return { chunks: [label ? normalized : normalized], warnings: [] }
+  if (normalized.length <= maxChars)
+    return { chunks: [label ? normalized : normalized], warnings: [] }
 
   const chunks: string[] = []
   const warnings: string[] = []
@@ -83,10 +110,15 @@ export function chunkMarkdownWithWarnings(input: string, options: ChunkOptions =
 
   for (const unit of splitUnits(normalized)) {
     const lines = unit.replace(/\n$/, '').split('\n')
-    const pieces = isTable(lines) ? splitTable(unit, maxChars) : splitOversizeUnit(unit, maxChars)
+    const pieces = isTable(lines)
+      ? splitTable(unit, maxChars)
+      : splitOversizeUnit(unit, maxChars)
     warnings.push(...pieces.warnings)
     for (const piece of pieces.chunks) {
-      if (piece.length > maxChars || piece.includes('\n\n') && current.length + piece.length > maxChars) {
+      if (
+        piece.length > maxChars ||
+        (piece.includes('\n\n') && current.length + piece.length > maxChars)
+      ) {
         if (current) chunks.push(current)
         current = piece
       } else if (!current) {
@@ -103,12 +135,17 @@ export function chunkMarkdownWithWarnings(input: string, options: ChunkOptions =
 
   if (!label) return { chunks, warnings }
   return {
-    chunks: chunks.map((chunk, index) => `[Part ${index + 1} of ${chunks.length}]\n\n${chunk}`),
+    chunks: chunks.map(
+      (chunk, index) => `[Part ${index + 1} of ${chunks.length}]\n\n${chunk}`
+    ),
     warnings
   }
 }
 
-export function chunkMarkdown(input: string, options: ChunkOptions = {}): string[] {
+export function chunkMarkdown(
+  input: string,
+  options: ChunkOptions = {}
+): string[] {
   return chunkMarkdownWithWarnings(input, options).chunks
 }
 

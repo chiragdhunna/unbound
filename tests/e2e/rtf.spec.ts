@@ -8,7 +8,8 @@ const outputDir = path.resolve(tmpdir(), 'unbound-fixtures')
 async function ensureRtfFixture(): Promise<string> {
   await fs.mkdir(outputDir, { recursive: true })
   const rtfPath = path.join(outputDir, 'm8-e2e-sample.rtf')
-  const rtfContent = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}\\b Unbound RTF Title\\b0\\par\\i Italicized paragraph\\i0 with formatted text.\\par}'
+  const rtfContent =
+    '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}\\b Unbound RTF Title\\b0\\par\\i Italicized paragraph\\i0 with formatted text.\\par}'
   await fs.writeFile(rtfPath, rtfContent, 'utf-8')
   return rtfPath
 }
@@ -49,7 +50,9 @@ test('uploads an RTF file and renders markdown output with zero external request
 
   const output = page.getByRole('textbox', { name: 'Converted output' })
   await expect(output).toContainText('Unbound RTF Title', { timeout: 30_000 })
-  await expect(output).toContainText('Italicized paragraph', { timeout: 30_000 })
+  await expect(output).toContainText('Italicized paragraph', {
+    timeout: 30_000
+  })
 
   const text = await output.inputValue()
   expect(text).toContain('**Unbound RTF Title**')

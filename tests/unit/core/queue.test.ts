@@ -10,15 +10,19 @@ describe('ConversionQueue', () => {
     let active = 0
     let peak = 0
     const changes: string[] = []
-    const queue = new ConversionQueue<string>(2, (job) => changes.push(`${job.id}:${job.status}`))
-    const ids = [1, 2, 3].map((value) => queue.enqueue(async () => {
-      active += 1
-      peak = Math.max(peak, active)
-      await wait(5)
-      active -= 1
-      if (value === 2) throw new Error('failed')
-      return `${value}`
-    }))
+    const queue = new ConversionQueue<string>(2, (job) =>
+      changes.push(`${job.id}:${job.status}`)
+    )
+    const ids = [1, 2, 3].map((value) =>
+      queue.enqueue(async () => {
+        active += 1
+        peak = Math.max(peak, active)
+        await wait(5)
+        active -= 1
+        if (value === 2) throw new Error('failed')
+        return `${value}`
+      })
+    )
     await wait(40)
     expect(peak).toBe(2)
     expect(queue.get(ids[0] ?? '')?.status).toBe('done')

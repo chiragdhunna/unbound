@@ -69,7 +69,9 @@ async function checkDrm(zip: JSZip): Promise<void> {
 
   if (
     /Algorithm=["'][^"']*(aes|des|rsa|fairplay|lcp)[^"']*["']/i.test(xmlText) ||
-    /CipherReference[^>]*URI=["'][^"']*\.(xhtml|html|xml|opf)["']/i.test(xmlText)
+    /CipherReference[^>]*URI=["'][^"']*\.(xhtml|html|xml|opf)["']/i.test(
+      xmlText
+    )
   ) {
     throw new PasswordRequiredError(
       "This EPUB is DRM-protected and can't be converted."
@@ -85,7 +87,10 @@ async function checkDrm(zip: JSZip): Promise<void> {
 
 export const epubConverter: Converter = {
   kind: 'epub',
-  async convert(input: ConverterInput, ctx: ConvertContext): Promise<ConvertResult> {
+  async convert(
+    input: ConverterInput,
+    ctx: ConvertContext
+  ): Promise<ConvertResult> {
     if (ctx.signal?.aborted) {
       throw new CancelledError()
     }
@@ -142,19 +147,26 @@ export const epubConverter: Converter = {
 
     const containerFile = zip.file('META-INF/container.xml')
     if (!containerFile) {
-      throw new CorruptFileError('META-INF/container.xml not found in EPUB archive.')
+      throw new CorruptFileError(
+        'META-INF/container.xml not found in EPUB archive.'
+      )
     }
     const containerText = await readZipText(containerFile)
     let containerParsed: Record<string, unknown>
     try {
-      containerParsed = xmlParser.parse(containerText) as Record<string, unknown>
+      containerParsed = xmlParser.parse(containerText) as Record<
+        string,
+        unknown
+      >
     } catch {
       throw new CorruptFileError('Invalid XML in META-INF/container.xml.')
     }
 
     let opfPath = ''
-    const containerNode = containerParsed.container as Record<string, unknown> | undefined
-    const rootfilesNode = containerNode?.rootfiles as Record<string, unknown> | undefined
+    const containerNode = containerParsed.container as
+      Record<string, unknown> | undefined
+    const rootfilesNode = containerNode?.rootfiles as
+      Record<string, unknown> | undefined
     const rootfileList = Array.isArray(rootfilesNode?.rootfile)
       ? rootfilesNode!.rootfile
       : rootfilesNode?.rootfile
@@ -175,10 +187,14 @@ export const epubConverter: Converter = {
 
     const opfFile = zip.file(opfPath) || zip.file(decodeURIComponent(opfPath))
     if (!opfFile) {
-      throw new CorruptFileError(`OPF file '${opfPath}' not found in EPUB archive.`)
+      throw new CorruptFileError(
+        `OPF file '${opfPath}' not found in EPUB archive.`
+      )
     }
     const opfText = await readZipText(opfFile)
-    const opfDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/')) : ''
+    const opfDir = opfPath.includes('/')
+      ? opfPath.slice(0, opfPath.lastIndexOf('/'))
+      : ''
 
     let opfParsed: Record<string, unknown>
     try {
@@ -188,15 +204,13 @@ export const epubConverter: Converter = {
     }
 
     const packageNode = (opfParsed.package || opfParsed['opf:package']) as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
     if (!packageNode) {
       throw new CorruptFileError('Invalid OPF package structure in EPUB.')
     }
 
     const metadata = (packageNode.metadata || packageNode['opf:metadata']) as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
     let title = ''
     let author = ''
 
@@ -206,9 +220,15 @@ export const epubConverter: Converter = {
         title = dcTitle.trim()
       } else if (Array.isArray(dcTitle) && dcTitle.length > 0) {
         const first = dcTitle[0]
-        title = String(typeof first === 'object' && first ? (first['#text'] || Object.values(first)[0]) : first).trim()
+        title = String(
+          typeof first === 'object' && first
+            ? first['#text'] || Object.values(first)[0]
+            : first
+        ).trim()
       } else if (dcTitle && typeof dcTitle === 'object') {
-        title = String((dcTitle as Record<string, unknown>)['#text'] || '').trim()
+        title = String(
+          (dcTitle as Record<string, unknown>)['#text'] || ''
+        ).trim()
       }
 
       const dcCreator = metadata['dc:creator']
@@ -216,16 +236,24 @@ export const epubConverter: Converter = {
         author = dcCreator.trim()
       } else if (Array.isArray(dcCreator) && dcCreator.length > 0) {
         const first = dcCreator[0]
-        author = String(typeof first === 'object' && first ? (first['#text'] || Object.values(first)[0]) : first).trim()
+        author = String(
+          typeof first === 'object' && first
+            ? first['#text'] || Object.values(first)[0]
+            : first
+        ).trim()
       } else if (dcCreator && typeof dcCreator === 'object') {
-        author = String((dcCreator as Record<string, unknown>)['#text'] || '').trim()
+        author = String(
+          (dcCreator as Record<string, unknown>)['#text'] || ''
+        ).trim()
       }
     }
 
-    const manifestNode = (packageNode.manifest || packageNode['opf:manifest']) as
-      | Record<string, unknown>
-      | undefined
-    const manifestItems = new Map<string, { href: string; mediaType: string; properties?: string }>()
+    const manifestNode = (packageNode.manifest ||
+      packageNode['opf:manifest']) as Record<string, unknown> | undefined
+    const manifestItems = new Map<
+      string,
+      { href: string; mediaType: string; properties?: string }
+    >()
 
     if (manifestNode) {
       const rawItems = Array.isArray(manifestNode.item)
@@ -247,8 +275,7 @@ export const epubConverter: Converter = {
     }
 
     const spineNode = (packageNode.spine || packageNode['opf:spine']) as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
     const spineIdrefs: Array<{ idref: string; linear: boolean }> = []
 
     if (spineNode) {
@@ -306,13 +333,16 @@ export const epubConverter: Converter = {
       })
 
       const { path: chapterPath, linear } = chaptersToProcess[i]!
-      const chapterFile = zip.file(chapterPath) || zip.file(decodeURIComponent(chapterPath))
+      const chapterFile =
+        zip.file(chapterPath) || zip.file(decodeURIComponent(chapterPath))
       if (!chapterFile) continue
 
       const xhtmlText = await readZipText(chapterFile)
       const doc = new DOMParser().parseFromString(xhtmlText, 'text/html')
 
-      doc.querySelectorAll('script, style, noscript').forEach((el) => el.remove())
+      doc
+        .querySelectorAll('script, style, noscript')
+        .forEach((el) => el.remove())
 
       const imgs = doc.querySelectorAll('img, svg, image')
       totalImagesOmitted += imgs.length
@@ -354,7 +384,9 @@ export const epubConverter: Converter = {
         totalChars += md.length
       }
 
-      const chapterBlock = md ? `## ${chapterTitle}\n\n${md}` : `## ${chapterTitle}`
+      const chapterBlock = md
+        ? `## ${chapterTitle}\n\n${md}`
+        : `## ${chapterTitle}`
       chapterSections.push(chapterBlock)
     }
 

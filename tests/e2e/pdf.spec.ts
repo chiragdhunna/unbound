@@ -53,7 +53,10 @@ async function ensureFixtures() {
     const blank = await PDFDocument.create()
     blank.addPage([612, 792])
     blank.addPage([612, 792])
-    await fs.writeFile(path.join(outputDir, 'm52-blank.pdf'), await blank.save())
+    await fs.writeFile(
+      path.join(outputDir, 'm52-blank.pdf'),
+      await blank.save()
+    )
 
     const scannedPath = path.join(outputDir, 'm64-scanned.pdf')
     const mixedPath = path.join(outputDir, 'm64-mixed.pdf')
@@ -147,10 +150,9 @@ test('uploads a generated PDF and renders the markdown output', async ({
     .setInputFiles(path.join(outputDir, 'm52-golden.pdf'))
 
   const output = page.getByRole('textbox')
-  await expect(output).toContainText(
-    '# Quarterly Budget Review',
-    { timeout: 30_000 }
-  )
+  await expect(output).toContainText('# Quarterly Budget Review', {
+    timeout: 30_000
+  })
   await expect(output).toContainText('- Rent 1200')
 
   expect(consoleErrors, consoleErrors.join('\n')).toEqual([])
@@ -311,19 +313,33 @@ test('cancels OCR conversion in under 1 second', async ({ page, baseURL }) => {
 
   await page.addInitScript(() => {
     const OriginalWorker = window.Worker
-    ;(window as unknown as { __workers: { url: string; terminated: boolean }[] }).__workers = []
-    ;(window as unknown as { __terminatedWorkers: { url: string; terminated: boolean }[] }).__terminatedWorkers = []
+    ;(
+      window as unknown as { __workers: { url: string; terminated: boolean }[] }
+    ).__workers = []
+    ;(
+      window as unknown as {
+        __terminatedWorkers: { url: string; terminated: boolean }[]
+      }
+    ).__terminatedWorkers = []
 
     window.Worker = class extends OriginalWorker {
       constructor(scriptURL: string | URL, options?: WorkerOptions) {
         super(scriptURL, options)
         const urlStr = String(scriptURL)
         const record = { url: urlStr, terminated: false }
-        ;(window as unknown as { __workers: { url: string; terminated: boolean }[] }).__workers.push(record)
+        ;(
+          window as unknown as {
+            __workers: { url: string; terminated: boolean }[]
+          }
+        ).__workers.push(record)
         const origTerminate = this.terminate.bind(this)
         this.terminate = () => {
           record.terminated = true
-          ;(window as unknown as { __terminatedWorkers: { url: string; terminated: boolean }[] }).__terminatedWorkers.push(record)
+          ;(
+            window as unknown as {
+              __terminatedWorkers: { url: string; terminated: boolean }[]
+            }
+          ).__terminatedWorkers.push(record)
           return origTerminate()
         }
       }
@@ -342,14 +358,22 @@ test('cancels OCR conversion in under 1 second', async ({ page, baseURL }) => {
 
   // Wait for OCR worker to be spawned so we are cancelling an active OCR conversion
   await page.waitForFunction(() => {
-    const workers = (window as unknown as { __workers?: { url: string; terminated: boolean }[] }).__workers?.filter(
+    const workers = (
+      window as unknown as {
+        __workers?: { url: string; terminated: boolean }[]
+      }
+    ).__workers?.filter(
       (w) => w.url.includes('worker.min.js') || w.url.includes('ocr')
     )
     return workers && workers.length > 0
   })
 
   await page.evaluate(() => {
-    ;(window as unknown as { __cancelTiming: { clickedAt: number; cancelledAt: number } }).__cancelTiming = {
+    ;(
+      window as unknown as {
+        __cancelTiming: { clickedAt: number; cancelledAt: number }
+      }
+    ).__cancelTiming = {
       clickedAt: 0,
       cancelledAt: 0
     }
@@ -361,15 +385,25 @@ test('cancels OCR conversion in under 1 second', async ({ page, baseURL }) => {
       btn.addEventListener(
         'click',
         () => {
-          ;(window as unknown as { __cancelTiming: { clickedAt: number; cancelledAt: number } }).__cancelTiming.clickedAt = performance.now()
+          ;(
+            window as unknown as {
+              __cancelTiming: { clickedAt: number; cancelledAt: number }
+            }
+          ).__cancelTiming.clickedAt = performance.now()
         },
         { capture: true }
       )
     }
 
     const observer = new MutationObserver(() => {
-      if (document.body.textContent?.includes('Conversion cancelled by user.')) {
-        const timing = (window as unknown as { __cancelTiming: { clickedAt: number; cancelledAt: number } }).__cancelTiming
+      if (
+        document.body.textContent?.includes('Conversion cancelled by user.')
+      ) {
+        const timing = (
+          window as unknown as {
+            __cancelTiming: { clickedAt: number; cancelledAt: number }
+          }
+        ).__cancelTiming
         if (!timing.cancelledAt) {
           timing.cancelledAt = performance.now()
         }
@@ -386,12 +420,15 @@ test('cancels OCR conversion in under 1 second', async ({ page, baseURL }) => {
 
   await cancelButton.click()
 
-  await expect(
-    page.getByText('Conversion cancelled by user.')
-  ).toBeVisible()
+  await expect(page.getByText('Conversion cancelled by user.')).toBeVisible()
 
   const timing = await page.evaluate(
-    () => (window as unknown as { __cancelTiming: { clickedAt: number; cancelledAt: number } }).__cancelTiming
+    () =>
+      (
+        window as unknown as {
+          __cancelTiming: { clickedAt: number; cancelledAt: number }
+        }
+      ).__cancelTiming
   )
   expect(timing.clickedAt).toBeGreaterThan(0)
   expect(timing.cancelledAt).toBeGreaterThan(timing.clickedAt)
@@ -401,14 +438,22 @@ test('cancels OCR conversion in under 1 second', async ({ page, baseURL }) => {
 
   // Assert OCR worker was terminated
   await page.waitForFunction(() => {
-    const workers = (window as unknown as { __workers?: { url: string; terminated: boolean }[] }).__workers?.filter(
+    const workers = (
+      window as unknown as {
+        __workers?: { url: string; terminated: boolean }[]
+      }
+    ).__workers?.filter(
       (w) => w.url.includes('worker.min.js') || w.url.includes('ocr')
     )
     return workers && workers.length > 0 && workers.every((w) => w.terminated)
   })
 
   const ocrWorkers = await page.evaluate(() => {
-    return (window as unknown as { __workers?: { url: string; terminated: boolean }[] }).__workers?.filter(
+    return (
+      window as unknown as {
+        __workers?: { url: string; terminated: boolean }[]
+      }
+    ).__workers?.filter(
       (w) => w.url.includes('worker.min.js') || w.url.includes('ocr')
     )
   })

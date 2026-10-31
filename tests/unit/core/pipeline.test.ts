@@ -37,7 +37,9 @@ describe('convertFile', () => {
   })
 
   it('reads file bytes via FileReader fallback when file.arrayBuffer is not available', async () => {
-    const file = new File(['hello fallback'], 'test.txt', { type: 'text/plain' })
+    const file = new File(['hello fallback'], 'test.txt', {
+      type: 'text/plain'
+    })
     // @ts-expect-error simulating browser where file.arrayBuffer is undefined
     file.arrayBuffer = undefined
 
@@ -62,7 +64,9 @@ describe('convertFile', () => {
     globalThis.FileReader = ErrorFileReader
 
     try {
-      await expect(convertFile(file, createConvertContext())).rejects.toThrow('Failed to read file bytes.')
+      await expect(convertFile(file, createConvertContext())).rejects.toThrow(
+        'Failed to read file bytes.'
+      )
     } finally {
       globalThis.FileReader = origFileReader
     }
@@ -86,7 +90,9 @@ describe('convertFile', () => {
     globalThis.FileReader = BadResultFileReader
 
     try {
-      await expect(convertFile(file, createConvertContext())).rejects.toThrow('File bytes could not be read as an ArrayBuffer.')
+      await expect(convertFile(file, createConvertContext())).rejects.toThrow(
+        'File bytes could not be read as an ArrayBuffer.'
+      )
     } finally {
       globalThis.FileReader = origFileReader
     }

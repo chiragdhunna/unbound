@@ -78,10 +78,7 @@ export function OutputPanel({
             </button>
           </div>
           {chunks.map((chunk, index) => (
-            <div
-              key={`${chunk.slice(0, 10)}-${index}`}
-              className="chunk-item"
-            >
+            <div key={`${chunk.slice(0, 10)}-${index}`} className="chunk-item">
               <div className="chunk-meta">{`Part ${index + 1} of ${chunks.length} · ${countSummary(chunk)}`}</div>
               <div className="chunk-actions">
                 <button

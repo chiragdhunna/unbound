@@ -28,9 +28,15 @@ vi.mock('../../src/converters/pdf/worker', () => ({
   getPdfjs: vi.fn()
 }))
 
-const OLE2_HEADER = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])
+const OLE2_HEADER = new Uint8Array([
+  0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1
+])
 
-function makeInput(name: string, bytes: Uint8Array, mime = 'application/octet-stream') {
+function makeInput(
+  name: string,
+  bytes: Uint8Array,
+  mime = 'application/octet-stream'
+) {
   const slice = bytes.buffer.slice(
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength
@@ -49,7 +55,10 @@ describe('Edge Cases Suite (M10 robustness sweep)', () => {
         getDocument: () => {
           const err = new Error('Password required')
           err.name = 'PasswordException'
-          return { promise: Promise.reject(err), destroy: async () => undefined }
+          return {
+            promise: Promise.reject(err),
+            destroy: async () => undefined
+          }
         }
       } as unknown as typeof legacyPdfjs)
 
@@ -90,7 +99,9 @@ describe('Edge Cases Suite (M10 robustness sweep)', () => {
   })
 
   describe('2. Corrupted file per format', () => {
-    const corruptBytes = new Uint8Array([0xde, 0xad, 0xbe, 0xef, 0x01, 0x02, 0x03, 0x04])
+    const corruptBytes = new Uint8Array([
+      0xde, 0xad, 0xbe, 0xef, 0x01, 0x02, 0x03, 0x04
+    ])
 
     it('pdfConverter throws CorruptFileError on corrupted bytes', async () => {
       vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
@@ -112,7 +123,9 @@ describe('Edge Cases Suite (M10 robustness sweep)', () => {
     })
 
     it('xlsxConverter throws CorruptFileError on corrupted bytes', async () => {
-      const corruptXlsx = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0x00, 0xff, 0xff])
+      const corruptXlsx = new Uint8Array([
+        0x50, 0x4b, 0x03, 0x04, 0x00, 0x00, 0xff, 0xff
+      ])
       await expect(
         xlsxConverter.convert(
           makeInput('corrupted.xlsx', corruptXlsx),
@@ -176,7 +189,12 @@ describe('Edge Cases Suite (M10 robustness sweep)', () => {
             numPages: 500,
             getPage: async (pageNum: number) => ({
               getTextContent: async () => ({
-                items: [{ str: `Page ${pageNum} body text content.`, transform: [1, 0, 0, 1, 0, 0] }]
+                items: [
+                  {
+                    str: `Page ${pageNum} body text content.`,
+                    transform: [1, 0, 0, 1, 0, 0]
+                  }
+                ]
               }),
               getOperatorList: async () => ({ fnArray: [] }),
               cleanup: cleanupMock,
@@ -187,7 +205,9 @@ describe('Edge Cases Suite (M10 robustness sweep)', () => {
         })
       }
 
-      vi.mocked(getPdfjs).mockResolvedValue(mockPdfjs as unknown as typeof legacyPdfjs)
+      vi.mocked(getPdfjs).mockResolvedValue(
+        mockPdfjs as unknown as typeof legacyPdfjs
+      )
 
       const result = await pdfConverter.convert(
         makeInput('large-500.pdf', new Uint8Array([0x25, 0x50, 0x44, 0x46])),
@@ -220,7 +240,10 @@ describe('Edge Cases Suite (M10 robustness sweep)', () => {
                 ]
               }),
               getOperatorList: async () => ({
-                fnArray: [TRANSFORM_OPS.transform, legacyPdfjs.OPS.paintImageXObject],
+                fnArray: [
+                  TRANSFORM_OPS.transform,
+                  legacyPdfjs.OPS.paintImageXObject
+                ],
                 argsArray: [[500, 0, 0, 500, 0, 0], []]
               }),
               cleanup: vi.fn(),
@@ -231,16 +254,22 @@ describe('Edge Cases Suite (M10 robustness sweep)', () => {
         })
       }
 
-      vi.mocked(getPdfjs).mockResolvedValue(mockPdfjs as unknown as typeof legacyPdfjs)
+      vi.mocked(getPdfjs).mockResolvedValue(
+        mockPdfjs as unknown as typeof legacyPdfjs
+      )
 
       const result = await pdfConverter.convert(
         makeInput('embedded-img.pdf', new Uint8Array([0x25, 0x50, 0x44, 0x46])),
         createConvertContext()
       )
 
-      const imgWarning = result.warnings.find((w) => w.code === 'EMBEDDED_IMAGES_MAY_CONTAIN_TEXT')
+      const imgWarning = result.warnings.find(
+        (w) => w.code === 'EMBEDDED_IMAGES_MAY_CONTAIN_TEXT'
+      )
       expect(imgWarning).toBeDefined()
-      expect(imgWarning?.message).toContain('embedded images that may contain text')
+      expect(imgWarning?.message).toContain(
+        'embedded images that may contain text'
+      )
     })
   })
 
@@ -333,7 +362,9 @@ startxref
         })
       }
 
-      vi.mocked(getPdfjs).mockResolvedValue(mockPdfjs as unknown as typeof legacyPdfjs)
+      vi.mocked(getPdfjs).mockResolvedValue(
+        mockPdfjs as unknown as typeof legacyPdfjs
+      )
 
       await expect(
         pdfConverter.convert(
@@ -357,7 +388,14 @@ startxref
     it('emits TYPE_MISMATCH warning for PDF file named with .txt extension', async () => {
       vi.mocked(getPdfjs).mockResolvedValue(legacyPdfjs)
       const pdfBytes = new Uint8Array([
-        0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34 // %PDF-1.4
+        0x25,
+        0x50,
+        0x44,
+        0x46,
+        0x2d,
+        0x31,
+        0x2e,
+        0x34 // %PDF-1.4
       ])
       const mockPdfjs: PdfjsLike = {
         getDocument: () => ({
@@ -365,7 +403,9 @@ startxref
             numPages: 1,
             getPage: async () => ({
               getTextContent: async () => ({
-                items: [{ str: 'Real PDF content', transform: [1, 0, 0, 1, 0, 0] }]
+                items: [
+                  { str: 'Real PDF content', transform: [1, 0, 0, 1, 0, 0] }
+                ]
               }),
               getOperatorList: async () => ({ fnArray: [] }),
               cleanup: vi.fn(),
@@ -375,20 +415,30 @@ startxref
           destroy: async () => undefined
         })
       }
-      vi.mocked(getPdfjs).mockResolvedValue(mockPdfjs as unknown as typeof legacyPdfjs)
+      vi.mocked(getPdfjs).mockResolvedValue(
+        mockPdfjs as unknown as typeof legacyPdfjs
+      )
 
-      const file = new File([pdfBytes], 'fake-notes.txt', { type: 'text/plain' })
+      const file = new File([pdfBytes], 'fake-notes.txt', {
+        type: 'text/plain'
+      })
       const result = await convertFile(file, createConvertContext())
 
-      const mismatchWarning = result.warnings.find((w) => w.code === 'TYPE_MISMATCH')
+      const mismatchWarning = result.warnings.find(
+        (w) => w.code === 'TYPE_MISMATCH'
+      )
       expect(mismatchWarning).toBeDefined()
-      expect(mismatchWarning?.message).toContain('Detected pdf content despite a .txt extension.')
+      expect(mismatchWarning?.message).toContain(
+        'Detected pdf content despite a .txt extension.'
+      )
     })
 
     it('emits TYPE_MISMATCH warning for DOCX file named with .pdf extension', async () => {
       // DOCX has PK\x03\x04 zip header
       const docxBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04])
-      const file = new File([docxBytes], 'fake-report.pdf', { type: 'application/pdf' })
+      const file = new File([docxBytes], 'fake-report.pdf', {
+        type: 'application/pdf'
+      })
 
       // DOCX detection will identify it as docx or zip based on content
       // and mismatch warning will be triggered against .pdf extension
@@ -407,25 +457,51 @@ startxref
       expect(txtRes.markdown.trim()).toBe('')
 
       // empty html throws NoTextFoundError
-      await expect(htmlConverter.convert(emptyInput('empty.html'), ctx)).rejects.toBeInstanceOf(NoTextFoundError)
+      await expect(
+        htmlConverter.convert(emptyInput('empty.html'), ctx)
+      ).rejects.toBeInstanceOf(NoTextFoundError)
 
       // structured/binary converters reject empty/zero-byte files gracefully with CorruptFileError
-      await expect(csvConverter.convert(emptyInput('empty.csv'), ctx)).rejects.toBeInstanceOf(CorruptFileError)
-      await expect(pdfConverter.convert(emptyInput('empty.pdf'), ctx)).rejects.toBeInstanceOf(CorruptFileError)
-      await expect(docxConverter.convert(emptyInput('empty.docx'), ctx)).rejects.toBeInstanceOf(CorruptFileError)
-      await expect(pptxConverter.convert(emptyInput('empty.pptx'), ctx)).rejects.toBeInstanceOf(CorruptFileError)
-      await expect(xlsxConverter.convert(emptyInput('empty.xlsx'), ctx)).rejects.toBeInstanceOf(CorruptFileError)
-      await expect(epubConverter.convert(emptyInput('empty.epub'), ctx)).rejects.toBeInstanceOf(CorruptFileError)
-      await expect(zipConverter.convert(emptyInput('empty.zip'), ctx)).rejects.toBeInstanceOf(CorruptFileError)
-      await expect(imageConverter.convert(emptyInput('empty.png'), ctx)).rejects.toBeInstanceOf(CorruptFileError)
-      await expect(rtfConverter.convert(emptyInput('empty.rtf'), ctx)).rejects.toBeInstanceOf(CorruptFileError)
+      await expect(
+        csvConverter.convert(emptyInput('empty.csv'), ctx)
+      ).rejects.toBeInstanceOf(CorruptFileError)
+      await expect(
+        pdfConverter.convert(emptyInput('empty.pdf'), ctx)
+      ).rejects.toBeInstanceOf(CorruptFileError)
+      await expect(
+        docxConverter.convert(emptyInput('empty.docx'), ctx)
+      ).rejects.toBeInstanceOf(CorruptFileError)
+      await expect(
+        pptxConverter.convert(emptyInput('empty.pptx'), ctx)
+      ).rejects.toBeInstanceOf(CorruptFileError)
+      await expect(
+        xlsxConverter.convert(emptyInput('empty.xlsx'), ctx)
+      ).rejects.toBeInstanceOf(CorruptFileError)
+      await expect(
+        epubConverter.convert(emptyInput('empty.epub'), ctx)
+      ).rejects.toBeInstanceOf(CorruptFileError)
+      await expect(
+        zipConverter.convert(emptyInput('empty.zip'), ctx)
+      ).rejects.toBeInstanceOf(CorruptFileError)
+      await expect(
+        imageConverter.convert(emptyInput('empty.png'), ctx)
+      ).rejects.toBeInstanceOf(CorruptFileError)
+      await expect(
+        rtfConverter.convert(emptyInput('empty.rtf'), ctx)
+      ).rejects.toBeInstanceOf(CorruptFileError)
     })
   })
 
   describe('9. Duplicate filenames', () => {
     it('preserves distinct paths and batch isolation for files with identical names', () => {
-      const file1 = { name: 'notes.txt', webkitRelativePath: 'folder-a/notes.txt' }
-      const file2 = { name: 'notes.txt', webkitRelativePath: 'folder-b/notes.txt' }
+      const file1 = {
+        name: 'notes.txt',
+        webkitRelativePath: 'folder-a/notes.txt'
+      }
+      const file2 = {
+        name: 'notes.txt',
+        webkitRelativePath: 'folder-b/notes.txt'
+      }
 
       const name1 = getFileDisplayName(file1)
       const name2 = getFileDisplayName(file2)
@@ -472,7 +548,10 @@ startxref
       const hugeText = 'z'.repeat(500_000)
       const PREVIEW_CAP = 200_000
 
-      const preview = hugeText.length > PREVIEW_CAP ? hugeText.slice(0, PREVIEW_CAP) : hugeText
+      const preview =
+        hugeText.length > PREVIEW_CAP
+          ? hugeText.slice(0, PREVIEW_CAP)
+          : hugeText
       expect(preview.length).toBe(200_000)
 
       // Full text is preserved for copy and chunking

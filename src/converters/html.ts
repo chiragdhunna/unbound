@@ -92,7 +92,12 @@ export function parseHtmlToMarkdown(
     const reader = new Readability(clonedDoc, { keepClasses: true })
     const article = reader.parse()
 
-    if (article && article.content && article.textContent && article.textContent.trim().length > 0) {
+    if (
+      article &&
+      article.content &&
+      article.textContent &&
+      article.textContent.trim().length > 0
+    ) {
       contentHtml = article.content
       if (article.title && article.title.trim()) {
         title = article.title.trim()
@@ -165,15 +170,28 @@ export function parseHtmlToMarkdown(
 
 export const htmlConverter: Converter = {
   kind: 'html',
-  async convert(input: ConverterInput, ctx: ConvertContext): Promise<ConvertResult> {
+  async convert(
+    input: ConverterInput,
+    ctx: ConvertContext
+  ): Promise<ConvertResult> {
     ctx.onProgress({ phase: 'parsing', current: 0, total: 100, percent: 0 })
     const { text, warnings: decodeWarnings } = decodeText(input.bytes)
     const { markdown, warnings: parseWarnings } = parseHtmlToMarkdown(text, {
       signal: ctx.signal,
       onProgress: (percent) =>
-        ctx.onProgress({ phase: 'parsing', current: percent, total: 100, percent })
+        ctx.onProgress({
+          phase: 'parsing',
+          current: percent,
+          total: 100,
+          percent
+        })
     })
-    ctx.onProgress({ phase: 'complete', current: 100, total: 100, percent: 100 })
+    ctx.onProgress({
+      phase: 'complete',
+      current: 100,
+      total: 100,
+      percent: 100
+    })
     return {
       markdown,
       warnings: [...decodeWarnings, ...parseWarnings],

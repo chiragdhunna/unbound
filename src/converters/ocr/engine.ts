@@ -35,10 +35,7 @@ export interface OcrRecognizeResult {
 }
 
 export type OcrImageSource =
-  | HTMLCanvasElement
-  | OffscreenCanvas
-  | ImageBitmap
-  | ImageData
+  HTMLCanvasElement | OffscreenCanvas | ImageBitmap | ImageData
 
 export interface OcrEngine {
   recognize(

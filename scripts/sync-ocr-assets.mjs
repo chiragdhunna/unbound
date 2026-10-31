@@ -9,7 +9,13 @@
  *                                        worker picks one by CPU features)
  * public/ocr/lang/eng.traineddata     <- vendored; validated only
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync
+} from 'node:fs'
 import { join, resolve } from 'node:path'
 
 const root = resolve('.')
@@ -31,9 +37,13 @@ function copy(from, to) {
   copyFileSync(from, to)
 }
 
-const installed = JSON.parse(readFileSync(join(jsPkg, 'package.json'), 'utf8')).version
+const installed = JSON.parse(
+  readFileSync(join(jsPkg, 'package.json'), 'utf8')
+).version
 if (installed !== EXPECTED_VERSION) {
-  fail(`tesseract.js ${installed} is installed but ${EXPECTED_VERSION} is expected; update the assets deliberately`)
+  fail(
+    `tesseract.js ${installed} is installed but ${EXPECTED_VERSION} is expected; update the assets deliberately`
+  )
 }
 
 copy(join(jsPkg, 'dist', 'worker.min.js'), join(out, 'worker.min.js'))
@@ -44,9 +54,16 @@ for (const variant of CORE_VARIANTS) {
 }
 
 const trained = join(out, 'lang', 'eng.traineddata')
-if (!existsSync(trained)) fail('public/ocr/lang/eng.traineddata is missing; vendor the tessdata_fast English file')
-const head = readFileSync(trained).subarray(0, 16).toString('latin1').trimStart()
+if (!existsSync(trained))
+  fail(
+    'public/ocr/lang/eng.traineddata is missing; vendor the tessdata_fast English file'
+  )
+const head = readFileSync(trained)
+  .subarray(0, 16)
+  .toString('latin1')
+  .trimStart()
 if (head.startsWith('<')) fail('eng.traineddata looks like an HTML error page')
-if (statSync(trained).size < MIN_TRAINEDDATA_BYTES) fail('eng.traineddata is smaller than 1 MB')
+if (statSync(trained).size < MIN_TRAINEDDATA_BYTES)
+  fail('eng.traineddata is smaller than 1 MB')
 
 console.log('sync-ocr-assets: OCR assets are in place under public/ocr/')

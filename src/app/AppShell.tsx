@@ -305,7 +305,9 @@ export function AppShell() {
                     output: result.markdown,
                     rawMarkdown: result.markdown,
                     warnings: result.warnings.map((warning) => warning.message),
-                    warningCodes: result.warnings.map((warning) => warning.code),
+                    warningCodes: result.warnings.map(
+                      (warning) => warning.code
+                    ),
                     error: null,
                     progress: undefined
                   }
@@ -385,7 +387,13 @@ export function AppShell() {
     setJobs((previous) =>
       previous.map((j) =>
         j.id === jobId
-          ? { ...j, status: 'converting' as JobStatus, error: null, attemptId, progress: undefined }
+          ? {
+              ...j,
+              status: 'converting' as JobStatus,
+              error: null,
+              attemptId,
+              progress: undefined
+            }
           : j
       )
     )
@@ -396,9 +404,7 @@ export function AppShell() {
     const handleProgress = (progress: ConvertProgress) => {
       setJobs((previous) =>
         previous.map((j) =>
-          j.id === jobId && j.attemptId === attemptId
-            ? { ...j, progress }
-            : j
+          j.id === jobId && j.attemptId === attemptId ? { ...j, progress } : j
         )
       )
     }
@@ -481,9 +487,7 @@ export function AppShell() {
     const handleProgress = (progress: ConvertProgress) => {
       setJobs((previous) =>
         previous.map((j) =>
-          j.id === jobId && j.attemptId === attemptId
-            ? { ...j, progress }
-            : j
+          j.id === jobId && j.attemptId === attemptId ? { ...j, progress } : j
         )
       )
     }

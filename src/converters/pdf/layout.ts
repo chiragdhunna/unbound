@@ -28,8 +28,7 @@ const BULLET_MARKERS = ['\u2022 ', '\u2013 ', '- ', '* '] as const
 const NUMBERED_OR_LETTER_MARKER = /^(\d+|[a-z])[.)]\s+(.*)$/
 
 /** A bare page number such as "12", "Page 12", "Page 3 of 10" or "- 12 -". */
-const BARE_PAGE_NUMBER =
-  /^\s*(page\s+)?\d+(\s+of\s+\d+)?\s*$/i
+const BARE_PAGE_NUMBER = /^\s*(page\s+)?\d+(\s+of\s+\d+)?\s*$/i
 const DASHED_PAGE_NUMBER = /^\s*[-–]\s*\d+\s*[-–]\s*$/
 
 export type TextItemLite = {
@@ -153,11 +152,7 @@ function isListItem(text: string): boolean {
 /** Lowercase, trim, collapse spaces and mask digit runs so "Page 3 of 10" and
  * "Page 4 of 10" both normalise to "page # of #". */
 function normaliseForRepeat(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ')
-    .replace(/\d+/g, '#')
+  return text.toLowerCase().trim().replace(/\s+/g, ' ').replace(/\d+/g, '#')
 }
 
 function isBarePageNumber(text: string): boolean {
@@ -165,10 +160,7 @@ function isBarePageNumber(text: string): boolean {
 }
 
 /** Band membership, y measured from the BOTTOM of the page. */
-function bandOf(
-  y: number,
-  pageHeight: number
-): 'header' | 'footer' | null {
+function bandOf(y: number, pageHeight: number): 'header' | 'footer' | null {
   if (y >= pageHeight * (1 - HEADER_FOOTER_BAND)) return 'header'
   if (y <= pageHeight * HEADER_FOOTER_BAND) return 'footer'
   return null
@@ -252,7 +244,8 @@ export function layoutPages(
   const charCount = allItems
     .filter((item) => item.str.trim() !== '')
     .reduce((total, item) => total + item.str.replace(/\s/g, '').length, 0)
-  if (charCount === 0) return { markdown: '', charCount: 0, removedLineCount: 0 }
+  if (charCount === 0)
+    return { markdown: '', charCount: 0, removedLineCount: 0 }
 
   let pageLines = pages.map((pageItems) => groupPageLines(pageItems))
 
@@ -271,9 +264,7 @@ export function layoutPages(
       )
       return keptTexts.size === 0
         ? []
-        : pageItems.filter((item) =>
-            keptTexts.has(joinLineItems([item]))
-          )
+        : pageItems.filter((item) => keptTexts.has(joinLineItems([item])))
     })
   }
 

@@ -43,7 +43,11 @@ function auditPrivacy(page: Page): NetworkAudit {
   }
 }
 
-async function verifyPrivacyAssertions(page: Page, audit: NetworkAudit, pageOrigin: string) {
+async function verifyPrivacyAssertions(
+  page: Page,
+  audit: NetworkAudit,
+  pageOrigin: string
+) {
   // Assert 1: ZERO external requests
   for (const reqUrl of audit.requests) {
     if (reqUrl.startsWith('data:') || reqUrl.startsWith('blob:')) {
@@ -65,7 +69,9 @@ async function verifyPrivacyAssertions(page: Page, audit: NetworkAudit, pageOrig
     expect(key).toBe('unbound-settings-v1')
   }
 
-  const settingsRaw = await page.evaluate(() => localStorage.getItem('unbound-settings-v1'))
+  const settingsRaw = await page.evaluate(() =>
+    localStorage.getItem('unbound-settings-v1')
+  )
   if (settingsRaw) {
     const parsed = JSON.parse(settingsRaw)
     expect(parsed).not.toHaveProperty('content')
@@ -103,7 +109,10 @@ test.describe('Privacy invariants across all converter families (E6)', () => {
       sections: [
         {
           children: [
-            new Paragraph({ text: 'Docx Privacy Heading', heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({
+              text: 'Docx Privacy Heading',
+              heading: HeadingLevel.HEADING_1
+            }),
             new Paragraph({ children: [new TextRun('Docx content text.')] })
           ]
         }
@@ -118,7 +127,8 @@ test.describe('Privacy invariants across all converter families (E6)', () => {
 
     await page.getByLabel('Choose file', { exact: true }).setInputFiles({
       name: 'privacy-test.docx',
-      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      mimeType:
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       buffer: docxBuf
     })
 
@@ -130,9 +140,15 @@ test.describe('Privacy invariants across all converter families (E6)', () => {
     page
   }) => {
     const wb = XLSX.utils.book_new()
-    const ws = XLSX.utils.aoa_to_sheet([['A', 'B'], [1, 2]])
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['A', 'B'],
+      [1, 2]
+    ])
     XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
-    const xlsxBuf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer
+    const xlsxBuf = XLSX.write(wb, {
+      type: 'buffer',
+      bookType: 'xlsx'
+    }) as Buffer
 
     const audit = auditPrivacy(page)
     await page.goto('/')
@@ -141,7 +157,8 @@ test.describe('Privacy invariants across all converter families (E6)', () => {
 
     await page.getByLabel('Choose file', { exact: true }).setInputFiles({
       name: 'privacy-test.xlsx',
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimeType:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       buffer: xlsxBuf
     })
 
@@ -164,7 +181,8 @@ test.describe('Privacy invariants across all converter families (E6)', () => {
 
     await page.getByLabel('Choose file', { exact: true }).setInputFiles({
       name: 'privacy-test.pptx',
-      mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      mimeType:
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       buffer: pptxBuf
     })
 
@@ -175,7 +193,9 @@ test.describe('Privacy invariants across all converter families (E6)', () => {
   test('privacy: html converter makes zero external requests and zero CSP violations', async ({
     page
   }) => {
-    const htmlBuf = Buffer.from('<!DOCTYPE html><html><body><h1>HTML Privacy</h1><p>Local body text.</p></body></html>')
+    const htmlBuf = Buffer.from(
+      '<!DOCTYPE html><html><body><h1>HTML Privacy</h1><p>Local body text.</p></body></html>'
+    )
 
     const audit = auditPrivacy(page)
     await page.goto('/')
@@ -224,7 +244,9 @@ test.describe('Privacy invariants across all converter families (E6)', () => {
   <body><h1>EPUB</h1><p>Chapter body.</p></body>
 </html>`
     )
-    const epubBuf = (await epubZip.generateAsync({ type: 'nodebuffer' })) as Buffer
+    const epubBuf = (await epubZip.generateAsync({
+      type: 'nodebuffer'
+    })) as Buffer
 
     const audit = auditPrivacy(page)
     await page.goto('/')
@@ -318,7 +340,9 @@ test.describe('Privacy invariants across all converter families (E6)', () => {
       buffer: imageBuf
     })
 
-    await page.getByRole('textbox', { name: 'Converted output' }).waitFor({ timeout: 15000 })
+    await page
+      .getByRole('textbox', { name: 'Converted output' })
+      .waitFor({ timeout: 15000 })
     await verifyPrivacyAssertions(page, audit, pageOrigin)
   })
 

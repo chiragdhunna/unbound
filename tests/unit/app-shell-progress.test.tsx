@@ -133,7 +133,9 @@ describe('AppShell OCR progress UI (M6.5 / Item c)', () => {
     await user.click(cancelButton)
 
     expect(capturedCtx!.signal.aborted).toBe(true)
-    expect(await screen.findByText('Conversion cancelled by user.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Conversion cancelled by user.')
+    ).toBeInTheDocument()
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 })

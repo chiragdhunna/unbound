@@ -94,12 +94,12 @@ async function buildBlankPdf(): Promise<Uint8Array> {
 }
 
 const TINY_PNG = new Uint8Array([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
-  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-  0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89, 0x00, 0x00, 0x00,
-  0x0a, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
-  0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49,
-  0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49,
+  0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06,
+  0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44,
+  0x41, 0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0d,
+  0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42,
+  0x60, 0x82
 ])
 
 async function buildImagePdf(): Promise<Uint8Array> {
@@ -130,12 +130,15 @@ async function buildEmbeddedImagePdf(): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
   const font = await doc.embedFont(StandardFonts.Helvetica)
   const page = doc.addPage([600, 800])
-  page.drawText('This is selectable text on a page with a large embedded image.', {
-    x: 50,
-    y: 750,
-    size: 12,
-    font
-  })
+  page.drawText(
+    'This is selectable text on a page with a large embedded image.',
+    {
+      x: 50,
+      y: 750,
+      size: 12,
+      font
+    }
+  )
   const img = await doc.embedPng(TINY_PNG)
   // 500x500 on 600x800 page = 250,000 / 480,000 = 52% >= 30%
   page.drawImage(img, { x: 50, y: 100, width: 500, height: 500 })
@@ -286,7 +289,8 @@ describe('pdf extraction and conversion', () => {
 
   it('routes to OCR when getOperatorList throws on a low-text page (fail open)', async () => {
     const rawPdf = await buildBlankPdf()
-    const realDoc = await legacyPdfjs.getDocument({ data: rawPdf.slice(0) }).promise
+    const realDoc = await legacyPdfjs.getDocument({ data: rawPdf.slice(0) })
+      .promise
 
     const fakePdfjs = {
       ...legacyPdfjs,
@@ -309,7 +313,9 @@ describe('pdf extraction and conversion', () => {
         destroy: async () => undefined
       })
     }
-    vi.mocked(getPdfjs).mockResolvedValue(fakePdfjs as unknown as typeof legacyPdfjs)
+    vi.mocked(getPdfjs).mockResolvedValue(
+      fakePdfjs as unknown as typeof legacyPdfjs
+    )
     mockRecognize
       .mockResolvedValueOnce({
         text: 'PAGE 1 RECOVERED VIA FAIL OPEN',
@@ -348,7 +354,9 @@ describe('pdf extraction and conversion', () => {
     )
 
     expect(result.markdown).toContain('--- Page 1 ---')
-    expect(result.markdown).toContain('Page one has selectable text for layout.')
+    expect(result.markdown).toContain(
+      'Page one has selectable text for layout.'
+    )
     expect(result.markdown).toContain('--- Page 2 ---')
     expect(result.markdown).toContain('SCANNED PAGE TWO CONTENT')
     expect(result.stats.pages).toBe(2)
@@ -450,7 +458,9 @@ describe('pdf extraction and conversion', () => {
       ctx
     )
 
-    expect(result.markdown).toContain('FORCED OCR RECOGNIZED TEXT FROM EMBEDDED IMAGE')
+    expect(result.markdown).toContain(
+      'FORCED OCR RECOGNIZED TEXT FROM EMBEDDED IMAGE'
+    )
     expect(result.stats.ocrPages).toBe(1)
     expect(
       result.warnings.some((w) => w.code === 'EMBEDDED_IMAGES_MAY_CONTAIN_TEXT')
@@ -534,9 +544,10 @@ describe('pdf extraction and conversion', () => {
                     }
                   ]
                 }),
-              getOperatorList: () => Promise.resolve({
-                fnArray: [1, 2, 3]
-              }),
+              getOperatorList: () =>
+                Promise.resolve({
+                  fnArray: [1, 2, 3]
+                }),
               cleanup: () => undefined
             })
         }),
@@ -697,12 +708,15 @@ describe('pdf header/footer removal, large PDFs and page markers', () => {
 
     for (let index = 1; index <= 20; index += 1) {
       const page = doc.addPage([612, 792])
-      page.drawText(`Page ${index} body content for performance budget testing.`, {
-        x: 72,
-        y: 700,
-        size: 12,
-        font
-      })
+      page.drawText(
+        `Page ${index} body content for performance budget testing.`,
+        {
+          x: 72,
+          y: 700,
+          size: 12,
+          font
+        }
+      )
     }
 
     const started = performance.now()

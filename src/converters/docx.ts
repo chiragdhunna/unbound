@@ -3,29 +3,57 @@ import TurndownService from 'turndown'
 import { gfm } from 'turndown-plugin-gfm'
 import { normalizeMarkdown } from '../core/markdown'
 import { type Converter } from '../core/types'
-import { PasswordRequiredError, LegacyDocError, CorruptFileError } from '../core/errors'
+import {
+  PasswordRequiredError,
+  LegacyDocError,
+  CorruptFileError
+} from '../core/errors'
 
 function hasOle2Signature(bytes: ArrayBuffer): boolean {
   const view = new Uint8Array(bytes.slice(0, 8))
-  return view.length >= 4 && view[0] === 0xd0 && view[1] === 0xcf && view[2] === 0x11 && view[3] === 0xe0
+  return (
+    view.length >= 4 &&
+    view[0] === 0xd0 &&
+    view[1] === 0xcf &&
+    view[2] === 0x11 &&
+    view[3] === 0xe0
+  )
 }
 
 function convertHtmlToMarkdown(html: string): string {
   // Remove img tags to prevent data: URIs in output
   const noImagesHtml = html.replace(/<img[^>]*>/gi, '')
 
-  const withMarkdownTables = noImagesHtml.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_table, body: string) => {
-    const rows = [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map((row) =>
-      [...(row[1] ?? '').matchAll(/<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi)].map((cell) =>
-        (cell[1] ?? '').replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').trim()
+  const withMarkdownTables = noImagesHtml.replace(
+    /<table[^>]*>([\s\S]*?)<\/table>/gi,
+    (_table, body: string) => {
+      const rows = [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(
+        (row) =>
+          [
+            ...(row[1] ?? '').matchAll(
+              /<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi
+            )
+          ].map((cell) =>
+            (cell[1] ?? '')
+              .replace(/<[^>]+>/g, '')
+              .replace(/&nbsp;/gi, ' ')
+              .replace(/&amp;/gi, '&')
+              .trim()
+          )
       )
-    )
-    if (!rows.length) return ''
-    const header = rows[0] ?? []
-    const separator = header.map(() => '---')
-    return `\n\n| ${header.join(' | ')} |\n| ${separator.join(' | ')} |\n${rows.slice(1).map((row) => `| ${row.join(' | ')} |`).join('\n')}\n\n`
+      if (!rows.length) return ''
+      const header = rows[0] ?? []
+      const separator = header.map(() => '---')
+      return `\n\n| ${header.join(' | ')} |\n| ${separator.join(' | ')} |\n${rows
+        .slice(1)
+        .map((row) => `| ${row.join(' | ')} |`)
+        .join('\n')}\n\n`
+    }
+  )
+  const service = new TurndownService({
+    headingStyle: 'atx',
+    bulletListMarker: '-'
   })
-  const service = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-' })
   service.use(gfm)
   return service.turndown(withMarkdownTables).replace(/^(\s*)-\s{2,}/gm, '$1- ')
 }
@@ -62,11 +90,19 @@ export const docxConverter: Converter = {
       ) {
         throw err
       }
-      throw new CorruptFileError('This DOCX could not be read; it may be corrupted.')
+      throw new CorruptFileError(
+        'This DOCX could not be read; it may be corrupted.'
+      )
     }
-    const markdown = normalizeMarkdown(convertHtmlToMarkdown(result.value ?? ''))
+    const markdown = normalizeMarkdown(
+      convertHtmlToMarkdown(result.value ?? '')
+    )
 
-    const warnings = [] as { code: string; message: string; severity: 'info' | 'warn' }[]
+    const warnings = [] as {
+      code: string
+      message: string
+      severity: 'info' | 'warn'
+    }[]
     const imageCount = (result.value ?? '').match(/<img\b/gi)?.length ?? 0
     if (imageCount > 0) {
       warnings.push({
@@ -77,7 +113,8 @@ export const docxConverter: Converter = {
     }
 
     return {
-      markdown: markdown || '# Document\n\nNo readable text was found in this DOCX.',
+      markdown:
+        markdown || '# Document\n\nNo readable text was found in this DOCX.',
       warnings,
       stats: {}
     }

@@ -1,6 +1,11 @@
 import { CorruptFileError, NoTextFoundError } from '../core/errors'
 import { normalizeMarkdown } from '../core/markdown'
-import { type Converter, type ConverterInput, type ConvertContext, type ConvertResult } from '../core/types'
+import {
+  type Converter,
+  type ConverterInput,
+  type ConvertContext,
+  type ConvertResult
+} from '../core/types'
 
 interface RtfState {
   skip: boolean
@@ -81,7 +86,9 @@ export function parseRtfToMarkdown(
 ): string {
   const trimmed = input.trimStart()
   if (!trimmed.startsWith('{\\rtf')) {
-    throw new CorruptFileError('File does not appear to be a valid RTF document.')
+    throw new CorruptFileError(
+      'File does not appear to be a valid RTF document.'
+    )
   }
 
   const len = input.length
@@ -108,8 +115,18 @@ export function parseRtfToMarkdown(
     const ch = input[i]
 
     if (ch === '{') {
-      const top = stack[stack.length - 1] ?? { skip: false, bold: false, italic: false, uc: 1 }
-      stack.push({ skip: top.skip, bold: top.bold, italic: top.italic, uc: top.uc })
+      const top = stack[stack.length - 1] ?? {
+        skip: false,
+        bold: false,
+        italic: false,
+        uc: 1
+      }
+      stack.push({
+        skip: top.skip,
+        bold: top.bold,
+        italic: top.italic,
+        uc: top.uc
+      })
       i += 1
       continue
     }
@@ -117,7 +134,12 @@ export function parseRtfToMarkdown(
     if (ch === '}') {
       if (stack.length > 1) {
         stack.pop()
-        const top = stack[stack.length - 1] ?? { skip: false, bold: false, italic: false, uc: 1 }
+        const top = stack[stack.length - 1] ?? {
+          skip: false,
+          bold: false,
+          italic: false,
+          uc: 1
+        }
         if (currentBold && !top.bold) {
           text += '**'
           currentBold = false
@@ -131,7 +153,12 @@ export function parseRtfToMarkdown(
       continue
     }
 
-    const current = stack[stack.length - 1] ?? { skip: false, bold: false, italic: false, uc: 1 }
+    const current = stack[stack.length - 1] ?? {
+      skip: false,
+      bold: false,
+      italic: false,
+      uc: 1
+    }
 
     if (ch === '\\') {
       i += 1
@@ -183,7 +210,8 @@ export function parseRtfToMarkdown(
       if (match) {
         i += match[0].length
         const word = match[1]?.toLowerCase() ?? ''
-        const param = match[2] !== undefined ? parseInt(match[2], 10) : undefined
+        const param =
+          match[2] !== undefined ? parseInt(match[2], 10) : undefined
 
         if (SKIPPED_DESTINATIONS.has(word)) {
           current.skip = true
@@ -279,17 +307,28 @@ export function parseRtfToMarkdown(
 
 export const rtfConverter: Converter = {
   kind: 'rtf',
-  async convert(input: ConverterInput, ctx: ConvertContext): Promise<ConvertResult> {
+  async convert(
+    input: ConverterInput,
+    ctx: ConvertContext
+  ): Promise<ConvertResult> {
     ctx.onProgress({ phase: 'parsing', current: 0, total: 100, percent: 0 })
 
     const rtfString = new TextDecoder('latin1').decode(input.bytes)
-    const markdown = parseRtfToMarkdown(
-      rtfString,
-      ctx.signal,
-      (percent) => ctx.onProgress({ phase: 'parsing', current: percent, total: 100, percent })
+    const markdown = parseRtfToMarkdown(rtfString, ctx.signal, (percent) =>
+      ctx.onProgress({
+        phase: 'parsing',
+        current: percent,
+        total: 100,
+        percent
+      })
     )
 
-    ctx.onProgress({ phase: 'complete', current: 100, total: 100, percent: 100 })
+    ctx.onProgress({
+      phase: 'complete',
+      current: 100,
+      total: 100,
+      percent: 100
+    })
 
     return {
       markdown,
